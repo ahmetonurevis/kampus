@@ -13256,6 +13256,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/observation-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gözlem planlarını listele
+         * @description Planlar gün ve saat sırasıyla (takvim): öğretmen, gözlemci, gün, saat ve süre, form sürümü, sınıf/ders, dönem, durum, bağlı gözlem, geciken mi ve öğretmene gönderilecek bildirim sayısı. `from`/`to` gün aralığı (takvim haftası ya da ayı), öğretmen, gözlemci, durum, dönem ve `overdue=true` (günü geçmiş açık planlar) ile süzülür. Rol: `yonetici` hepsini; `ogretmen` yalnız gözlemcisi ya da gözleneni olduğu planları görür (K-474). Modül `finance`.
+         */
+        get: operations["listObservationPlans"];
+        put?: never;
+        /**
+         * Gözlem planı aç
+         * @description Plan açılır (K-472): form (son sürümü plana yazılır; yok 422 `observation_template_not_found`, arşivli 409 `observation_template_archived`), gözlenecek etkin öğretmen ve etkin yönetici ya da öğretmen gözlemci (ayrı kişi; DOM-FIN-130 kodları `observation_teacher_*`, `observation_observer_*`, `observation_self`), gün (bugünden önce değil, 422 `observation_plan_date_past`), saat SS:DD ve süre (10–240 dk, varsayılan 40; gece yarısını aşmaz), isteğe bağlı sınıf, ders, performans dönemi (kapanmamış, gün dönem içinde: 422 `observation_period_closed`, `observation_plan_outside_period`; öğretmen başına dönemde en çok 3 iptal edilmemiş plan, 422 `observation_plan_limit`) ve not; çakışma 422 `observation_plan_observer_busy`/`observation_plan_teacher_busy` (gözlemci ve gözlenen aynı saatte başka planda yer alamaz; ders programı denetlenmez). Öğretmene "planlandı" bildirimi gönderilecek olarak yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createObservationPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/observation-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gözlem planını getir
+         * @description Plan ve öğretmene giden bildirimler (konu, gün, saat, durum; bugün hepsi "gönderilecek"). Görülemeyen ve başka kurumun planı 404. Rol: `yonetici` hepsini; `ogretmen` yalnız gözlemcisi ya da gözleneni olduğu planları görür (K-474). Modül `finance`.
+         */
+        get: operations["getObservationPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Gözlem planını düzelt
+         * @description Açık ve gözlemi başlamamış planın kısmi düzeltmesi (K-472): gözlemci, form (son sürüm), gün, saat, süre, sınıf, ders, dönem, not; öğretmen değişmez. Açılıştaki kurallar değişen alanlar için yeniden denetlenir; çakışma 422 `observation_plan_observer_busy`/`observation_plan_teacher_busy` (gözlemci ve gözlenen aynı saatte başka planda yer alamaz; ders programı denetlenmez). Gün, saat, süre ya da gözlemci değişince öğretmene "plan değişti" bildirimi. Gerçekleşen 409 `observation_plan_done`, iptal 409 `observation_plan_cancelled`, gözlemi başlamış 409 `observation_plan_started`. `If-Match` zorunlu. Başka kurumun planı 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateObservationPlan"];
+        trace?: never;
+    };
+    "/api/v1/finance/observation-plans/{planId}/postpone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gözlem planını ertele
+         * @description Açık ve gözlemi başlamamış plan yeni gün ve saate alınır, gerekçe (3–500) yazılır, durum "ertelendi" olur (K-472). Yeni gün bugünden önce olamaz (422 `observation_plan_date_past`), aynı gün ve saat 422 `observation_plan_same_slot`, dönem bağlıysa gün dönem içinde; çakışma 422 `observation_plan_observer_busy`/`observation_plan_teacher_busy` (gözlemci ve gözlenen aynı saatte başka planda yer alamaz; ders programı denetlenmez). Öğretmene "ertelendi" bildirimi. `If-Match` zorunlu. Başka kurumun planı 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["postponeObservationPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/observation-plans/{planId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gözlem planını iptal et
+         * @description Açık ve gözlemi başlamamış plan gerekçeyle (3–500) iptal edilir; dönem sınırında sayılmaz (K-472). Gözlemi başlamış plan 409 `observation_plan_started` (önce taslak arşivlenir), gerçekleşen 409 `observation_plan_done`. Öğretmene "iptal edildi" bildirimi. `If-Match` zorunlu. Başka kurumun planı 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["cancelObservationPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/observation-plans/{planId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Plandan gözlemi başlat
+         * @description Plan günü geldiyse (bugün ya da geçmiş; değilse 422 `observation_plan_not_due`) planın form sürümüyle ders gözlemi taslağı açılır ve plana bağlanır (K-473); gözlem günü plan günüdür. Gözlem açma kuralları DOM-FIN-130'dakidir (arşivli form 409, ayrılmış öğretmen 422, kapanmış dönem 422). Gözlem tamamlanınca plan "gerçekleşti" olur; taslak arşivlenirse bağ kalkar. Zaten başlamış 409 `observation_plan_started`. Gövde boş nesne. `If-Match` zorunlu. Başka kurumun planı 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["startObservationPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -139945,6 +140053,1173 @@ export interface operations {
                         data: {
                             /** @description Tam T.C. kimlik no; kartta yoksa boş */
                             nationalId: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listObservationPlans: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description İlk gün (dahil; takvim aralığı) */
+                from?: string;
+                /** @description Son gün (dahil) */
+                to?: string;
+                /** @description Öğretmen süzgeci */
+                teacherMembershipId?: string;
+                /** @description Gözlemci süzgeci */
+                observerMembershipId?: string;
+                /** @description Durum süzgeci */
+                status?: "planned" | "postponed" | "done" | "cancelled";
+                /** @description Yalnız geciken planlar */
+                overdue?: "true" | "false";
+                /** @description Performans dönemi süzgeci */
+                performancePeriodId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createObservationPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gözlenecek öğretmenin kurum üyeliği */
+                    teacherMembershipId: string;
+                    /** @description Gözlemcinin kurum üyeliği (etkin yönetici ya da öğretmen) */
+                    observerMembershipId: string;
+                    /**
+                     * Format: uuid
+                     * @description Gözlem formu; plan açılırken son sürümü plana yazılır
+                     */
+                    templateId: string;
+                    /** @description Plan günü; bugünden (Europe/Istanbul) önce olamaz */
+                    plannedDate: string;
+                    /** @description Başlangıç saati, Europe/Istanbul (SS:DD) */
+                    startTime: string;
+                    /**
+                     * @description Süre (dakika)
+                     * @default 40
+                     */
+                    durationMinutes?: number;
+                    /** @description İsteğe bağlı sınıf (`classes` kaydı) */
+                    classId?: string | null;
+                    /** @description İsteğe bağlı ders (`subjects` kaydı) */
+                    subjectId?: string | null;
+                    /** @description İsteğe bağlı performans dönemi (DOM-FIN-124); dönem başına plan sınırı buna göre */
+                    performancePeriodId?: string | null;
+                    /** @description Gözlemin odağı (ör. "soru teknikleri"); öğretmen görür */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getObservationPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Öğretmene giden bildirimler, eskiden yeniye */
+                            notices: {
+                                id: string;
+                                /**
+                                 * @description `scheduled` planlandı, `changed` değişti, `postponed` ertelendi, `cancelled` iptal
+                                 * @enum {string}
+                                 */
+                                kind: "scheduled" | "changed" | "postponed" | "cancelled";
+                                /**
+                                 * @description `pending` gönderilecek
+                                 * @enum {string}
+                                 */
+                                status: "pending";
+                                /** @description Bildirim anındaki plan günü */
+                                plannedDate: string;
+                                /** @description Bildirim anındaki başlangıç saati */
+                                startTime: string;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateObservationPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    observerMembershipId?: string;
+                    /**
+                     * Format: uuid
+                     * @description Son sürümü plana yazılır
+                     */
+                    templateId?: string;
+                    /** @description Plan günü; bugünden önce olamaz */
+                    plannedDate?: string;
+                    /** @description Başlangıç saati, Europe/Istanbul (SS:DD) */
+                    startTime?: string;
+                    /** @description Süre (dakika) */
+                    durationMinutes?: number;
+                    /** @description Sınıf; boş metin bağı kaldırır */
+                    classId?: string | null;
+                    /** @description Ders; boş metin bağı kaldırır */
+                    subjectId?: string | null;
+                    /** @description Performans dönemi; `null` bağı kaldırır */
+                    performancePeriodId?: string | null;
+                    /** @description Not; boş metin siler */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postponeObservationPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yeni gün; bugünden önce olamaz */
+                    plannedDate: string;
+                    /** @description Başlangıç saati, Europe/Istanbul (SS:DD) */
+                    startTime: string;
+                    /** @description Yeni süre; verilmezse korunur */
+                    durationMinutes?: number;
+                    /** @description Erteleme gerekçesi (3–500) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelObservationPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi (3–500) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startObservationPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Gözlenecek öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            templateId: string;
+                            /** @description Plana yazılan form sürümü; gözlem bununla açılır */
+                            templateVersionId: string;
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Plan günü (YYYY-MM-DD) */
+                            plannedDate: string;
+                            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+                            startTime: string;
+                            /** @description Bitiş saati SS:DD (başlangıç + süre; sunucu hesaplar) */
+                            endTime: string;
+                            durationMinutes: number;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            performancePeriodId: string | null;
+                            performancePeriodName: string | null;
+                            /** @description Gözlemin odağı */
+                            note: string | null;
+                            /**
+                             * @description `planned` planlandı, `postponed` ertelendi (yeni gün ve saatte açık), `done` gerçekleşti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "postponed" | "done" | "cancelled";
+                            postponeCount: number;
+                            /** @description Son erteleme gerekçesi */
+                            postponeReason: string | null;
+                            cancelReason: string | null;
+                            cancelledAt: string | null;
+                            /** @description Plandan açılan gözlem (DOM-FIN-130) */
+                            observationId: string | null;
+                            observationStatus: ("draft" | "completed") | null;
+                            /** @description Bağlı gözlemin tamamlandığı an */
+                            doneAt: string | null;
+                            /** @description Geciken: günü (İstanbul) geçmiş, gerçekleşmemiş ve iptal edilmemiş (K-473) */
+                            overdue: boolean;
+                            /** @description Öğretmene gönderilecek bildirim sayısı (gönderim kanalı yok; K-474) */
+                            pendingNoticeCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

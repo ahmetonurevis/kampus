@@ -3839,6 +3839,43 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ders gözlem planı (ON-207; DOM-FIN-139, K-474).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/observation-plans', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/observation-plans', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/observation-plans/:planId',
+          '`${PLANS}/${String(rowB.id)}`, a.admin',
+        ],
+        ['kayıt', 'PATCH /api/v1/finance/observation-plans/:planId', 'patch(a.admin, rowB'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-plans/:planId/postpone',
+          "command(a.admin, rowB, 'postpone'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-plans/:planId/cancel',
+          "command(a.admin, rowB, 'cancel'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-plans/:planId/start',
+          "command(a.admin, rowB, 'start')",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-observation-plans.test.ts',
+        'DOM-FIN-139: başka kurumun planı 404 ve değişmez; gövdedeki institutionId 400; liste ayrık',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

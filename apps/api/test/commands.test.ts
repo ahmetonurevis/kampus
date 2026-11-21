@@ -252,6 +252,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Özlük kartı açma; çift tıklama ikinci kartı açmaz (routes/finance-personnel-files.ts;
   // DOM-FIN-140, ON-172).
   'POST /api/v1/finance/personnel-files',
+  // Gözlem planı açma; çift tıklama ikinci planı ve bildirimi açmaz
+  // (routes/finance-observation-plans.ts; DOM-FIN-139, ON-207).
+  'POST /api/v1/finance/observation-plans',
 ]
 // Onur: kayıt ve finans sonu
 

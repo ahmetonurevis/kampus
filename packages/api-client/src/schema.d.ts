@@ -14824,6 +14824,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/transport/routes/{routeId}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis listesi (PDF verisi)
+         * @description Güzergâhın (araç × yön) etkin atamaları durak sırasıyla; durakta öğrenciler ada göre: ad, sınıf, durak ve saat, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; ad, yakınlık, telefon). Ayrılan, mezun ve arşivli öğrenci listede yok (K-499, K-501). Sağlık ve alerji bilgisi dönmez. `purpose=office` (varsayılan) veli telefonu maskeli; `purpose=driver` sürücüye verilecek liste, veli telefonu tam, yalnız `yonetici` (ön büroya 403 `transport_roster_driver_forbidden`) (K-500). Sürücü telefonu her amaçta maskeli (K-481). Web PDF'i bu veriden üretir. Taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk; her okuma denetime düşer: `office` `finance.transport.roster_export`, `driver` `finance.transport.roster_driver_export` (alan adları ve satır sayısı; telefon ve öğrenci kimliği yazılmaz). Olmayan, arşivli ya da başka kurumun güzergâhı 404. Rol: `yonetici`, `onburo`; modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/transport/trips/my": {
         parameters: {
             query?: never;
@@ -156505,6 +156525,151 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportRoster: {
+        parameters: {
+            query?: {
+                /** @description `office` kurum içi (veli telefonu maskeli, varsayılan), `driver` sürücüye verilecek liste (veli telefonu tam; yalnız yönetici) */
+                purpose?: "office" | "driver";
+            };
+            header?: never;
+            path: {
+                routeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            route: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                direction: "morning" | "evening";
+                                /** @description Plaka, boşluksuz büyük harf */
+                                vehiclePlate: string | null;
+                                capacity: number;
+                                driverName: string | null;
+                                /** @description Sürücü telefonu, her amaçta maskeli (K-481) */
+                                driverPhoneMasked: string | null;
+                                /** @description Rehber personelin adı */
+                                guideName: string | null;
+                            };
+                            /** @enum {string} */
+                            purpose: "office" | "driver";
+                            /** @description Veli telefonları maskeli mi (`office`) */
+                            phonesMasked: boolean;
+                            /** @description Listenin günü (YYYY-MM-DD, Europe/Istanbul) */
+                            listDate: string;
+                            /** @description Listedeki öğrenci sayısı */
+                            total: number;
+                            /** @description Duraklar sırasıyla; boş durak da yazılır */
+                            stops: {
+                                id: string;
+                                position: number;
+                                /** @description Durak adı ya da semt */
+                                name: string;
+                                /** @description Geçiş saati (SS:DD) */
+                                time: string;
+                                /** @description Durağın kayıtlı öğrencileri, ada göre */
+                                students: {
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Acil iletişim, en çok iki kişi (K-501) */
+                                    contacts: {
+                                        /** @description Veli adı (hesap adı, yoksa veli kaydı) */
+                                        name: string | null;
+                                        /** @description Yakınlık; bilinmiyorsa boş */
+                                        relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                        /** @description Veli telefonu: `office` amacında maskeli (`0532 *** ** 12`), `driver` amacında tam */
+                                        phone: string | null;
+                                    }[];
+                                }[];
+                            }[];
                         };
                     };
                 };

@@ -246,7 +246,7 @@ export const lostItemDisposalSchema = z.strictObject({
     .enum(LOST_ITEM_DISPOSAL_OUTCOMES, 'Bağış ya da imha seçin.')
     .describe('`donated` bağışlandı, `destroyed` imha edildi'),
   // kvkk: K (serbest metin)
-  reason: requiredText(2, LOST_ITEM_DISPOSAL_REASON_MAX, 'Gerekçeyi').describe(
+  reason: requiredText(2, LOST_ITEM_DISPOSAL_REASON_MAX, 'Gerekçe').describe(
     'Gerekçe (2–300; ör. bağış yapılan kurum); denetime ve loga yazılmaz',
   ),
 })

@@ -1,9 +1,9 @@
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import {
   measurementView,
   thresholdExceeded,
 } from '@kampus/school-core/lib/finance-health-screenings.ts'
 
-import type { Database } from '../db/client.ts'
 import {
   listPublishedResultsForStudents,
   loadHealthScreeningNotificationStates,
@@ -22,37 +22,31 @@ import {
   studentNames,
   type HealthScreeningDeps,
 } from './finance-health-screenings.ts'
+import { recordHealthRead } from './finance-health-access.ts'
 import { readScope } from './read-scope.ts'
-import { auditWork } from './task-work.ts'
 
 /**
  * Okul sağlığı taramasının sağlık değeri dönen okumaları (DOM-FIN-153; K-515). Ölçüm ve not dönen
- * her okuma buradadır ve aynı transaction'da `recordHealthRead` ile denetime düşer (dönen alanların
- * adları; değer yok); denetim yazılamazsa yanıt dönmez. Okuma gerekçesi gibi ortak sağlık okuma
- * kuralları (ON-164) tek noktadan, `recordHealthRead` üzerinden uygulanır.
+ * her okuma buradadır ve aynı transaction'da ortak `recordHealthRead` ile denetime düşer (dönen
+ * alanların adları; değer yok); denetim yazılamazsa yanıt dönmez. Personel okuması rotadan gelen
+ * erişim gerekçesiyle kaydedilir (DOM-FIN-156, ON-164); veli kendi çocuğunu gerekçesiz okur.
  */
 
 /** Ayrıntıda dönen sağlık alanları; okuma denetimine alan adları olarak yazılır. */
 const DETAIL_FIELDS = ['outcome', 'measurement', 'referralRecommended', 'note']
 const GUARDIAN_FIELDS = ['outcome', 'measurement', 'referralRecommended', 'note', 'notification']
 
-/** Sağlık değeri dönen okumanın denetim kaydı (tek nokta). */
-function recordHealthRead(
-  tx: Database,
-  ctx: ServiceContext,
-  action: 'finance.health_screening.read' | 'finance.health_screening.guardian_read',
-  entity: { type: string; id: string },
-  fields: string[],
-) {
-  return auditWork(tx, ctx, action, entity, fields)
-}
-
 /**
  * Oturum ayrıntısı ve hızlı giriş tablosu (K-514, K-515): hedef sınıfların bugünkü etkin öğrencileri
  * ve sonucu olan (sınıf değiştirmiş olsa da) her öğrenci, sonucuyla. Okuma
- * `finance.health_screening.read` denetimine düşer.
+ * gerekçesiyle `finance.health_screening.read` denetimine düşer.
  */
-export function getHealthScreeningFor(ctx: ServiceContext, deps: HealthScreeningDeps, id: string) {
+export function getHealthScreeningFor(
+  ctx: ServiceContext,
+  deps: HealthScreeningDeps,
+  id: string,
+  reason: HealthAccessReason | null,
+) {
   return ctx.db.transaction(async (tx) => {
     const session = await sessionOf(tx, ctx, id)
     const [[view], roster, results] = await Promise.all([
@@ -116,13 +110,14 @@ export function getHealthScreeningFor(ctx: ServiceContext, deps: HealthScreening
           (a.studentName ?? '').localeCompare(b.studentName ?? '', 'tr') ||
           a.studentId.localeCompare(b.studentId),
       )
-    await recordHealthRead(
-      tx,
-      ctx,
-      'finance.health_screening.read',
-      { type: SESSIONS, id },
-      results.length === 0 ? ['students'] : ['students', ...DETAIL_FIELDS],
-    )
+    // Oturum birden çok öğrenciyi kapsar: günlükte öğrenci yoktur, kayıt oturumdur.
+    await recordHealthRead(tx, ctx, {
+      action: 'finance.health_screening.read',
+      entity: { type: SESSIONS, id },
+      fields: results.length === 0 ? ['students'] : ['students', ...DETAIL_FIELDS],
+      studentId: null,
+      reason,
+    })
     return { ...view, students }
   })
 }
@@ -183,13 +178,13 @@ export async function listGuardianScreeningResultsFor(
         notificationStatus: notifications.get(row.id) ?? null,
         publishedAt: row.session.publishedAt ?? row.session.updatedAt,
       })
-      await recordHealthRead(
-        tx,
-        ctx,
-        'finance.health_screening.guardian_read',
-        { type: RESULTS, id: row.id },
-        GUARDIAN_FIELDS,
-      )
+      await recordHealthRead(tx, ctx, {
+        action: 'finance.health_screening.guardian_read',
+        entity: { type: RESULTS, id: row.id },
+        fields: GUARDIAN_FIELDS,
+        studentId: row.studentId,
+        reason: null,
+      })
     }
     return { items: data, total }
   })

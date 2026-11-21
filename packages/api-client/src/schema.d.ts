@@ -15529,7 +15529,7 @@ export interface paths {
         };
         /**
          * Tarama ayrıntısı ve giriş tablosu
-         * @description Oturum ve hedef sınıfların bugünkü etkin öğrencileri (sınıf değiştirmiş ama sonucu olan öğrenci de) sonucuyla: durum, ölçüm (boy-kiloda BKİ sunucuda hesaplanır), ileri değerlendirme işareti, eşik aşımı, kısa not ve bildirim durumu. Okuma aynı transaction'da `finance.health_screening.read` denetimine düşer (alan adları; değer yok). Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         * @description Oturum ve hedef sınıfların bugünkü etkin öğrencileri (sınıf değiştirmiş ama sonucu olan öğrenci de) sonucuyla: durum, ölçüm (boy-kiloda BKİ sunucuda hesaplanır), ileri değerlendirme işareti, eşik aşımı, kısa not ve bildirim durumu. **Erişim gerekçesi zorunlu** (`X-Access-Reason`; DOM-FIN-156): okuma aynı transaction'da gerekçesiyle `finance.health_screening.read` denetimine ve sağlık erişim günlüğüne düşer (alan adları; değer yok). Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
          */
         get: operations["getHealthScreening"];
         put?: never;
@@ -163537,7 +163537,12 @@ export interface operations {
     getHealthScreening: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 sessionId: string;
             };

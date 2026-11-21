@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
+import { healthAccessActionLabel } from '../packages/school-core/src/lib/finance-health-access.ts'
 import {
   assertHealthScreeningPublish,
   bmiOf,
@@ -548,6 +549,10 @@ describe('DOM-FIN-153: yayımlama ve sınıf raporu (K-515, K-516)', () => {
       () => assertHealthScreeningPublish({ ...base, resultCount: 0 }),
       'health_screening_no_results',
     )
+  })
+
+  test('DOM-FIN-156: personel ayrıntı okuması erişim günlüğünde "Sağlık taraması" görünür', () => {
+    assert.equal(healthAccessActionLabel('finance.health_screening.read'), 'Sağlık taraması')
   })
 
   test('küçük grup kuralı: taranan < 5, öneri 1–4 ya da önerilmeyen 1–4 gizli', () => {

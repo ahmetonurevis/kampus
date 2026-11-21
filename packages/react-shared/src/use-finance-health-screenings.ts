@@ -1,6 +1,11 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
+import {
+  healthReasonHeaders,
+  healthReasonKey,
+  type HealthAccessReason,
+} from './use-finance-health-access.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
@@ -8,7 +13,8 @@ import { useFinanceListQuery } from './use-finance-list-query.ts'
 // Okul sağlığı taraması kancaları (`/finance/health-screenings*`; DOM-FIN-153, ON-163). Oturum ve
 // toplu sonuç girişi `Idempotency-Key`; düzeltme ve yayımlama `If-Match` ile gider. Her yazma
 // anahtarın tamamını tazeler (liste, ayrıntı ve rapor birlikte değişir). Ölçüm dönen okumalar
-// (ayrıntı, veli sonuçları) sunucuda denetime düşer.
+// (ayrıntı, veli sonuçları) sunucuda denetime düşer; personel ayrıntısı erişim gerekçesi ister
+// (DOM-FIN-156): gerekçe yokken sorgu çalışmaz, gerekçe anahtarın parçasıdır. Veli gerekçesiz okur.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -64,13 +70,18 @@ export function useHealthScreenings(query: HealthScreeningQuery, enabled = true)
   )
 }
 
-export function useHealthScreening(sessionId: string, enabled = true) {
+export function useHealthScreening(
+  sessionId: string,
+  reason: HealthAccessReason | null,
+  enabled = true,
+) {
   return useApiQuery({
-    key: [...HEALTH_SCREENING_KEY, 'detail', sessionId],
-    enabled: enabled && sessionId !== '',
+    key: [...HEALTH_SCREENING_KEY, 'detail', sessionId, ...healthReasonKey(reason)],
+    enabled: enabled && sessionId !== '' && reason !== null,
+    refetchOnWindowFocus: false,
     request: (client, signal) =>
       client.GET('/api/v1/finance/health-screenings/{sessionId}', {
-        params: { path: { sessionId } },
+        params: { path: { sessionId }, header: healthReasonHeaders(reason) },
         signal,
       }),
   })

@@ -31,6 +31,8 @@ import {
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { healthAccessReasonOf, requireHealthAccessReason } from './finance-health-access.ts'
+import { healthAccessHeadersSchema } from './finance-health-access.schemas.ts'
 import {
   guardianScreeningResultListResponse,
   guardianScreeningResultQuery,
@@ -138,18 +140,24 @@ export function registerFinanceHealthScreeningRoutes(app: FastifyInstance) {
   typed.get(
     `${SCREENINGS}/:sessionId`,
     {
-      preValidation: staff,
+      preValidation: [...staff, requireHealthAccessReason()],
       schema: {
         operationId: 'getHealthScreening',
         tags,
         summary: 'Tarama ayrıntısı ve giriş tablosu',
-        description: `Oturum ve hedef sınıfların bugünkü etkin öğrencileri (sınıf değiştirmiş ama sonucu olan öğrenci de) sonucuyla: durum, ölçüm (boy-kiloda BKİ sunucuda hesaplanır), ileri değerlendirme işareti, eşik aşımı, kısa not ve bildirim durumu. Okuma aynı transaction'da \`finance.health_screening.read\` denetimine düşer (alan adları; değer yok). ${STAFF}`,
+        description: `Oturum ve hedef sınıfların bugünkü etkin öğrencileri (sınıf değiştirmiş ama sonucu olan öğrenci de) sonucuyla: durum, ölçüm (boy-kiloda BKİ sunucuda hesaplanır), ileri değerlendirme işareti, eşik aşımı, kısa not ve bildirim durumu. **Erişim gerekçesi zorunlu** (\`X-Access-Reason\`; DOM-FIN-156): okuma aynı transaction'da gerekçesiyle \`finance.health_screening.read\` denetimine ve sağlık erişim günlüğüne düşer (alan adları; değer yok). ${STAFF}`,
+        headers: healthAccessHeadersSchema(true),
         params: healthScreeningParams,
         response: { 200: healthScreeningDetailResponse, ...commandErrors },
       },
     },
     async (request) => ({
-      data: await getHealthScreeningFor(contextOf(request), deps, request.params.sessionId),
+      data: await getHealthScreeningFor(
+        contextOf(request),
+        deps,
+        request.params.sessionId,
+        healthAccessReasonOf(request),
+      ),
     }),
   )
 

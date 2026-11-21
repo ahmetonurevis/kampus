@@ -14,6 +14,7 @@ import {
   type HealthScreeningRow,
   type HealthScreeningStudentRow,
 } from '@kampus/react-shared/use-finance-health-screenings.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import {
   HEALTH_SCREENING_KIND_LABELS,
   HEALTH_SCREENING_KINDS,
@@ -37,6 +38,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
+import { HealthAccessGate } from './FinanceHealthAccessReasonDialog.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import {
   classesText,
@@ -435,17 +437,44 @@ function ScreeningForm({ onDone }: { onDone: (id?: string) => void }) {
 
 // --- Seçili tarama -------------------------------------------------------------------------------
 
+const screeningScope = (sessionId: string) => `health-screening:${sessionId}`
+
+/**
+ * Seçili tarama: ölçüm dönen ayrıntı erişim gerekçesi ister (DOM-FIN-156); gerekçe kapısı
+ * açılışta sorar ve seçimi aynı tarama için 15 dakika hatırlar (K-525).
+ */
 function Workspace({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
-  const detail = useHealthScreening(sessionId)
-  const data = detail.data?.data
   return (
     <section aria-labelledby="secili-tarama" className="grid gap-4 border-t pt-6">
+      <h3 id="secili-tarama" className="sr-only">
+        Seçili tarama
+      </h3>
+      <HealthAccessGate scope={screeningScope(sessionId)} subject="Tarama sonuçları" askOnOpen>
+        {(reason) => <WorkspaceBody sessionId={sessionId} reason={reason} onClose={onClose} />}
+      </HealthAccessGate>
+    </section>
+  )
+}
+
+function WorkspaceBody({
+  sessionId,
+  reason,
+  onClose,
+}: {
+  sessionId: string
+  reason: HealthAccessReason
+  onClose: () => void
+}) {
+  const detail = useHealthScreening(sessionId, reason)
+  const data = detail.data?.data
+  return (
+    <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="secili-tarama" className="text-base font-semibold">
+        <p className="text-base font-semibold">
           {data
             ? `${kindLabel(data.kind)} taraması · ${screenedOnText(data.screenedOn)}`
             : 'Tarama'}
-        </h3>
+        </p>
         <Button variant="ghost" className="min-h-11" onClick={onClose}>
           Taramayı kapat
         </Button>
@@ -465,7 +494,7 @@ function Workspace({ sessionId, onClose }: { sessionId: string; onClose: () => v
           {data.status === 'open' ? <Publish detail={data} /> : null}
         </>
       )}
-    </section>
+    </>
   )
 }
 

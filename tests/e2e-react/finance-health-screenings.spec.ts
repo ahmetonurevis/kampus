@@ -3,9 +3,10 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Okul sağlığı taramaları (ON-163; DOM-FIN-153). Kural dalları birim ve API testlerindedir
 // (`tests/finance-health-screenings.test.ts`, `apps/api/test/finance-health-screenings.test.ts`);
-// burada ön büro dar ekranda boy-kilo taraması açar, sınıf tablosundan sonucu girer (BKİ sunucuda,
-// eşik işareti kendiliğinden; K-514), raporda küçük grubun gizlendiğini görür (K-516) ve yayımlar;
-// veli çocuğunun sonucunu ve "gönderilecek" bildirimini okur (K-515).
+// burada ön büro dar ekranda boy-kilo taraması açar, ayrıntıyı erişim gerekçesiyle açar
+// (DOM-FIN-156), sınıf tablosundan sonucu girer (BKİ sunucuda, eşik işareti kendiliğinden; K-514),
+// raporda küçük grubun gizlendiğini görür (K-516) ve yayımlar; veli çocuğunun sonucunu ve
+// "gönderilecek" bildirimini okur (K-515).
 
 const DESK = '/onburo/tahsilat-takip'
 
@@ -38,6 +39,14 @@ test.describe('DOM-FIN-153: sağlık taramaları', () => {
     await form.getByLabel('BKİ alt eşiği (isteğe bağlı)').fill('14')
     await form.getByRole('button', { name: 'Taramayı aç' }).click()
     await expect(dialog).toBeHidden()
+
+    // Ölçüm dönen ayrıntı erişim gerekçesiyle açılır (DOM-FIN-156).
+    const reason = page
+      .getByRole('dialog', { name: 'Sağlık bilgisine erişim gerekçesi' })
+      .getByRole('form', { name: 'Erişim gerekçesi' })
+    await reason.getByLabel('Erişim gerekçesi').selectOption({ label: 'Diğer' })
+    await reason.getByLabel('Açıklama').fill('Tarama sonuçlarını giriyorum')
+    await reason.getByRole('button', { name: 'Bilgiyi aç' }).click()
 
     const results = section.getByRole('table', { name: 'Tarama sonuçları' })
     await results.getByLabel(/ durum$/).selectOption({ label: 'Tarandı' })

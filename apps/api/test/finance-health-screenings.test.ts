@@ -8,6 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { healthAccessReasons } from '../src/db/schema/finance-health-access.ts'
 import {
   healthScreeningNotifications,
   healthScreeningResults,
@@ -75,6 +76,13 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
     })
   }
   const get = (url: string, cookie: string | null) => call('GET', url, cookie)
+  /** Ölçüm dönen personel okuması erişim gerekçesi ister (DOM-FIN-156, ON-164). */
+  const READ_REASON = 'Tarama sonuçlarını giriyorum'
+  const detailOf = (path: string, cookie: string) =>
+    call('GET', path, cookie, undefined, {
+      'x-access-reason': 'other',
+      'x-access-reason-note': encodeURIComponent(READ_REASON),
+    })
   const post = (url: string, cookie: string | null, body: unknown, key = randomUUID()) =>
     call('POST', url, cookie, body, { 'idempotency-key': key })
   const versioned = (
@@ -203,7 +211,7 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
     for (const cookie of [t.teacher.cookie, t.mother, student]) {
       assertError(await get(SCREENINGS, cookie), 403)
       assertError(await post(SCREENINGS, cookie, screeningBody()), 403)
-      assertError(await get(url(created.id), cookie), 403)
+      assertError(await detailOf(url(created.id), cookie), 403)
       assertError(await get(`${url(created.id)}/report`, cookie), 403)
       assertError(
         await record(t, created.id, [{ studentId: 's-1', outcome: 'absent' }], cookie),
@@ -304,7 +312,7 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
     assert.equal(list.data[0].resultCount, 0)
   })
 
-  test('DOM-FIN-153: sonuç girişi şifreli, eşik işareti, öğrenci başına tek sonuç ve düzeltme (K-514)', async () => {
+  test('DOM-FIN-153: sonuç girişi şifreli, eşik işareti, öğrenci başına tek sonuç, düzeltme ve gerekçeli ayrıntı (K-514, DOM-FIN-156)', async () => {
     const t = await institution()
     const created = await openScreening(t)
     const future = await openScreening(t, { screenedOn: '2026-10-07' })
@@ -367,7 +375,9 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
       assert.equal(JSON.stringify(entries).includes(SECRET_NOTE), false)
     }
 
-    const detail = ok(await get(url(created.id), t.admin))
+    assertError(await get(url(created.id), t.admin), 400, 'health_access_reason_required')
+    assert.equal((await audits(t.id, 'finance.health_screening.read')).length, 0)
+    const detail = ok(await detailOf(url(created.id), t.admin))
     const students = detail.students as Json[]
     assert.deepEqual(
       students.map((row) => row.studentId),
@@ -389,6 +399,14 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
       'note',
     ])
     assert.equal(JSON.stringify(read).includes(SECRET_NOTE), false)
+    assert.equal(read?.reason, READ_REASON)
+    const [logged] = await db
+      .select()
+      .from(healthAccessReasons)
+      .where(eq(healthAccessReasons.institutionId, t.id))
+    assert.equal(logged?.reasonCode, 'other')
+    assert.equal(logged?.auditLogId, read?.id)
+    assert.equal(logged?.studentId, null)
 
     // Düzeltme sürümle; aynısı yazılmaz; eski sürüm 409.
     const corrected = ok(
@@ -556,7 +574,7 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
     assert.equal((report.total as Json).referral, null)
 
     // Deniz'in ölçümü düzeltilince 9-A'da öneri kalmaz; 0 gösterilir.
-    const detail = ok(await get(url(created.id), t.desk.cookie))
+    const detail = ok(await detailOf(url(created.id), t.desk.cookie))
     const deniz = (detail.students as Json[]).find((row) => row.studentId === 's-1')?.result as Json
     ok(
       await record(t, created.id, [
@@ -582,7 +600,7 @@ describe('DOM-FIN-153: okul sağlığı taraması uçları', () => {
     const bScreening = await openScreening(b)
     ok(await record(b, bScreening.id, [{ studentId: 's-1', ...growth(150, 45) }]))
     const bUrl = url(bScreening.id)
-    assertError(await get(bUrl, a.admin), 404)
+    assertError(await detailOf(bUrl, a.admin), 404)
     assertError(await get(`${bUrl}/report`, a.admin), 404)
     assertError(
       await versioned('PATCH', bUrl, a.admin, { screenedOn: '2026-10-05' }, bScreening.version),

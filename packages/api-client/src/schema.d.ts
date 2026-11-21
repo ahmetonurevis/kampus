@@ -15476,6 +15476,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/infirmary/medication-chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Günlük ilaç çizelgesi
+         * @description Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati: öğrenci, ilaç, onaydaki doz, doz anı ve durum (`administered` uygulandı, `skipped` atlandı; sonuç yoksa doz anı + kurumun gecikme payı geçtiyse `overdue`, değilse `pending`). Geciken dozlar üstte, sonra bekleyenler, sonra sonuçlananlar; grup içinde saat sırası. Satır doz saatinin bütün kayıtlarını (iptal edilenler ve düzeltmeler dahil) ve o günkü yoklamada yok/izinli işaretini (yoklama yalnız okunur; alınmadıysa ya da `academic` kapalıysa boş) taşır. Her talep `finance.infirmary.chart_read` denetimine düşer. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["getMedicationChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/infirmary/medication-consents/{consentId}/skips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dozu atlandı olarak kaydet
+         * @description Onaylı talep (422 `infirmary_consent_not_approved`), onaydaki doz saati (422 `infirmary_dose_time_not_approved`), doz günü (boşsa bugün; gelecek 422 `infirmary_skip_in_future`, dünden eski 422 `infirmary_skip_too_old`, dönem dışı 422 `infirmary_skip_outside_period`) ve gerekçe (`other`de en az 5 karakter açıklama, 400). Doz saatinin tek etkin sonucu olur: uygulama varsa 409 `infirmary_dose_already_given`, atlama varsa 409 `infirmary_dose_already_skipped`. Gerekçe ve açıklama şifreli; kayıt değişmez (düzeltme ayrı kayıttır). Denetim `finance.infirmary.skip_create`. `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        post: operations["recordMedicationDoseSkip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/infirmary/medication-administrations/{administrationId}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İlaç uygulamasını düzelt ya da iptal et
+         * @description Uygulama silinmez, değişmez; gerekçeli (5–500) düzeltme kaydı eklenir. `void` iptal: kayıt hiç olmamış sayılır, doz saatine yeniden uygulama ya da atlama yazılabilir; alan gönderilmez. `amend` düzeltme: an (gelecekte 422 `infirmary_administration_in_future`; kaydın doz günü dışında 422 `infirmary_correction_day_mismatch`), uygulayan (422 `infirmary_administered_by_not_found|not_staff|inactive`) ve not; değişiklik yoksa 422 `infirmary_correction_unchanged`. İptal edilmiş kayıt 409 `infirmary_dose_record_voided`. Gerekçe ve not şifreli. Denetim `finance.infirmary.correction_create` (alan adları). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["correctMedicationAdministration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/infirmary/medication-skips/{skipId}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Atlamayı düzelt ya da iptal et
+         * @description Atlama silinmez, değişmez; gerekçeli (5–500) düzeltme kaydı eklenir. `void` iptal: doz saati yeniden sonuçlanabilir; `amend` düzeltme: atlama gerekçesi ve açıklama (etkin gerekçe `other` iken açıklama zorunlu, 422 `infirmary_skip_note_required`; değişiklik yoksa 422 `infirmary_correction_unchanged`). İptal edilmiş kayıt 409 `infirmary_dose_record_voided`. Denetim `finance.infirmary.correction_create`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["correctMedicationDoseSkip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/infirmary/my-medication-doses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çocuğumun ilaç dozları
+         * @description Kapsamdaki (velayetli ve kısıtsız bağ) çocukların uygulanan ve atlanan dozları; gerekçe, açıklama ve düzeltilmiş değerlerle, iptal edilen kayıt yok. En yeni gün ve saat önce. Aralık boşsa son 30 gün; başlangıç bitişten sonra 422 `infirmary_dose_range_invalid`, 92 günden uzun 422 `infirmary_dose_range_too_long`. Her dönen talep `finance.infirmary.guardian_dose_read` denetimine düşer. Bildirim gönderilmez. Rol: yalnız `veli` (kapsamındaki çocuklar; başkası boş). Modül `finance`.
+         */
+        get: operations["listGuardianMedicationDoses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/infirmary/medication-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İlaç çizelgesi ayarı
+         * @description Gecikme payı (dk; varsayılan 30); hiç kaydedilmediyse varsayılan ve sürüm 1 (K-511). Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["getMedicationSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İlaç çizelgesi ayarını kaydet
+         * @description Gecikme payı (5–180 dk, 400); değişiklik yoksa 422 `infirmary_settings_unchanged`. `If-Match` zorunlu (hiç kaydedilmediyse 1). Denetim `finance.infirmary.settings_update`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        patch: operations["setMedicationSettings"];
+        trace?: never;
+    };
     "/api/v1/finance/health-access-logs": {
         parameters: {
             query?: never;
@@ -162984,6 +163108,989 @@ export interface operations {
                             active: boolean;
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMedicationChart: {
+        parameters: {
+            query?: {
+                /** @description Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün */
+                date?: string;
+            };
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Çizelge günü (Europe/Istanbul) */
+                            date: string;
+                            /** @description Kurumun gecikme payı (dk) */
+                            lateToleranceMinutes: number;
+                            items: {
+                                consentId: string;
+                                consentVersion: number;
+                                studentId: string;
+                                studentName: string | null;
+                                medicationName: string;
+                                /** @description Onaydaki doz */
+                                dose: string;
+                                scheduledTime: string;
+                                /** @description Doz anı (UTC) */
+                                dueAt: string;
+                                /**
+                                 * @description `overdue` gecikti, `pending` bekliyor, `administered` uygulandı, `skipped` atlandı
+                                 * @enum {string}
+                                 */
+                                state: "overdue" | "pending" | "administered" | "skipped";
+                                /** @description O günkü yoklamada yok ya da izinli; yoklama alınmadıysa ya da kapalıysa boş */
+                                absent: boolean | null;
+                                /** @description Doz saatinin bütün kayıtları (iptal edilenler dahil), yazılış sırasıyla */
+                                records: {
+                                    /**
+                                     * @description `administration` uygulama, `skip` atlama
+                                     * @enum {string}
+                                     */
+                                    kind: "administration" | "skip";
+                                    id: string;
+                                    consentId: string;
+                                    studentId: string;
+                                    /** @description Doz günü (Europe/Istanbul) */
+                                    doseDay: string;
+                                    scheduledTime: string;
+                                    /** @description Yönetici iptal ettiyse doğru; kayıt silinmez */
+                                    voided: boolean;
+                                    /** @description Düzeltme ya da iptal kaydı var mı */
+                                    corrected: boolean;
+                                    /** @description Etkin uygulama anı; atlamada boş */
+                                    administeredAt: string | null;
+                                    administeredByMembershipId: string | null;
+                                    administeredByName: string | null;
+                                    /** @description Verilen doz (özel nitelikli); atlamada boş */
+                                    dose: string | null;
+                                    /** @description Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş */
+                                    skipReason: ("student_absent" | "refused" | "guardian_cancelled" | "other") | null;
+                                    /** @description Etkin not ya da açıklama (özel nitelikli) */
+                                    note: string | null;
+                                    recordedByName: string | null;
+                                    createdAt: string;
+                                    /** @description Düzeltmeler, yazılış sırasıyla */
+                                    corrections: {
+                                        id: string;
+                                        /**
+                                         * @description `void` iptal, `amend` düzeltme
+                                         * @enum {string}
+                                         */
+                                        kind: "void" | "amend";
+                                        /** @description Düzeltme gerekçesi (özel nitelikli) */
+                                        reason: string;
+                                        correctedByName: string | null;
+                                        createdAt: string;
+                                    }[];
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordMedicationDoseSkip: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                consentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Onaydaki doz saati (SS:DD) */
+                    scheduledTime: string;
+                    /**
+                     * @description Doz günü (YYYY-MM-DD, Europe/Istanbul); boşsa bugün. Yalnız bugün ya da dün
+                     * @default null
+                     */
+                    doseDay?: string | null;
+                    /**
+                     * @description `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer (açıklama zorunlu; şifreli)
+                     * @enum {string}
+                     */
+                    reason: "student_absent" | "refused" | "guardian_cancelled" | "other";
+                    /** @description Açıklama (≤ 500; "diğer"de en az 5; şifreli) */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `administration` uygulama, `skip` atlama
+                             * @enum {string}
+                             */
+                            kind: "administration" | "skip";
+                            id: string;
+                            consentId: string;
+                            studentId: string;
+                            /** @description Doz günü (Europe/Istanbul) */
+                            doseDay: string;
+                            scheduledTime: string;
+                            /** @description Yönetici iptal ettiyse doğru; kayıt silinmez */
+                            voided: boolean;
+                            /** @description Düzeltme ya da iptal kaydı var mı */
+                            corrected: boolean;
+                            /** @description Etkin uygulama anı; atlamada boş */
+                            administeredAt: string | null;
+                            administeredByMembershipId: string | null;
+                            administeredByName: string | null;
+                            /** @description Verilen doz (özel nitelikli); atlamada boş */
+                            dose: string | null;
+                            /** @description Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş */
+                            skipReason: ("student_absent" | "refused" | "guardian_cancelled" | "other") | null;
+                            /** @description Etkin not ya da açıklama (özel nitelikli) */
+                            note: string | null;
+                            recordedByName: string | null;
+                            createdAt: string;
+                            /** @description Düzeltmeler, yazılış sırasıyla */
+                            corrections: {
+                                id: string;
+                                /**
+                                 * @description `void` iptal, `amend` düzeltme
+                                 * @enum {string}
+                                 */
+                                kind: "void" | "amend";
+                                /** @description Düzeltme gerekçesi (özel nitelikli) */
+                                reason: string;
+                                correctedByName: string | null;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    correctMedicationAdministration: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                administrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `void` iptal (kayıt hiç olmamış sayılır), `amend` düzeltme
+                     * @enum {string}
+                     */
+                    kind: "void" | "amend";
+                    /** @description Düzeltme ya da iptal gerekçesi (5–500; şifreli) */
+                    reason: string;
+                    /**
+                     * Format: date-time
+                     * @description Düzeltilmiş uygulama anı; kaydın doz günüyle aynı gün olmalı
+                     */
+                    administeredAt?: string;
+                    /** @description Düzeltilmiş uygulayan personel üyeliği */
+                    administeredByMembershipId?: string;
+                    /** @description Düzeltilmiş not (boş metin notu siler; şifreli) */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `administration` uygulama, `skip` atlama
+                             * @enum {string}
+                             */
+                            kind: "administration" | "skip";
+                            id: string;
+                            consentId: string;
+                            studentId: string;
+                            /** @description Doz günü (Europe/Istanbul) */
+                            doseDay: string;
+                            scheduledTime: string;
+                            /** @description Yönetici iptal ettiyse doğru; kayıt silinmez */
+                            voided: boolean;
+                            /** @description Düzeltme ya da iptal kaydı var mı */
+                            corrected: boolean;
+                            /** @description Etkin uygulama anı; atlamada boş */
+                            administeredAt: string | null;
+                            administeredByMembershipId: string | null;
+                            administeredByName: string | null;
+                            /** @description Verilen doz (özel nitelikli); atlamada boş */
+                            dose: string | null;
+                            /** @description Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş */
+                            skipReason: ("student_absent" | "refused" | "guardian_cancelled" | "other") | null;
+                            /** @description Etkin not ya da açıklama (özel nitelikli) */
+                            note: string | null;
+                            recordedByName: string | null;
+                            createdAt: string;
+                            /** @description Düzeltmeler, yazılış sırasıyla */
+                            corrections: {
+                                id: string;
+                                /**
+                                 * @description `void` iptal, `amend` düzeltme
+                                 * @enum {string}
+                                 */
+                                kind: "void" | "amend";
+                                /** @description Düzeltme gerekçesi (özel nitelikli) */
+                                reason: string;
+                                correctedByName: string | null;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    correctMedicationDoseSkip: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                skipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `void` iptal (kayıt hiç olmamış sayılır), `amend` düzeltme
+                     * @enum {string}
+                     */
+                    kind: "void" | "amend";
+                    /** @description Düzeltme ya da iptal gerekçesi (5–500; şifreli) */
+                    reason: string;
+                    /**
+                     * @description `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer (açıklama zorunlu; şifreli)
+                     * @enum {string}
+                     */
+                    skipReason?: "student_absent" | "refused" | "guardian_cancelled" | "other";
+                    /** @description Düzeltilmiş açıklama (şifreli) */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `administration` uygulama, `skip` atlama
+                             * @enum {string}
+                             */
+                            kind: "administration" | "skip";
+                            id: string;
+                            consentId: string;
+                            studentId: string;
+                            /** @description Doz günü (Europe/Istanbul) */
+                            doseDay: string;
+                            scheduledTime: string;
+                            /** @description Yönetici iptal ettiyse doğru; kayıt silinmez */
+                            voided: boolean;
+                            /** @description Düzeltme ya da iptal kaydı var mı */
+                            corrected: boolean;
+                            /** @description Etkin uygulama anı; atlamada boş */
+                            administeredAt: string | null;
+                            administeredByMembershipId: string | null;
+                            administeredByName: string | null;
+                            /** @description Verilen doz (özel nitelikli); atlamada boş */
+                            dose: string | null;
+                            /** @description Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş */
+                            skipReason: ("student_absent" | "refused" | "guardian_cancelled" | "other") | null;
+                            /** @description Etkin not ya da açıklama (özel nitelikli) */
+                            note: string | null;
+                            recordedByName: string | null;
+                            createdAt: string;
+                            /** @description Düzeltmeler, yazılış sırasıyla */
+                            corrections: {
+                                id: string;
+                                /**
+                                 * @description `void` iptal, `amend` düzeltme
+                                 * @enum {string}
+                                 */
+                                kind: "void" | "amend";
+                                /** @description Düzeltme gerekçesi (özel nitelikli) */
+                                reason: string;
+                                correctedByName: string | null;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGuardianMedicationDoses: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Çocuklardan biri */
+                studentId?: string;
+                /** @description İlk gün (dahil); boşsa son günden 29 gün önce */
+                from?: string;
+                /** @description Son gün (dahil); boşsa bugün */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `administration` uygulama, `skip` atlama
+                             * @enum {string}
+                             */
+                            kind: "administration" | "skip";
+                            consentId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            medicationName: string | null;
+                            doseDay: string;
+                            scheduledTime: string;
+                            administeredAt: string | null;
+                            administeredByName: string | null;
+                            dose: string | null;
+                            /** @description Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş */
+                            skipReason: ("student_absent" | "refused" | "guardian_cancelled" | "other") | null;
+                            note: string | null;
+                            /** @description Okul kaydı düzeltti mi */
+                            corrected: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMedicationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            lateToleranceMinutes: number;
+                            /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setMedicationSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Doz saatinden sonra "gecikti" sayılmadan önceki pay (5–180 dk) */
+                    lateToleranceMinutes: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            lateToleranceMinutes: number;
+                            /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
                     };
                 };
             };

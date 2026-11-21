@@ -317,6 +317,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/trip-plans/{planId}/day/assignments',
   'POST /api/v1/finance/trip-plans/{planId}/day/groups/{groupId}/checks',
   'POST /api/v1/finance/trip-plans/{planId}/day/checks/{checkId}/marks',
+  // Doz atlama ve uygulama/atlama düzeltmesi; çift tıklama ikinci atlamayı ya da düzeltmeyi
+  // yazmaz (routes/finance-infirmary-schedule.ts; DOM-FIN-152, ON-161).
+  'POST /api/v1/finance/infirmary/medication-consents/{consentId}/skips',
+  'POST /api/v1/finance/infirmary/medication-administrations/{administrationId}/corrections',
+  'POST /api/v1/finance/infirmary/medication-skips/{skipId}/corrections',
 ]
 // Onur: kayıt ve finans sonu
 

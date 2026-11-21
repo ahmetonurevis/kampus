@@ -4472,6 +4472,43 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ilaç çizelgesi, atlama ve düzeltme (ON-161; DOM-FIN-152).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/infirmary/medication-chart', 'chartOf(a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/skips',
+          'skip(a, bConsent.id, {}, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-administrations/:administrationId/corrections',
+          'administrationUrl(bAdministration?.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-skips/:skipId/corrections',
+          'skipUrl(bSkip.id), a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/infirmary/my-medication-doses', 'get(MY_DOSES, a.mother)'],
+        ['liste', 'GET /api/v1/finance/infirmary/medication-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/infirmary/medication-settings',
+          'lateToleranceMinutes: 50, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-infirmary-schedule.test.ts',
+        'DOM-FIN-152: başka kurumun talebi, uygulaması ve atlaması 404 ve B değişmez; listede yok',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

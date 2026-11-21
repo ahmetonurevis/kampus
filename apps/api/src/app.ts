@@ -138,6 +138,7 @@ import { registerFinanceTransportTripRoutes } from './routes/finance-transport-t
 import { registerFinanceTransportDocumentRoutes } from './routes/finance-transport-documents.ts'
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
+import { registerFinanceInfirmaryScheduleRoutes } from './routes/finance-infirmary-schedule.ts'
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
 import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 // Onur: kayıt ve finans sonu
@@ -689,6 +690,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTransportDocumentRoutes(app, storage)
   registerFinanceClubSelectionRoutes(app)
   registerFinanceInfirmaryRoutes(app)
+  registerFinanceInfirmaryScheduleRoutes(app)
   registerFinanceHealthAccessRoutes(app)
   registerFinanceTripDayRoutes(app)
   // Onur: kayıt ve finans sonu

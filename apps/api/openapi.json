@@ -349710,6 +349710,2003 @@
         }
       }
     },
+    "/api/v1/finance/infirmary/medication-chart": {
+      "get": {
+        "operationId": "getMedicationChart",
+        "summary": "Günlük ilaç çizelgesi",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati: öğrenci, ilaç, onaydaki doz, doz anı ve durum (`administered` uygulandı, `skipped` atlandı; sonuç yoksa doz anı + kurumun gecikme payı geçtiyse `overdue`, değilse `pending`). Geciken dozlar üstte, sonra bekleyenler, sonra sonuçlananlar; grup içinde saat sırası. Satır doz saatinin bütün kayıtlarını (iptal edilenler ve düzeltmeler dahil) ve o günkü yoklamada yok/izinli işaretini (yoklama yalnız okunur; alınmadıysa ya da `academic` kapalıysa boş) taşır. Her talep `finance.infirmary.chart_read` denetimine düşer. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string",
+                          "description": "Çizelge günü (Europe/Istanbul)"
+                        },
+                        "lateToleranceMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurumun gecikme payı (dk)"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "consentId": {
+                                "type": "string"
+                              },
+                              "consentVersion": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "medicationName": {
+                                "type": "string"
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Onaydaki doz"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "dueAt": {
+                                "type": "string",
+                                "description": "Doz anı (UTC)"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "overdue",
+                                  "pending",
+                                  "administered",
+                                  "skipped"
+                                ],
+                                "description": "`overdue` gecikti, `pending` bekliyor, `administered` uygulandı, `skipped` atlandı"
+                              },
+                              "absent": {
+                                "description": "O günkü yoklamada yok ya da izinli; yoklama alınmadıysa ya da kapalıysa boş",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "records": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "administration",
+                                        "skip"
+                                      ],
+                                      "description": "`administration` uygulama, `skip` atlama"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "consentId": {
+                                      "type": "string"
+                                    },
+                                    "studentId": {
+                                      "type": "string"
+                                    },
+                                    "doseDay": {
+                                      "type": "string",
+                                      "description": "Doz günü (Europe/Istanbul)"
+                                    },
+                                    "scheduledTime": {
+                                      "type": "string"
+                                    },
+                                    "voided": {
+                                      "type": "boolean",
+                                      "description": "Yönetici iptal ettiyse doğru; kayıt silinmez"
+                                    },
+                                    "corrected": {
+                                      "type": "boolean",
+                                      "description": "Düzeltme ya da iptal kaydı var mı"
+                                    },
+                                    "administeredAt": {
+                                      "description": "Etkin uygulama anı; atlamada boş",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "administeredByMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "administeredByName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "dose": {
+                                      "description": "Verilen doz (özel nitelikli); atlamada boş",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "skipReason": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "student_absent",
+                                            "refused",
+                                            "guardian_cancelled",
+                                            "other"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş"
+                                    },
+                                    "note": {
+                                      "description": "Etkin not ya da açıklama (özel nitelikli)",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "recordedByName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "createdAt": {
+                                      "type": "string"
+                                    },
+                                    "corrections": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "void",
+                                              "amend"
+                                            ],
+                                            "description": "`void` iptal, `amend` düzeltme"
+                                          },
+                                          "reason": {
+                                            "type": "string",
+                                            "description": "Düzeltme gerekçesi (özel nitelikli)"
+                                          },
+                                          "correctedByName": {
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          },
+                                          "createdAt": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "kind",
+                                          "reason",
+                                          "correctedByName",
+                                          "createdAt"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "Düzeltmeler, yazılış sırasıyla"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "consentId",
+                                    "studentId",
+                                    "doseDay",
+                                    "scheduledTime",
+                                    "voided",
+                                    "corrected",
+                                    "administeredAt",
+                                    "administeredByMembershipId",
+                                    "administeredByName",
+                                    "dose",
+                                    "skipReason",
+                                    "note",
+                                    "recordedByName",
+                                    "createdAt",
+                                    "corrections"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Doz saatinin bütün kayıtları (iptal edilenler dahil), yazılış sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "consentId",
+                              "consentVersion",
+                              "studentId",
+                              "studentName",
+                              "medicationName",
+                              "dose",
+                              "scheduledTime",
+                              "dueAt",
+                              "state",
+                              "absent",
+                              "records"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "lateToleranceMinutes",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents/{consentId}/skips": {
+      "post": {
+        "operationId": "recordMedicationDoseSkip",
+        "summary": "Dozu atlandı olarak kaydet",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Onaylı talep (422 `infirmary_consent_not_approved`), onaydaki doz saati (422 `infirmary_dose_time_not_approved`), doz günü (boşsa bugün; gelecek 422 `infirmary_skip_in_future`, dünden eski 422 `infirmary_skip_too_old`, dönem dışı 422 `infirmary_skip_outside_period`) ve gerekçe (`other`de en az 5 karakter açıklama, 400). Doz saatinin tek etkin sonucu olur: uygulama varsa 409 `infirmary_dose_already_given`, atlama varsa 409 `infirmary_dose_already_skipped`. Gerekçe ve açıklama şifreli; kayıt değişmez (düzeltme ayrı kayıttır). Denetim `finance.infirmary.skip_create`. `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scheduledTime": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Onaydaki doz saati (SS:DD)"
+                  },
+                  "doseDay": {
+                    "default": null,
+                    "description": "Doz günü (YYYY-MM-DD, Europe/Istanbul); boşsa bugün. Yalnız bugün ya da dün",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "student_absent",
+                      "refused",
+                      "guardian_cancelled",
+                      "other"
+                    ],
+                    "description": "`student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer (açıklama zorunlu; şifreli)"
+                  },
+                  "note": {
+                    "description": "Açıklama (≤ 500; \"diğer\"de en az 5; şifreli)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "scheduledTime",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "administration",
+                            "skip"
+                          ],
+                          "description": "`administration` uygulama, `skip` atlama"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "consentId": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "doseDay": {
+                          "type": "string",
+                          "description": "Doz günü (Europe/Istanbul)"
+                        },
+                        "scheduledTime": {
+                          "type": "string"
+                        },
+                        "voided": {
+                          "type": "boolean",
+                          "description": "Yönetici iptal ettiyse doğru; kayıt silinmez"
+                        },
+                        "corrected": {
+                          "type": "boolean",
+                          "description": "Düzeltme ya da iptal kaydı var mı"
+                        },
+                        "administeredAt": {
+                          "description": "Etkin uygulama anı; atlamada boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "administeredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "administeredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dose": {
+                          "description": "Verilen doz (özel nitelikli); atlamada boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "skipReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "student_absent",
+                                "refused",
+                                "guardian_cancelled",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş"
+                        },
+                        "note": {
+                          "description": "Etkin not ya da açıklama (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recordedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "void",
+                                  "amend"
+                                ],
+                                "description": "`void` iptal, `amend` düzeltme"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "description": "Düzeltme gerekçesi (özel nitelikli)"
+                              },
+                              "correctedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "reason",
+                              "correctedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Düzeltmeler, yazılış sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id",
+                        "consentId",
+                        "studentId",
+                        "doseDay",
+                        "scheduledTime",
+                        "voided",
+                        "corrected",
+                        "administeredAt",
+                        "administeredByMembershipId",
+                        "administeredByName",
+                        "dose",
+                        "skipReason",
+                        "note",
+                        "recordedByName",
+                        "createdAt",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-administrations/{administrationId}/corrections": {
+      "post": {
+        "operationId": "correctMedicationAdministration",
+        "summary": "İlaç uygulamasını düzelt ya da iptal et",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Uygulama silinmez, değişmez; gerekçeli (5–500) düzeltme kaydı eklenir. `void` iptal: kayıt hiç olmamış sayılır, doz saatine yeniden uygulama ya da atlama yazılabilir; alan gönderilmez. `amend` düzeltme: an (gelecekte 422 `infirmary_administration_in_future`; kaydın doz günü dışında 422 `infirmary_correction_day_mismatch`), uygulayan (422 `infirmary_administered_by_not_found|not_staff|inactive`) ve not; değişiklik yoksa 422 `infirmary_correction_unchanged`. İptal edilmiş kayıt 409 `infirmary_dose_record_voided`. Gerekçe ve not şifreli. Denetim `finance.infirmary.correction_create` (alan adları). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "void",
+                      "amend"
+                    ],
+                    "description": "`void` iptal (kayıt hiç olmamış sayılır), `amend` düzeltme"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Düzeltme ya da iptal gerekçesi (5–500; şifreli)"
+                  },
+                  "administeredAt": {
+                    "description": "Düzeltilmiş uygulama anı; kaydın doz günüyle aynı gün olmalı",
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "administeredByMembershipId": {
+                    "description": "Düzeltilmiş uygulayan personel üyeliği",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "description": "Düzeltilmiş not (boş metin notu siler; şifreli)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "administrationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "administration",
+                            "skip"
+                          ],
+                          "description": "`administration` uygulama, `skip` atlama"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "consentId": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "doseDay": {
+                          "type": "string",
+                          "description": "Doz günü (Europe/Istanbul)"
+                        },
+                        "scheduledTime": {
+                          "type": "string"
+                        },
+                        "voided": {
+                          "type": "boolean",
+                          "description": "Yönetici iptal ettiyse doğru; kayıt silinmez"
+                        },
+                        "corrected": {
+                          "type": "boolean",
+                          "description": "Düzeltme ya da iptal kaydı var mı"
+                        },
+                        "administeredAt": {
+                          "description": "Etkin uygulama anı; atlamada boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "administeredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "administeredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dose": {
+                          "description": "Verilen doz (özel nitelikli); atlamada boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "skipReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "student_absent",
+                                "refused",
+                                "guardian_cancelled",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş"
+                        },
+                        "note": {
+                          "description": "Etkin not ya da açıklama (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recordedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "void",
+                                  "amend"
+                                ],
+                                "description": "`void` iptal, `amend` düzeltme"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "description": "Düzeltme gerekçesi (özel nitelikli)"
+                              },
+                              "correctedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "reason",
+                              "correctedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Düzeltmeler, yazılış sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id",
+                        "consentId",
+                        "studentId",
+                        "doseDay",
+                        "scheduledTime",
+                        "voided",
+                        "corrected",
+                        "administeredAt",
+                        "administeredByMembershipId",
+                        "administeredByName",
+                        "dose",
+                        "skipReason",
+                        "note",
+                        "recordedByName",
+                        "createdAt",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-skips/{skipId}/corrections": {
+      "post": {
+        "operationId": "correctMedicationDoseSkip",
+        "summary": "Atlamayı düzelt ya da iptal et",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Atlama silinmez, değişmez; gerekçeli (5–500) düzeltme kaydı eklenir. `void` iptal: doz saati yeniden sonuçlanabilir; `amend` düzeltme: atlama gerekçesi ve açıklama (etkin gerekçe `other` iken açıklama zorunlu, 422 `infirmary_skip_note_required`; değişiklik yoksa 422 `infirmary_correction_unchanged`). İptal edilmiş kayıt 409 `infirmary_dose_record_voided`. Denetim `finance.infirmary.correction_create`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "void",
+                      "amend"
+                    ],
+                    "description": "`void` iptal (kayıt hiç olmamış sayılır), `amend` düzeltme"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Düzeltme ya da iptal gerekçesi (5–500; şifreli)"
+                  },
+                  "skipReason": {
+                    "type": "string",
+                    "enum": [
+                      "student_absent",
+                      "refused",
+                      "guardian_cancelled",
+                      "other"
+                    ],
+                    "description": "`student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer (açıklama zorunlu; şifreli)"
+                  },
+                  "note": {
+                    "description": "Düzeltilmiş açıklama (şifreli)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "skipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "administration",
+                            "skip"
+                          ],
+                          "description": "`administration` uygulama, `skip` atlama"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "consentId": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "doseDay": {
+                          "type": "string",
+                          "description": "Doz günü (Europe/Istanbul)"
+                        },
+                        "scheduledTime": {
+                          "type": "string"
+                        },
+                        "voided": {
+                          "type": "boolean",
+                          "description": "Yönetici iptal ettiyse doğru; kayıt silinmez"
+                        },
+                        "corrected": {
+                          "type": "boolean",
+                          "description": "Düzeltme ya da iptal kaydı var mı"
+                        },
+                        "administeredAt": {
+                          "description": "Etkin uygulama anı; atlamada boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "administeredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "administeredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dose": {
+                          "description": "Verilen doz (özel nitelikli); atlamada boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "skipReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "student_absent",
+                                "refused",
+                                "guardian_cancelled",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş"
+                        },
+                        "note": {
+                          "description": "Etkin not ya da açıklama (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "recordedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "void",
+                                  "amend"
+                                ],
+                                "description": "`void` iptal, `amend` düzeltme"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "description": "Düzeltme gerekçesi (özel nitelikli)"
+                              },
+                              "correctedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "reason",
+                              "correctedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Düzeltmeler, yazılış sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id",
+                        "consentId",
+                        "studentId",
+                        "doseDay",
+                        "scheduledTime",
+                        "voided",
+                        "corrected",
+                        "administeredAt",
+                        "administeredByMembershipId",
+                        "administeredByName",
+                        "dose",
+                        "skipReason",
+                        "note",
+                        "recordedByName",
+                        "createdAt",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/my-medication-doses": {
+      "get": {
+        "operationId": "listGuardianMedicationDoses",
+        "summary": "Çocuğumun ilaç dozları",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Kapsamdaki (velayetli ve kısıtsız bağ) çocukların uygulanan ve atlanan dozları; gerekçe, açıklama ve düzeltilmiş değerlerle, iptal edilen kayıt yok. En yeni gün ve saat önce. Aralık boşsa son 30 gün; başlangıç bitişten sonra 422 `infirmary_dose_range_invalid`, 92 günden uzun 422 `infirmary_dose_range_too_long`. Her dönen talep `finance.infirmary.guardian_dose_read` denetimine düşer. Bildirim gönderilmez. Rol: yalnız `veli` (kapsamındaki çocuklar; başkası boş). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Çocuklardan biri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "İlk gün (dahil); boşsa son günden 29 gün önce"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Son gün (dahil); boşsa bugün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "administration",
+                              "skip"
+                            ],
+                            "description": "`administration` uygulama, `skip` atlama"
+                          },
+                          "consentId": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "medicationName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "doseDay": {
+                            "type": "string"
+                          },
+                          "scheduledTime": {
+                            "type": "string"
+                          },
+                          "administeredAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "administeredByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "dose": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "skipReason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "student_absent",
+                                  "refused",
+                                  "guardian_cancelled",
+                                  "other"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Atlama gerekçesi: `student_absent` öğrenci okulda yok, `refused` reddetti, `guardian_cancelled` veli iptal etti, `other` diğer; uygulamada boş"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "corrected": {
+                            "type": "boolean",
+                            "description": "Okul kaydı düzeltti mi"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "consentId",
+                          "studentId",
+                          "studentName",
+                          "medicationName",
+                          "doseDay",
+                          "scheduledTime",
+                          "administeredAt",
+                          "administeredByName",
+                          "dose",
+                          "skipReason",
+                          "note",
+                          "corrected"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-settings": {
+      "get": {
+        "operationId": "getMedicationSettings",
+        "summary": "İlaç çizelgesi ayarı",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Gecikme payı (dk; varsayılan 30); hiç kaydedilmediyse varsayılan ve sürüm 1 (K-511). Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "lateToleranceMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü; hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "lateToleranceMinutes",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setMedicationSettings",
+        "summary": "İlaç çizelgesi ayarını kaydet",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Gecikme payı (5–180 dk, 400); değişiklik yoksa 422 `infirmary_settings_unchanged`. `If-Match` zorunlu (hiç kaydedilmediyse 1). Denetim `finance.infirmary.settings_update`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "lateToleranceMinutes": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 180,
+                    "description": "Doz saatinden sonra \"gecikti\" sayılmadan önceki pay (5–180 dk)"
+                  }
+                },
+                "required": [
+                  "lateToleranceMinutes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "lateToleranceMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü; hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "lateToleranceMinutes",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/health-access-logs": {
       "get": {
         "operationId": "listHealthAccessLogs",

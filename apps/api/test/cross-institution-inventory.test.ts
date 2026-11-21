@@ -4407,6 +4407,71 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-FIN-156: başka kurumun günlüğü görünmez; başka kurumun kaydı gerekçeyle de 404 ve günlüğe düşmez',
     'get(LOGS, a.admin)',
   ),
+  // Onur: gezi günü yoklaması ve acil kart (ON-157; DOM-FIN-154).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/trip-days/my', 'get(MY, a.mother)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/trip-plans/:planId/day',
+          'get(dayUrl(bSetup.planId), a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/groups',
+          'groupsUrl(bSetup.planId), a.admin',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/trip-plans/:planId/day/groups/:groupId',
+          "'PATCH', groupUrl(bSetup.planId, bSetup.bus), a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/trip-plans/:planId/day/groups/:groupId',
+          "'DELETE', groupUrl(bSetup.planId, bSetup.bus), a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/assignments',
+          'assignUrl(bSetup.planId), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/groups/:groupId/checks',
+          'checksUrl(bSetup.planId, bSetup.bus), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/checks/:checkId/marks',
+          'checkUrl(bSetup.planId, bCheck.id)}/marks`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/checks/:checkId/complete',
+          'checkUrl(bSetup.planId, bCheck.id)}/complete`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/checks/:checkId/proceed',
+          'checkUrl(bSetup.planId, bCheck.id)}/proceed`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/trip-plans/:planId/day/groups/:groupId/emergency-card',
+          'card(cardUrl(bSetup.planId, bSetup.bus), a.admin)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-trip-day.test.ts',
+        'DOM-FIN-154: başka kurumun planı, grubu ve turu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

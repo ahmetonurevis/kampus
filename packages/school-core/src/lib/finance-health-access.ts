@@ -207,6 +207,8 @@ export const HEALTH_ACCESS_ACTION_LABELS: Readonly<Record<string, string>> = {
   'finance.infirmary.visit_read': 'Revir ziyareti',
   'finance.infirmary.consent_read': 'İlaç talebi',
   'finance.infirmary.schedule_read': 'İlaç uygulama listesi',
+  'finance.trip_day.emergency_card': 'Gezi acil kartı',
+  'finance.trip_day.emergency_card_full': 'Gezi acil kartı (tam telefon)',
 }
 
 export function healthAccessActionLabel(action: string): string {

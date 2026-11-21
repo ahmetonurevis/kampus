@@ -139,6 +139,7 @@ import { registerFinanceTransportDocumentRoutes } from './routes/finance-transpo
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
+import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -356,6 +357,9 @@ export const REDACTED_PATHS = [
   '*.cancellationReason',
   'certificateNumber',
   '*.certificateNumber',
+  // kvkk: K — gezi günü yoklamasında eksikle devam gerekçesi (DOM-FIN-154).
+  'missingReason',
+  '*.missingReason',
   // kvkk: Ö — öğrencinin sağlık ve acil bilgisi (IST-020, DOM-ILT-035) ve şifreli paketi.
   'allergies',
   '*.allergies',
@@ -686,6 +690,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceClubSelectionRoutes(app)
   registerFinanceInfirmaryRoutes(app)
   registerFinanceHealthAccessRoutes(app)
+  registerFinanceTripDayRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

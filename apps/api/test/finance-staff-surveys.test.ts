@@ -131,8 +131,11 @@ describe('DOM-FIN-143: personel memnuniyet anketi uçları', () => {
     questions: QUESTIONS,
     ...overrides,
   })
-  const create = (cookie: string | null, body: unknown = surveyBody(), headers = key()) =>
-    call('POST', SURVEYS, cookie, body, headers)
+  const create = (
+    cookie: string | null,
+    body: unknown = surveyBody(),
+    headers: Record<string, string> = key(),
+  ) => call('POST', SURVEYS, cookie, body, headers)
   const detail = (cookie: string | null, s: Json) =>
     call('GET', `${SURVEYS}/${String(s.id)}`, cookie)
   const list = (cookie: string | null, query = '') => call('GET', `${SURVEYS}${query}`, cookie)
@@ -146,8 +149,12 @@ describe('DOM-FIN-143: personel memnuniyet anketi uçları', () => {
     call('POST', `${SURVEYS}/${String(s.id)}/copy`, cookie, undefined, key())
   const results = (cookie: string | null, s: Json, query = '') =>
     call('GET', `${SURVEYS}/${String(s.id)}/results${query}`, cookie)
-  const respond = (cookie: string | null, s: Json, body: unknown, headers = key()) =>
-    call('POST', `${SURVEYS}/${String(s.id)}/responses`, cookie, body, headers)
+  const respond = (
+    cookie: string | null,
+    s: Json,
+    body: unknown,
+    headers: Record<string, string> = key(),
+  ) => call('POST', `${SURVEYS}/${String(s.id)}/responses`, cookie, body, headers)
   const assigned = (cookie: string | null) => call('GET', `${SURVEYS}/assigned`, cookie)
 
   async function published(t: Tenant, body: Json = {}) {

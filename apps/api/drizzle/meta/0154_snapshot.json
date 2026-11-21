@@ -1,5 +1,5 @@
 {
-  "id": "1319999e-136e-4c17-a8cd-0b1278254481",
+  "id": "a43920a2-89a1-4225-8413-688f680eaae1",
   "prevId": "ac12d823-b19c-4042-90a2-a658b93eb8b1",
   "version": "7",
   "dialect": "postgresql",
@@ -18460,702 +18460,6 @@
         "lesson_observations_people_check": {
           "name": "lesson_observations_people_check",
           "value": "\"lesson_observations\".\"teacher_membership_id\" <> \"lesson_observations\".\"observer_membership_id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lost_item_reports": {
-      "name": "lost_item_reports",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lost_on": {
-          "name": "lost_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "matched_item_id": {
-          "name": "matched_item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "matched_at": {
-          "name": "matched_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "returned_at": {
-          "name": "returned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reported_by_user_id": {
-          "name": "reported_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reporter_role": {
-          "name": "reporter_role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "lost_item_reports_status_idx": {
-          "name": "lost_item_reports_status_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lost_on",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lost_item_reports_student_idx": {
-          "name": "lost_item_reports_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lost_item_reports_item_idx": {
-          "name": "lost_item_reports_item_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "matched_item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lost_item_reports_matched_item_key": {
-          "name": "lost_item_reports_matched_item_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "matched_item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"lost_item_reports\".\"status\" = 'matched'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lost_item_reports_institution_id_institutions_id_fk": {
-          "name": "lost_item_reports_institution_id_institutions_id_fk",
-          "tableFrom": "lost_item_reports",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lost_item_reports_item_fkey": {
-          "name": "lost_item_reports_item_fkey",
-          "tableFrom": "lost_item_reports",
-          "tableTo": "lost_items",
-          "columnsFrom": [
-            "institution_id",
-            "matched_item_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lost_item_reports_pkey": {
-          "name": "lost_item_reports_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lost_item_reports_status_check": {
-          "name": "lost_item_reports_status_check",
-          "value": "\"lost_item_reports\".\"status\" in ('open', 'matched', 'returned', 'closed')"
-        },
-        "lost_item_reports_category_check": {
-          "name": "lost_item_reports_category_check",
-          "value": "\"lost_item_reports\".\"category\" is null or \"lost_item_reports\".\"category\" in ('clothing', 'electronics', 'stationery', 'valuable', 'other')"
-        },
-        "lost_item_reports_description_check": {
-          "name": "lost_item_reports_description_check",
-          "value": "char_length(\"lost_item_reports\".\"description\") between 2 and 300"
-        },
-        "lost_item_reports_role_check": {
-          "name": "lost_item_reports_role_check",
-          "value": "\"lost_item_reports\".\"reporter_role\" in ('veli', 'ogrenci')"
-        },
-        "lost_item_reports_match_check": {
-          "name": "lost_item_reports_match_check",
-          "value": "(\"lost_item_reports\".\"status\" in ('matched', 'returned')) = (\"lost_item_reports\".\"matched_item_id\" is not null) and (\"lost_item_reports\".\"matched_item_id\" is null) = (\"lost_item_reports\".\"matched_at\" is null) and (\"lost_item_reports\".\"status\" = 'returned') = (\"lost_item_reports\".\"returned_at\" is not null) and (\"lost_item_reports\".\"status\" = 'closed') = (\"lost_item_reports\".\"closed_at\" is not null) and (\"lost_item_reports\".\"closed_at\" is null) = (\"lost_item_reports\".\"closed_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lost_item_settings": {
-      "name": "lost_item_settings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "retention_days": {
-          "name": "retention_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 30
-        },
-        "family_gallery_enabled": {
-          "name": "family_gallery_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "lost_item_settings_institution_id_institutions_id_fk": {
-          "name": "lost_item_settings_institution_id_institutions_id_fk",
-          "tableFrom": "lost_item_settings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lost_item_settings_retention_check": {
-          "name": "lost_item_settings_retention_check",
-          "value": "\"lost_item_settings\".\"retention_days\" between 7 and 365"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lost_items": {
-      "name": "lost_items",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "found_location": {
-          "name": "found_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "found_on": {
-          "name": "found_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "finder_membership_id": {
-          "name": "finder_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "storage_location": {
-          "name": "storage_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "recipient_type": {
-          "name": "recipient_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recipient_student_id": {
-          "name": "recipient_student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recipient_guardian_link_id": {
-          "name": "recipient_guardian_link_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recipient_name": {
-          "name": "recipient_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "handed_over_at": {
-          "name": "handed_over_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "handed_over_by_membership_id": {
-          "name": "handed_over_by_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "disposed_at": {
-          "name": "disposed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "disposal_reason": {
-          "name": "disposal_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "disposed_by_membership_id": {
-          "name": "disposed_by_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "lost_items_status_found_idx": {
-          "name": "lost_items_status_found_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "found_on",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lost_items_finder_idx": {
-          "name": "lost_items_finder_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "finder_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lost_items_handed_over_by_idx": {
-          "name": "lost_items_handed_over_by_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "handed_over_by_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lost_items_disposed_by_idx": {
-          "name": "lost_items_disposed_by_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "disposed_by_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lost_items_institution_id_institutions_id_fk": {
-          "name": "lost_items_institution_id_institutions_id_fk",
-          "tableFrom": "lost_items",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lost_items_finder_membership_fkey": {
-          "name": "lost_items_finder_membership_fkey",
-          "tableFrom": "lost_items",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "finder_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lost_items_handed_over_by_fkey": {
-          "name": "lost_items_handed_over_by_fkey",
-          "tableFrom": "lost_items",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "handed_over_by_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lost_items_disposed_by_fkey": {
-          "name": "lost_items_disposed_by_fkey",
-          "tableFrom": "lost_items",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "disposed_by_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lost_items_pkey": {
-          "name": "lost_items_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lost_items_category_check": {
-          "name": "lost_items_category_check",
-          "value": "\"lost_items\".\"category\" in ('clothing', 'electronics', 'stationery', 'valuable', 'other')"
-        },
-        "lost_items_status_check": {
-          "name": "lost_items_status_check",
-          "value": "\"lost_items\".\"status\" in ('pending', 'handed_over', 'donated', 'destroyed')"
-        },
-        "lost_items_description_check": {
-          "name": "lost_items_description_check",
-          "value": "char_length(\"lost_items\".\"description\") between 2 and 300"
-        },
-        "lost_items_location_check": {
-          "name": "lost_items_location_check",
-          "value": "char_length(\"lost_items\".\"found_location\") between 1 and 120 and char_length(\"lost_items\".\"storage_location\") between 1 and 120"
-        },
-        "lost_items_handover_check": {
-          "name": "lost_items_handover_check",
-          "value": "(\"lost_items\".\"status\" = 'handed_over') = (\"lost_items\".\"handed_over_at\" is not null) and (\"lost_items\".\"handed_over_at\" is null) = (\"lost_items\".\"recipient_type\" is null) and (\"lost_items\".\"handed_over_at\" is null) = (\"lost_items\".\"handed_over_by_membership_id\" is null) and (\"lost_items\".\"handed_over_at\" is null) = (\"lost_items\".\"recipient_name\" is null)"
-        },
-        "lost_items_recipient_check": {
-          "name": "lost_items_recipient_check",
-          "value": "\"lost_items\".\"recipient_type\" is null or (\"lost_items\".\"recipient_type\" in ('student', 'guardian', 'other') and (\"lost_items\".\"recipient_type\" = 'other') = (\"lost_items\".\"recipient_student_id\" is null) and (\"lost_items\".\"recipient_type\" = 'guardian') = (\"lost_items\".\"recipient_guardian_link_id\" is not null) and char_length(\"lost_items\".\"recipient_name\") between 1 and 120)"
-        },
-        "lost_items_disposal_check": {
-          "name": "lost_items_disposal_check",
-          "value": "(\"lost_items\".\"status\" in ('donated', 'destroyed')) = (\"lost_items\".\"disposed_at\" is not null) and (\"lost_items\".\"disposed_at\" is null) = (\"lost_items\".\"disposal_reason\" is null) and (\"lost_items\".\"disposed_at\" is null) = (\"lost_items\".\"disposed_by_membership_id\" is null) and (\"lost_items\".\"disposal_reason\" is null or char_length(\"lost_items\".\"disposal_reason\") between 2 and 300)"
         }
       },
       "isRLSEnabled": false
@@ -38765,6 +38069,631 @@
         "staff_separations_cancel_check": {
           "name": "staff_separations_cancel_check",
           "value": "(\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_at\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_by_user_id\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancel_reason\" is not null)\n        and (\"staff_separations\".\"cancel_reason\" is null or char_length(\"staff_separations\".\"cancel_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_survey_participants": {
+      "name": "staff_survey_participants",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "survey_id": {
+          "name": "survey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responded": {
+          "name": "responded",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_survey_participants_membership_idx": {
+          "name": "staff_survey_participants_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_survey_participants_unit_idx": {
+          "name": "staff_survey_participants_unit_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_survey_participants_institution_id_institutions_id_fk": {
+          "name": "staff_survey_participants_institution_id_institutions_id_fk",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_survey_participants_survey_fkey": {
+          "name": "staff_survey_participants_survey_fkey",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "staff_surveys",
+          "columnsFrom": [
+            "institution_id",
+            "survey_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_survey_participants_membership_fkey": {
+          "name": "staff_survey_participants_membership_fkey",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_survey_participants_unit_fkey": {
+          "name": "staff_survey_participants_unit_fkey",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "org_units",
+          "columnsFrom": [
+            "institution_id",
+            "unit_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_survey_participants_pkey": {
+          "name": "staff_survey_participants_pkey",
+          "columns": [
+            "institution_id",
+            "survey_id",
+            "membership_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.staff_survey_responses": {
+      "name": "staff_survey_responses",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "survey_id": {
+          "name": "survey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_survey_responses_survey_idx": {
+          "name": "staff_survey_responses_survey_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "survey_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_survey_responses_unit_idx": {
+          "name": "staff_survey_responses_unit_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_survey_responses_institution_id_institutions_id_fk": {
+          "name": "staff_survey_responses_institution_id_institutions_id_fk",
+          "tableFrom": "staff_survey_responses",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_survey_responses_survey_fkey": {
+          "name": "staff_survey_responses_survey_fkey",
+          "tableFrom": "staff_survey_responses",
+          "tableTo": "staff_surveys",
+          "columnsFrom": [
+            "institution_id",
+            "survey_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_survey_responses_unit_fkey": {
+          "name": "staff_survey_responses_unit_fkey",
+          "tableFrom": "staff_survey_responses",
+          "tableTo": "org_units",
+          "columnsFrom": [
+            "institution_id",
+            "unit_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_survey_responses_pkey": {
+          "name": "staff_survey_responses_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_survey_responses_answers_check": {
+          "name": "staff_survey_responses_answers_check",
+          "value": "jsonb_typeof(\"staff_survey_responses\".\"answers\") = 'array' and jsonb_array_length(\"staff_survey_responses\".\"answers\") between 1 and 30"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_surveys": {
+      "name": "staff_surveys",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "source_survey_id": {
+          "name": "source_survey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "open_date": {
+          "name": "open_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "close_date": {
+          "name": "close_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "anonymity_threshold": {
+          "name": "anonymity_threshold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audience_roles": {
+          "name": "audience_roles",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audience_unit_ids": {
+          "name": "audience_unit_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questions": {
+          "name": "questions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_by_user_id": {
+          "name": "published_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_surveys_source_key": {
+          "name": "staff_surveys_source_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_survey_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"staff_surveys\".\"source_survey_id\" is not null and \"staff_surveys\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_surveys_source_idx": {
+          "name": "staff_surveys_source_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_survey_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_surveys_close_idx": {
+          "name": "staff_surveys_close_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "close_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_surveys_institution_id_institutions_id_fk": {
+          "name": "staff_surveys_institution_id_institutions_id_fk",
+          "tableFrom": "staff_surveys",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_surveys_source_fkey": {
+          "name": "staff_surveys_source_fkey",
+          "tableFrom": "staff_surveys",
+          "tableTo": "staff_surveys",
+          "columnsFrom": [
+            "institution_id",
+            "source_survey_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_surveys_pkey": {
+          "name": "staff_surveys_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_surveys_status_check": {
+          "name": "staff_surveys_status_check",
+          "value": "\"staff_surveys\".\"status\" in ('draft', 'published', 'archived')"
+        },
+        "staff_surveys_title_check": {
+          "name": "staff_surveys_title_check",
+          "value": "char_length(\"staff_surveys\".\"title\") between 3 and 150"
+        },
+        "staff_surveys_dates_check": {
+          "name": "staff_surveys_dates_check",
+          "value": "\"staff_surveys\".\"close_date\" >= \"staff_surveys\".\"open_date\""
+        },
+        "staff_surveys_threshold_check": {
+          "name": "staff_surveys_threshold_check",
+          "value": "\"staff_surveys\".\"anonymity_threshold\" between 3 and 10"
+        },
+        "staff_surveys_revision_check": {
+          "name": "staff_surveys_revision_check",
+          "value": "\"staff_surveys\".\"revision\" >= 1"
+        },
+        "staff_surveys_questions_check": {
+          "name": "staff_surveys_questions_check",
+          "value": "jsonb_typeof(\"staff_surveys\".\"questions\") = 'array' and jsonb_array_length(\"staff_surveys\".\"questions\") between 1 and 30"
+        },
+        "staff_surveys_audience_check": {
+          "name": "staff_surveys_audience_check",
+          "value": "jsonb_typeof(\"staff_surveys\".\"audience_roles\") = 'array' and jsonb_typeof(\"staff_surveys\".\"audience_unit_ids\") = 'array'"
+        },
+        "staff_surveys_published_check": {
+          "name": "staff_surveys_published_check",
+          "value": "((\"staff_surveys\".\"status\" = 'published') = (\"staff_surveys\".\"published_at\" is not null))\n        and ((\"staff_surveys\".\"published_at\" is null) = (\"staff_surveys\".\"published_by_user_id\" is null))"
         }
       },
       "isRLSEnabled": false

@@ -336944,6 +336944,1889 @@
         }
       }
     },
+    "/api/v1/finance/transport/documents": {
+      "get": {
+        "operationId": "listTransportDocuments",
+        "summary": "Servis belgeleri",
+        "tags": [
+          "finance-transport-documents"
+        ],
+        "description": "Etkin araçların, sürücülerinin ve personelin belgeleri; bitişi en yakın önce (süresiz en sonda), sayfalı. Süzgeçler: özne, araç, personel, tür, `due` (süresi geçen, uyarı penceresinde biten, ikisi ya da geçerli; yalnız uyarıya sayılan belgeler) ve `history=true` (yerine geçilenler dahil). Önceki sürücünün ve pasif personelin belgesi `counted: false` döner. Özel nitelikli belgede yönetici dışında dosya bilgisi `null` (`restricted: true`; K-497). Arşivli aracın belgesi dönmez. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "vehicle",
+                "driver",
+                "staff"
+              ]
+            },
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "description": "`vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "vehicleId",
+            "required": false,
+            "description": "Aracın ve sürücüsünün belgeleri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "membershipId",
+            "required": false,
+            "description": "Personelin belgeleri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "inspection",
+                "traffic_insurance",
+                "seat_insurance",
+                "school_bus_permit",
+                "driving_license",
+                "src_certificate",
+                "psychotechnical",
+                "criminal_record",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "documentType",
+            "required": false,
+            "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "expired",
+                "expiring",
+                "attention",
+                "valid"
+              ]
+            },
+            "in": "query",
+            "name": "due",
+            "required": false,
+            "description": "`expired` süresi geçen, `expiring` uyarı penceresinde biten, `attention` ikisi, `valid` geçerli ya da süresiz (yalnız sayılan belgeler)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "history",
+            "required": false,
+            "description": "`true` ise yerine geçilen belgeler de döner"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "subject": {
+                            "type": "string",
+                            "enum": [
+                              "vehicle",
+                              "driver",
+                              "staff"
+                            ],
+                            "description": "`vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel"
+                          },
+                          "vehicleId": {
+                            "description": "Araç ve sürücü belgesinde araç",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "vehiclePlate": {
+                            "description": "Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null`",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "membershipId": {
+                            "description": "Personel belgesinde kurum üyeliği",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "subjectName": {
+                            "description": "Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "counted": {
+                            "type": "boolean",
+                            "description": "Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false`"
+                          },
+                          "documentType": {
+                            "type": "string",
+                            "enum": [
+                              "inspection",
+                              "traffic_insurance",
+                              "seat_insurance",
+                              "school_bus_permit",
+                              "driving_license",
+                              "src_certificate",
+                              "psychotechnical",
+                              "criminal_record",
+                              "other"
+                            ],
+                            "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                          },
+                          "documentNumber": {
+                            "description": "Araç belgesinde belge ya da poliçe numarası",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "licenseClass": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "M",
+                                  "A1",
+                                  "A2",
+                                  "A",
+                                  "B1",
+                                  "B",
+                                  "BE",
+                                  "C1",
+                                  "C1E",
+                                  "C",
+                                  "CE",
+                                  "D1",
+                                  "D1E",
+                                  "D",
+                                  "DE",
+                                  "F",
+                                  "G"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Ehliyette sınıf"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "Belge tarihi ya da başlangıç (YYYY-MM-DD)"
+                          },
+                          "endDate": {
+                            "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "valid",
+                              "expiring",
+                              "expired",
+                              "superseded"
+                            ],
+                            "description": "Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)"
+                          },
+                          "daysLeft": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                          },
+                          "sensitive": {
+                            "type": "boolean",
+                            "description": "Özel nitelikli tür (adli sicil, psikoteknik)"
+                          },
+                          "restricted": {
+                            "type": "boolean",
+                            "description": "Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null`"
+                          },
+                          "hasFile": {
+                            "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "file": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "byteSize": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "byteSize"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                          },
+                          "replacesId": {
+                            "description": "Bu belgenin yerine geçtiği belge",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "supersededAt": {
+                            "description": "Yerine yeni belge geçtiği an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "subject",
+                          "vehicleId",
+                          "vehiclePlate",
+                          "membershipId",
+                          "subjectName",
+                          "counted",
+                          "documentType",
+                          "documentNumber",
+                          "licenseClass",
+                          "startDate",
+                          "endDate",
+                          "status",
+                          "daysLeft",
+                          "sensitive",
+                          "restricted",
+                          "hasFile",
+                          "file",
+                          "replacesId",
+                          "supersededAt",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTransportDocument",
+        "summary": "Servis belgesi kaydet",
+        "tags": [
+          "finance-transport-documents"
+        ],
+        "description": "Özne araç (`vehicleId`; muayene, zorunlu trafik sigortası, koltuk sigortası, okul servis aracı uygunluk/izin belgesi, diğer; isteğe bağlı belge no), aracın kayıtlı sürücüsü (`vehicleId`; belge kayıt anındaki sürücü adına bağlanır) ya da kurum üyesi personel (`membershipId`; rehber ya da üye sürücü). Kişi belgesi ehliyet (sınıf zorunlu), SRC, psikoteknik, adli sicil ya da diğerdir; içerik ve numara saklanmaz (K-497). Bitiş muayene, sigortalar, izin belgesi, ehliyet ve psikoteknikte zorunlu (400). Başlangıç bugünden sonra olamaz (422 `transport_document_start_in_future`). Dosya isteğe bağlı: `POST /files` amaç `document` (PDF) ya da `question_image` (görsel, geçişte yalnız yönetici yükler), en çok 10 MB (422 `transport_document_file_too_large`). \"Diğer\" dışındaki türde yeni belge aynı öznenin geçerli belgesinin yerine kendiliğinden geçer ve yanıtta `superseded` döner; geçerli belgeden eski tarih 422 `transport_document_older_than_current` (K-496). Ön büro adli sicil ve psikoteknik kaydedemez (403 `transport_document_sensitive_forbidden`). Olmayan ya da arşivli araç 422 `transport_document_vehicle_not_found`; personel 422 `transport_document_staff_not_found`, `transport_document_not_staff`, `transport_document_staff_inactive`. Denetim `finance.transport.document_create` (alan adları) ve `…document_supersede`. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "enum": [
+                      "vehicle",
+                      "driver",
+                      "staff"
+                    ],
+                    "description": "`vehicle` araç, `driver` aracın kayıtlı sürücüsü (kurum üyesi değil), `staff` kurum üyesi personel (rehber ya da üye sürücü)"
+                  },
+                  "vehicleId": {
+                    "default": null,
+                    "description": "Araç ve sürücü belgesinde zorunlu: servis aracı",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "membershipId": {
+                    "default": null,
+                    "description": "Personel belgesinde zorunlu: kurumun etkin yönetici, öğretmen ya da ön büro üyeliği",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "inspection",
+                      "traffic_insurance",
+                      "seat_insurance",
+                      "school_bus_permit",
+                      "driving_license",
+                      "src_certificate",
+                      "psychotechnical",
+                      "criminal_record",
+                      "other"
+                    ],
+                    "description": "Araçta `inspection` muayene, `traffic_insurance` zorunlu trafik sigortası, `seat_insurance` koltuk sigortası, `school_bus_permit` okul servis aracı uygunluk/izin belgesi; kişide `driving_license` ehliyet, `src_certificate` SRC, `psychotechnical` psikoteknik, `criminal_record` adli sicil; ikisinde `other`"
+                  },
+                  "documentNumber": {
+                    "description": "Belge ya da poliçe numarası (yalnız araç belgesinde, isteğe bağlı, en çok 50); kişi belgesinde numara tutulmaz (K-497)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 50
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "licenseClass": {
+                    "default": null,
+                    "description": "Yalnız ehliyette ve orada zorunlu: ehliyet sınıfı (`B`, `D1`, `D` …)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "M",
+                          "A1",
+                          "A2",
+                          "A",
+                          "B1",
+                          "B",
+                          "BE",
+                          "C1",
+                          "C1E",
+                          "C",
+                          "CE",
+                          "D1",
+                          "D1E",
+                          "D",
+                          "DE",
+                          "F",
+                          "G"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Belgenin düzenlendiği ya da başladığı gün; bugünden sonra olamaz"
+                  },
+                  "endDate": {
+                    "default": null,
+                    "description": "Geçerlilik bitişi (dahil); muayene, sigortalar, izin belgesi, ehliyet ve psikoteknikte zorunlu, diğerlerinde boşsa süresiz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fileId": {
+                    "default": null,
+                    "description": "Yüklenmiş dosya (`POST /files`; amaç `document` PDF ya da `question_image` görsel), en çok 10 MB; isteğe bağlı",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "subject",
+                  "documentType",
+                  "startDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "document": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "subject": {
+                              "type": "string",
+                              "enum": [
+                                "vehicle",
+                                "driver",
+                                "staff"
+                              ],
+                              "description": "`vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel"
+                            },
+                            "vehicleId": {
+                              "description": "Araç ve sürücü belgesinde araç",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "vehiclePlate": {
+                              "description": "Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null`",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "membershipId": {
+                              "description": "Personel belgesinde kurum üyeliği",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "subjectName": {
+                              "description": "Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "counted": {
+                              "type": "boolean",
+                              "description": "Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false`"
+                            },
+                            "documentType": {
+                              "type": "string",
+                              "enum": [
+                                "inspection",
+                                "traffic_insurance",
+                                "seat_insurance",
+                                "school_bus_permit",
+                                "driving_license",
+                                "src_certificate",
+                                "psychotechnical",
+                                "criminal_record",
+                                "other"
+                              ],
+                              "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                            },
+                            "documentNumber": {
+                              "description": "Araç belgesinde belge ya da poliçe numarası",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "licenseClass": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "M",
+                                    "A1",
+                                    "A2",
+                                    "A",
+                                    "B1",
+                                    "B",
+                                    "BE",
+                                    "C1",
+                                    "C1E",
+                                    "C",
+                                    "CE",
+                                    "D1",
+                                    "D1E",
+                                    "D",
+                                    "DE",
+                                    "F",
+                                    "G"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ehliyette sınıf"
+                            },
+                            "startDate": {
+                              "type": "string",
+                              "description": "Belge tarihi ya da başlangıç (YYYY-MM-DD)"
+                            },
+                            "endDate": {
+                              "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "valid",
+                                "expiring",
+                                "expired",
+                                "superseded"
+                              ],
+                              "description": "Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)"
+                            },
+                            "daysLeft": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                            },
+                            "sensitive": {
+                              "type": "boolean",
+                              "description": "Özel nitelikli tür (adli sicil, psikoteknik)"
+                            },
+                            "restricted": {
+                              "type": "boolean",
+                              "description": "Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null`"
+                            },
+                            "hasFile": {
+                              "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                              "type": [
+                                "boolean",
+                                "null"
+                              ]
+                            },
+                            "file": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "byteSize": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "byteSize"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                            },
+                            "replacesId": {
+                              "description": "Bu belgenin yerine geçtiği belge",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "supersededAt": {
+                              "description": "Yerine yeni belge geçtiği an",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "subject",
+                            "vehicleId",
+                            "vehiclePlate",
+                            "membershipId",
+                            "subjectName",
+                            "counted",
+                            "documentType",
+                            "documentNumber",
+                            "licenseClass",
+                            "startDate",
+                            "endDate",
+                            "status",
+                            "daysLeft",
+                            "sensitive",
+                            "restricted",
+                            "hasFile",
+                            "file",
+                            "replacesId",
+                            "supersededAt",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "superseded": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "subject": {
+                                  "type": "string",
+                                  "enum": [
+                                    "vehicle",
+                                    "driver",
+                                    "staff"
+                                  ],
+                                  "description": "`vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel"
+                                },
+                                "vehicleId": {
+                                  "description": "Araç ve sürücü belgesinde araç",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "vehiclePlate": {
+                                  "description": "Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "membershipId": {
+                                  "description": "Personel belgesinde kurum üyeliği",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "subjectName": {
+                                  "description": "Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "counted": {
+                                  "type": "boolean",
+                                  "description": "Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false`"
+                                },
+                                "documentType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "inspection",
+                                    "traffic_insurance",
+                                    "seat_insurance",
+                                    "school_bus_permit",
+                                    "driving_license",
+                                    "src_certificate",
+                                    "psychotechnical",
+                                    "criminal_record",
+                                    "other"
+                                  ],
+                                  "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                                },
+                                "documentNumber": {
+                                  "description": "Araç belgesinde belge ya da poliçe numarası",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "licenseClass": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "M",
+                                        "A1",
+                                        "A2",
+                                        "A",
+                                        "B1",
+                                        "B",
+                                        "BE",
+                                        "C1",
+                                        "C1E",
+                                        "C",
+                                        "CE",
+                                        "D1",
+                                        "D1E",
+                                        "D",
+                                        "DE",
+                                        "F",
+                                        "G"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Ehliyette sınıf"
+                                },
+                                "startDate": {
+                                  "type": "string",
+                                  "description": "Belge tarihi ya da başlangıç (YYYY-MM-DD)"
+                                },
+                                "endDate": {
+                                  "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "valid",
+                                    "expiring",
+                                    "expired",
+                                    "superseded"
+                                  ],
+                                  "description": "Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)"
+                                },
+                                "daysLeft": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                                },
+                                "sensitive": {
+                                  "type": "boolean",
+                                  "description": "Özel nitelikli tür (adli sicil, psikoteknik)"
+                                },
+                                "restricted": {
+                                  "type": "boolean",
+                                  "description": "Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null`"
+                                },
+                                "hasFile": {
+                                  "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "file": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "byteSize": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "byteSize"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                                },
+                                "replacesId": {
+                                  "description": "Bu belgenin yerine geçtiği belge",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "supersededAt": {
+                                  "description": "Yerine yeni belge geçtiği an",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "subject",
+                                "vehicleId",
+                                "vehiclePlate",
+                                "membershipId",
+                                "subjectName",
+                                "counted",
+                                "documentType",
+                                "documentNumber",
+                                "licenseClass",
+                                "startDate",
+                                "endDate",
+                                "status",
+                                "daysLeft",
+                                "sensitive",
+                                "restricted",
+                                "hasFile",
+                                "file",
+                                "replacesId",
+                                "supersededAt",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yerine geçilen (artık geçmiş) belge"
+                        }
+                      },
+                      "required": [
+                        "document",
+                        "superseded"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/documents/{documentId}/file-url": {
+      "get": {
+        "operationId": "getTransportDocumentFileUrl",
+        "summary": "Servis belgesinin dosyasını aç",
+        "tags": [
+          "finance-transport-documents"
+        ],
+        "description": "Belgenin dosyası için kısa ömürlü imzalı bağlantı. Her üretim denetime `finance.transport.document_file_open` olarak yazılır; denetim yazılamazsa bağlantı dönmez. Adli sicil ve psikoteknik dosyasını yalnız yönetici açar (ön büro 403 `transport_document_sensitive_forbidden`; K-497). Dosyasız belge 422 `transport_document_no_file`. Belge dosyası `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun belgesi 404. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "documentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Kısa ömürlü imzalı GET bağlantısı"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "description": "Bağlantının geçerlilik sonu"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/document-alerts": {
+      "get": {
+        "operationId": "getTransportDocumentAlerts",
+        "summary": "Servis belgesi uyarıları ve araç uygunluğu",
+        "tags": [
+          "finance-transport-documents"
+        ],
+        "description": "Uyarıya sayılan belgelerde süresi geçen ve kurumun uyarı penceresinde (varsayılan 30 gün) biten belge sayısı; her etkin araç için süresi geçmiş ve yaklaşan zorunlu türler (araç: muayene, trafik ve koltuk sigortası, izin belgesi; şimdiki sürücü: ehliyet, SRC, psikoteknik, adli sicil), eksik türler ve etkin güzergâhlar. Zorunlu belgesi süresi geçmiş araç `fit: false` (\"uygun değil\"); öğrenci ataması engellenmez (K-498). Bildirim gönderilmez. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "warningDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurumun uyarı penceresi (gün)"
+                        },
+                        "expiredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süresi geçen sayılan belge"
+                        },
+                        "expiringCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uyarı penceresinde biten sayılan belge"
+                        },
+                        "unfitVehicleCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygun olmayan (zorunlu belgesi geçmiş) araç"
+                        },
+                        "missingVehicleCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Araç ya da sürücüsünde zorunlu belgesi eksik araç"
+                        },
+                        "vehicles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "vehicleId": {
+                                "type": "string"
+                              },
+                              "plate": {
+                                "type": "string"
+                              },
+                              "fit": {
+                                "type": "boolean",
+                                "description": "`false`: araç ya da şimdiki sürücüsünde zorunlu belgenin süresi geçmiş (K-498)"
+                              },
+                              "expiredTypes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "inspection",
+                                    "traffic_insurance",
+                                    "seat_insurance",
+                                    "school_bus_permit",
+                                    "driving_license",
+                                    "src_certificate",
+                                    "psychotechnical",
+                                    "criminal_record",
+                                    "other"
+                                  ],
+                                  "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                                },
+                                "description": "Süresi geçmiş zorunlu türler"
+                              },
+                              "expiringTypes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "inspection",
+                                    "traffic_insurance",
+                                    "seat_insurance",
+                                    "school_bus_permit",
+                                    "driving_license",
+                                    "src_certificate",
+                                    "psychotechnical",
+                                    "criminal_record",
+                                    "other"
+                                  ],
+                                  "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                                },
+                                "description": "Bitişi yaklaşan zorunlu türler"
+                              },
+                              "missingVehicleTypes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "inspection",
+                                    "traffic_insurance",
+                                    "seat_insurance",
+                                    "school_bus_permit",
+                                    "driving_license",
+                                    "src_certificate",
+                                    "psychotechnical",
+                                    "criminal_record",
+                                    "other"
+                                  ],
+                                  "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                                },
+                                "description": "Aracın eksik zorunlu türleri"
+                              },
+                              "missingDriverTypes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "inspection",
+                                    "traffic_insurance",
+                                    "seat_insurance",
+                                    "school_bus_permit",
+                                    "driving_license",
+                                    "src_certificate",
+                                    "psychotechnical",
+                                    "criminal_record",
+                                    "other"
+                                  ],
+                                  "description": "`inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`"
+                                },
+                                "description": "Şimdiki sürücünün eksik zorunlu türleri"
+                              },
+                              "routes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "direction": {
+                                      "type": "string",
+                                      "enum": [
+                                        "morning",
+                                        "evening"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "name",
+                                    "direction"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Aracın etkin güzergâhları"
+                              }
+                            },
+                            "required": [
+                              "vehicleId",
+                              "plate",
+                              "fit",
+                              "expiredTypes",
+                              "expiringTypes",
+                              "missingVehicleTypes",
+                              "missingDriverTypes",
+                              "routes"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Arşivlenmemiş araçlar, plakaya göre"
+                        }
+                      },
+                      "required": [
+                        "warningDays",
+                        "expiredCount",
+                        "expiringCount",
+                        "unfitVehicleCount",
+                        "missingVehicleCount",
+                        "vehicles"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/document-settings": {
+      "get": {
+        "operationId": "getTransportDocumentSettings",
+        "summary": "Servis belgesi uyarı ayarı",
+        "tags": [
+          "finance-transport-documents"
+        ],
+        "description": "Uyarı penceresi (gün) ve `If-Match` sürümü; hiç kaydedilmediyse 30 gün, sürüm 1 (K-498). Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "warningDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uyarı penceresi (gün, 1–180; varsayılan 30)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` ayar sürümü; hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "warningDays",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateTransportDocumentSettings",
+        "summary": "Servis belgesi uyarı ayarını değiştir",
+        "tags": [
+          "finance-transport-documents"
+        ],
+        "description": "Uyarı penceresi 1–180 gün; değişiklik yoksa 422 `transport_document_settings_unchanged`. `If-Match` ayar sürümü (hiç kaydedilmediyse 1), tutmazsa 409. Denetim `finance.transport.document_settings` (K-498). Rol: yalnız `yonetici` (ön büro 403). Modüller `finance` ve `transport`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "warningDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 180,
+                    "description": "Bitişine bu kadar gün (dahil) kalan belge \"süresi yaklaşıyor\" (1–180; varsayılan 30)"
+                  }
+                },
+                "required": [
+                  "warningDays"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "warningDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uyarı penceresi (gün, 1–180; varsayılan 30)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` ayar sürümü; hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "warningDays",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

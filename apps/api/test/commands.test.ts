@@ -293,6 +293,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/clubs',
   'POST /api/v1/finance/clubs/{clubId}/members',
   'POST /api/v1/finance/clubs/{clubId}/sessions',
+  // Servis aracı ve personeli belgesi; çift tıklama ikinci belgeyi açmaz, eski belgenin yerine iki
+  // kez geçmez (routes/finance-transport-documents.ts; DOM-FIN-147, ON-147).
+  'POST /api/v1/finance/transport/documents',
 ]
 // Onur: kayıt ve finans sonu
 

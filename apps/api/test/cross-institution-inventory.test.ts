@@ -3975,6 +3975,197 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel memnuniyet anketi (ON-191; DOM-FIN-143, K-484…K-486).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-surveys', 'list(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/staff-surveys', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/staff-surveys/assigned', 'assigned(aTeacher.cookie)'],
+        ['kayıt', 'GET /api/v1/finance/staff-surveys/:surveyId', 'detail(a.admin, bDraft)'],
+        ['kayıt', 'PATCH /api/v1/finance/staff-surveys/:surveyId', 'patch(a.admin, bDraft'],
+        ['kayıt', 'DELETE /api/v1/finance/staff-surveys/:surveyId', 'archive(a.admin, bDraft)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-surveys/:surveyId/publish',
+          'publish(a.admin, bDraft)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/staff-surveys/:surveyId/copy', 'copy(a.admin, bLive)'],
+        ['kayıt', 'GET /api/v1/finance/staff-surveys/:surveyId/results', 'results(a.admin, bLive)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-surveys/:surveyId/responses',
+          'respond(aTeacher.cookie, bLive',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-surveys.test.ts',
+        'DOM-FIN-143: başka kurumun anketi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kaza ve yaralanma tutanağı (ON-162; DOM-FIN-146).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/incidents', 'get(INCIDENTS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/incidents', 'reportBody(a, { institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/incidents/:incidentId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/incidents/:incidentId',
+          "versioned('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/incidents/:incidentId/finalize',
+          'finalize(bReport.id, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/incidents/:incidentId/notifications',
+          'notify(a, bReport.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/incidents/:incidentId/addenda',
+          '`${bUrl}/addenda`, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/incident-staff', 'get(`${STAFF}?pageSize=100`, a.admin)'],
+        ['liste', 'GET /api/v1/finance/incident-summaries', 'get(SUMMARIES, a.mother)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-incidents.test.ts',
+        'DOM-FIN-146: başka kurumun tutanağı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kayıp eşya (ON-171; DOM-FIN-145).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/lost-items',
+          '(await get(ITEMS, a.admin)).json().meta.total',
+        ],
+        ['gövde', 'POST /api/v1/finance/lost-items', 'itemBody({ institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/lost-items/:itemId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/lost-items/:itemId', "'PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/lost-items/:itemId/photos', '`${bUrl}/photos`, a.admin'],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/lost-items/:itemId/photos/:fileId',
+          '`${bUrl}/photos/${randomUUID()}`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/lost-items/:itemId/handover', '`${bUrl}/handover`'],
+        ['liste', 'GET /api/v1/finance/lost-item-summary', 'get(SUMMARY, a.admin)'],
+        [
+          'liste',
+          'GET /api/v1/finance/lost-item-finders',
+          'get(`${FINDERS}?pageSize=100`, a.admin)',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/lost-item-recipients',
+          'get(`${RECIPIENTS}?studentId=s1`, a.admin)',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/lost-item-reports',
+          '(await get(REPORTS, a.admin)).json().meta.total',
+        ],
+        ['gövde', 'POST /api/v1/finance/lost-item-reports', 'post(REPORTS, aParent, reportBody)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lost-item-reports/:reportId/match',
+          '`${reportUrl(bReport.id)}/match`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lost-item-reports/:reportId/unmatch',
+          '`${reportUrl(bReport.id)}/unmatch`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lost-item-reports/:reportId/close',
+          '`${reportUrl(bReport.id)}/close`',
+        ],
+        ['liste', 'GET /api/v1/finance/lost-item-gallery', 'get(GALLERY, aParent)'],
+        ['liste', 'GET /api/v1/finance/lost-item-retention', 'get(RETENTION, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/lost-item-disposals', 'itemIds: [bItem.id]'],
+        ['liste', 'GET /api/v1/finance/lost-item-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/lost-item-settings',
+          'retentionDays: 10, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-lost-items.test.ts',
+        'DOM-FIN-145: başka kurumun eşyası ve bildirimi 404, B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: mesleki gelişim saati, belge ve sertifika (ON-215; DOM-FIN-144).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/professional-development-hours', 'listOf(a.admin, HOURS)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/professional-development-targets/:academicYear',
+          '`${TARGETS}/2026`, a.admin',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/professional-development-targets/:academicYear',
+          'institutionId: b.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/document',
+          'attach(a, bProgram, bEnrollment',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/document',
+          '`${enrollmentUrl(bProgram, bEnrollment)}/document`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/document/url',
+          '/document/url`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/certificate',
+          'link(a.admin, bProgram, bEnrollment',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/certificate',
+          '`${enrollmentUrl(bProgram, bEnrollment)}/certificate`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-professional-development-hours.test.ts',
+        'DOM-FIN-144: başka kurumun katılımı, belgesi ve hedefi 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

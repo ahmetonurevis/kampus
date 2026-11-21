@@ -1,5 +1,5 @@
 {
-  "id": "818e16d7-dbdb-4603-9096-3ac31b3b3585",
+  "id": "a43920a2-89a1-4225-8413-688f680eaae1",
   "prevId": "ac12d823-b19c-4042-90a2-a658b93eb8b1",
   "version": "7",
   "dialect": "postgresql",
@@ -28149,24 +28149,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "document_file_id": {
-          "name": "document_file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "certificate_document_id": {
-          "name": "certificate_document_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "development_goal_id": {
-          "name": "development_goal_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status_changed_at": {
           "name": "status_changed_at",
           "type": "timestamp with time zone",
@@ -28208,71 +28190,6 @@
         }
       },
       "indexes": {
-        "professional_development_enrollments_document_file_key": {
-          "name": "professional_development_enrollments_document_file_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"professional_development_enrollments\".\"document_file_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "professional_development_enrollments_certificate_key": {
-          "name": "professional_development_enrollments_certificate_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "certificate_document_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"professional_development_enrollments\".\"certificate_document_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "professional_development_enrollments_goal_idx": {
-          "name": "professional_development_enrollments_goal_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "development_goal_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "professional_development_enrollments_member_key": {
           "name": "professional_development_enrollments_member_key",
           "columns": [
@@ -28365,51 +28282,6 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
-        },
-        "professional_development_enrollments_document_file_fkey": {
-          "name": "professional_development_enrollments_document_file_fkey",
-          "tableFrom": "professional_development_enrollments",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "document_file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "professional_development_enrollments_certificate_fkey": {
-          "name": "professional_development_enrollments_certificate_fkey",
-          "tableFrom": "professional_development_enrollments",
-          "tableTo": "staff_documents",
-          "columnsFrom": [
-            "institution_id",
-            "certificate_document_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "professional_development_enrollments_goal_fkey": {
-          "name": "professional_development_enrollments_goal_fkey",
-          "tableFrom": "professional_development_enrollments",
-          "tableTo": "staff_development_goals",
-          "columnsFrom": [
-            "institution_id",
-            "development_goal_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -28435,10 +28307,6 @@
         "professional_development_enrollments_attended_check": {
           "name": "professional_development_enrollments_attended_check",
           "value": "((\"professional_development_enrollments\".\"status\" = 'attended') = (\"professional_development_enrollments\".\"attended_minutes\" is not null))\n        and (\"professional_development_enrollments\".\"attended_minutes\" is null or (\"professional_development_enrollments\".\"attended_minutes\" > 0 and \"professional_development_enrollments\".\"attended_minutes\" % 30 = 0))"
-        },
-        "professional_development_enrollments_documents_check": {
-          "name": "professional_development_enrollments_documents_check",
-          "value": "\"professional_development_enrollments\".\"status\" = 'attended' or (\"professional_development_enrollments\".\"document_file_id\" is null and \"professional_development_enrollments\".\"certificate_document_id\" is null)"
         }
       },
       "isRLSEnabled": false
@@ -28707,111 +28575,6 @@
         "professional_development_programs_audience_check": {
           "name": "professional_development_programs_audience_check",
           "value": "jsonb_typeof(\"professional_development_programs\".\"audience_roles\") = 'array' and jsonb_typeof(\"professional_development_programs\".\"audience_branches\") = 'array'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.professional_development_targets": {
-      "name": "professional_development_targets",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_minutes": {
-          "name": "target_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "applies_to_roles": {
-          "name": "applies_to_roles",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_by_user_id": {
-          "name": "updated_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "professional_development_targets_institution_id_institutions_id_fk": {
-          "name": "professional_development_targets_institution_id_institutions_id_fk",
-          "tableFrom": "professional_development_targets",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "professional_development_targets_pkey": {
-          "name": "professional_development_targets_pkey",
-          "columns": [
-            "institution_id",
-            "academic_year"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "professional_development_targets_year_check": {
-          "name": "professional_development_targets_year_check",
-          "value": "\"professional_development_targets\".\"academic_year\" between 2000 and 2100"
-        },
-        "professional_development_targets_minutes_check": {
-          "name": "professional_development_targets_minutes_check",
-          "value": "\"professional_development_targets\".\"target_minutes\" between 60 and 30000 and \"professional_development_targets\".\"target_minutes\" % 60 = 0"
-        },
-        "professional_development_targets_roles_check": {
-          "name": "professional_development_targets_roles_check",
-          "value": "jsonb_typeof(\"professional_development_targets\".\"applies_to_roles\") = 'array' and jsonb_array_length(\"professional_development_targets\".\"applies_to_roles\") between 1 and 3"
         }
       },
       "isRLSEnabled": false
@@ -38306,6 +38069,631 @@
         "staff_separations_cancel_check": {
           "name": "staff_separations_cancel_check",
           "value": "(\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_at\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_by_user_id\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancel_reason\" is not null)\n        and (\"staff_separations\".\"cancel_reason\" is null or char_length(\"staff_separations\".\"cancel_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_survey_participants": {
+      "name": "staff_survey_participants",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "survey_id": {
+          "name": "survey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responded": {
+          "name": "responded",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_survey_participants_membership_idx": {
+          "name": "staff_survey_participants_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_survey_participants_unit_idx": {
+          "name": "staff_survey_participants_unit_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_survey_participants_institution_id_institutions_id_fk": {
+          "name": "staff_survey_participants_institution_id_institutions_id_fk",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_survey_participants_survey_fkey": {
+          "name": "staff_survey_participants_survey_fkey",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "staff_surveys",
+          "columnsFrom": [
+            "institution_id",
+            "survey_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_survey_participants_membership_fkey": {
+          "name": "staff_survey_participants_membership_fkey",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_survey_participants_unit_fkey": {
+          "name": "staff_survey_participants_unit_fkey",
+          "tableFrom": "staff_survey_participants",
+          "tableTo": "org_units",
+          "columnsFrom": [
+            "institution_id",
+            "unit_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_survey_participants_pkey": {
+          "name": "staff_survey_participants_pkey",
+          "columns": [
+            "institution_id",
+            "survey_id",
+            "membership_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.staff_survey_responses": {
+      "name": "staff_survey_responses",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "survey_id": {
+          "name": "survey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_survey_responses_survey_idx": {
+          "name": "staff_survey_responses_survey_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "survey_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_survey_responses_unit_idx": {
+          "name": "staff_survey_responses_unit_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "unit_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_survey_responses_institution_id_institutions_id_fk": {
+          "name": "staff_survey_responses_institution_id_institutions_id_fk",
+          "tableFrom": "staff_survey_responses",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_survey_responses_survey_fkey": {
+          "name": "staff_survey_responses_survey_fkey",
+          "tableFrom": "staff_survey_responses",
+          "tableTo": "staff_surveys",
+          "columnsFrom": [
+            "institution_id",
+            "survey_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_survey_responses_unit_fkey": {
+          "name": "staff_survey_responses_unit_fkey",
+          "tableFrom": "staff_survey_responses",
+          "tableTo": "org_units",
+          "columnsFrom": [
+            "institution_id",
+            "unit_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_survey_responses_pkey": {
+          "name": "staff_survey_responses_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_survey_responses_answers_check": {
+          "name": "staff_survey_responses_answers_check",
+          "value": "jsonb_typeof(\"staff_survey_responses\".\"answers\") = 'array' and jsonb_array_length(\"staff_survey_responses\".\"answers\") between 1 and 30"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_surveys": {
+      "name": "staff_surveys",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "source_survey_id": {
+          "name": "source_survey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "open_date": {
+          "name": "open_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "close_date": {
+          "name": "close_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "anonymity_threshold": {
+          "name": "anonymity_threshold",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audience_roles": {
+          "name": "audience_roles",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audience_unit_ids": {
+          "name": "audience_unit_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questions": {
+          "name": "questions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_by_user_id": {
+          "name": "published_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_surveys_source_key": {
+          "name": "staff_surveys_source_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_survey_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"staff_surveys\".\"source_survey_id\" is not null and \"staff_surveys\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_surveys_source_idx": {
+          "name": "staff_surveys_source_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_survey_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_surveys_close_idx": {
+          "name": "staff_surveys_close_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "close_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_surveys_institution_id_institutions_id_fk": {
+          "name": "staff_surveys_institution_id_institutions_id_fk",
+          "tableFrom": "staff_surveys",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_surveys_source_fkey": {
+          "name": "staff_surveys_source_fkey",
+          "tableFrom": "staff_surveys",
+          "tableTo": "staff_surveys",
+          "columnsFrom": [
+            "institution_id",
+            "source_survey_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_surveys_pkey": {
+          "name": "staff_surveys_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_surveys_status_check": {
+          "name": "staff_surveys_status_check",
+          "value": "\"staff_surveys\".\"status\" in ('draft', 'published', 'archived')"
+        },
+        "staff_surveys_title_check": {
+          "name": "staff_surveys_title_check",
+          "value": "char_length(\"staff_surveys\".\"title\") between 3 and 150"
+        },
+        "staff_surveys_dates_check": {
+          "name": "staff_surveys_dates_check",
+          "value": "\"staff_surveys\".\"close_date\" >= \"staff_surveys\".\"open_date\""
+        },
+        "staff_surveys_threshold_check": {
+          "name": "staff_surveys_threshold_check",
+          "value": "\"staff_surveys\".\"anonymity_threshold\" between 3 and 10"
+        },
+        "staff_surveys_revision_check": {
+          "name": "staff_surveys_revision_check",
+          "value": "\"staff_surveys\".\"revision\" >= 1"
+        },
+        "staff_surveys_questions_check": {
+          "name": "staff_surveys_questions_check",
+          "value": "jsonb_typeof(\"staff_surveys\".\"questions\") = 'array' and jsonb_array_length(\"staff_surveys\".\"questions\") between 1 and 30"
+        },
+        "staff_surveys_audience_check": {
+          "name": "staff_surveys_audience_check",
+          "value": "jsonb_typeof(\"staff_surveys\".\"audience_roles\") = 'array' and jsonb_typeof(\"staff_surveys\".\"audience_unit_ids\") = 'array'"
+        },
+        "staff_surveys_published_check": {
+          "name": "staff_surveys_published_check",
+          "value": "((\"staff_surveys\".\"status\" = 'published') = (\"staff_surveys\".\"published_at\" is not null))\n        and ((\"staff_surveys\".\"published_at\" is null) = (\"staff_surveys\".\"published_by_user_id\" is null))"
         }
       },
       "isRLSEnabled": false

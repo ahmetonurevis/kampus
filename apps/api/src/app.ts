@@ -126,7 +126,10 @@ import { registerFinanceTeacherMentorshipRoutes } from './routes/finance-teacher
 import { registerFinancePersonnelFileRoutes } from './routes/finance-personnel-files.ts'
 import { registerFinanceObservationPlanRoutes } from './routes/finance-observation-plans.ts'
 import { registerFinanceVisitorRoutes } from './routes/finance-visitors.ts'
+import { registerFinanceLostItemRoutes } from './routes/finance-lost-items.ts'
 import { registerFinanceCandidateInterviewRoutes } from './routes/finance-candidate-interviews.ts'
+import { registerFinanceStaffSurveyRoutes } from './routes/finance-staff-surveys.ts'
+import { registerFinanceIncidentRoutes } from './routes/finance-incidents.ts'
 import { registerFinanceProfessionalDevelopmentHoursRoutes } from './routes/finance-professional-development-hours.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -273,6 +276,12 @@ export const REDACTED_PATHS = [
   '*.visitorName',
   'purposeNote',
   '*.purposeNote',
+  // kvkk: K — kayıp eşyayı teslim alanın adı ve bağış/imha gerekçesi (DOM-FIN-145, K-490);
+  // gerekçe gövdede `reason` adıyla gelir.
+  'recipientName',
+  '*.recipientName',
+  'disposalReason',
+  '*.disposalReason',
   'consentGrantorName',
   '*.consentGrantorName',
   // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
@@ -657,6 +666,9 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceObservationPlanRoutes(app)
   registerFinanceVisitorRoutes(app)
   registerFinanceCandidateInterviewRoutes(app)
+  registerFinanceStaffSurveyRoutes(app)
+  registerFinanceIncidentRoutes(app)
+  registerFinanceLostItemRoutes(app, storage)
   registerFinanceProfessionalDevelopmentHoursRoutes(app, storage)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

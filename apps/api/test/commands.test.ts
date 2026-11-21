@@ -322,6 +322,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/infirmary/medication-consents/{consentId}/skips',
   'POST /api/v1/finance/infirmary/medication-administrations/{administrationId}/corrections',
   'POST /api/v1/finance/infirmary/medication-skips/{skipId}/corrections',
+  // Sağlık tarama oturumu ve toplu sonuç girişi; çift tıklama ikinci oturumu açmaz, sonucu iki
+  // kez yazmaz (routes/finance-health-screenings.ts; DOM-FIN-153, ON-163).
+  'POST /api/v1/finance/health-screenings',
+  'POST /api/v1/finance/health-screenings/{sessionId}/results',
 ]
 // Onur: kayıt ve finans sonu
 

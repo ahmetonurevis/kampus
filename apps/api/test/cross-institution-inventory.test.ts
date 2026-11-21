@@ -4509,6 +4509,54 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: okul sağlığı taramaları (ON-163; DOM-FIN-153).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/health-screenings', 'get(SCREENINGS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/health-screenings',
+          'screeningBody({ institutionId: b.id })',
+        ],
+        ['kayıt', 'GET /api/v1/finance/health-screenings/:sessionId', 'detailOf(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/health-screenings/:sessionId',
+          "versioned('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/health-screenings/:sessionId/results',
+          'record(a, bScreening.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/health-screenings/:sessionId/publish',
+          'publish(bScreening.id, a.admin',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/health-screenings/:sessionId/report',
+          '`${bUrl}/report`, a.admin',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/health-screening-staff',
+          'get(`${STAFF}?pageSize=100`, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/health-screening-classes', 'get(CLASSES, a.admin)'],
+        ['liste', 'GET /api/v1/finance/health-screening-results', 'get(MY_RESULTS, a.mother)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-health-screenings.test.ts',
+        'DOM-FIN-153: başka kurumun taraması 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

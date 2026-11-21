@@ -358028,6 +358028,3597 @@
         }
       }
     },
+    "/api/v1/finance/health-screenings": {
+      "get": {
+        "operationId": "listHealthScreenings",
+        "summary": "Sağlık tarama oturumları",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "En yeni tarama günü önce. Süzgeç durum (`open`, `published`), tür ve tarama günü aralığı. Satırda ölçüm ve not yoktur; sonuç ve \"gönderilecek\" bildirim sayısı vardır. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "published"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "growth",
+                "vision"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "`growth` boy-kilo, `vision` görme"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Tarama günü başlangıcı (YYYY-MM-DD)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Tarama günü sonu (dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "growth",
+                              "vision"
+                            ],
+                            "description": "`growth` boy-kilo, `vision` görme"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "published"
+                            ],
+                            "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                          },
+                          "screenedOn": {
+                            "type": "string",
+                            "description": "Tarama günü (YYYY-MM-DD)"
+                          },
+                          "classes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Hedef sınıflar"
+                          },
+                          "performer": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "staff",
+                                  "external"
+                                ]
+                              },
+                              "membershipId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Taramayı yapan: kurum personeli ya da dış sağlık personeli"
+                          },
+                          "thresholds": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "bmiBelow": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "bmiAbove": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "bmiBelow",
+                                  "bmiAbove"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "acuityBelow": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "acuityBelow"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı"
+                          },
+                          "resultCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Girilmiş sonuç sayısı"
+                          },
+                          "notificationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "\"Gönderilecek\" veli bildirim kaydı sayısı"
+                          },
+                          "createdByUserId": {
+                            "type": "string"
+                          },
+                          "publishedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "publishedByUserId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "status",
+                          "screenedOn",
+                          "classes",
+                          "performer",
+                          "thresholds",
+                          "resultCount",
+                          "notificationCount",
+                          "createdByUserId",
+                          "publishedAt",
+                          "publishedByUserId",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createHealthScreening",
+        "summary": "Tarama oturumu aç",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Tür (`growth` boy-kilo, `vision` görme), tarama günü (180 günden eski 422 `health_screening_date_too_old`, 90 günden ileri 422 `health_screening_date_too_far`), hedef sınıflar (1–40; olmayan 422 `health_screening_class_not_found`), yapan (kurumun etkin personeli, 422 `health_screening_performer_not_found|not_staff|inactive`; ya da dış sağlık personelinin adı) ve kurumun eşikleri (boy-kiloda BKİ alt/üst, görmede keskinlik alt sınırı; boş eşik yok sayılır). **Persentil hesabı yapılmaz** (H-110). Denetim `finance.health_screening.create`. `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Boy-kilo taraması",
+                        "enum": [
+                          "growth"
+                        ]
+                      },
+                      "screenedOn": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Tarama günü (YYYY-MM-DD, Europe/Istanbul); 180 gün geriye, 90 gün ileriye"
+                      },
+                      "classIds": {
+                        "minItems": 1,
+                        "maxItems": 40,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "description": "Hedef sınıflar (1–40; kurumun sınıf kayıtları)"
+                      },
+                      "performer": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "staff"
+                                ]
+                              },
+                              "membershipId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Kurumun etkin personel üyeliği"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "membershipId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 120,
+                                "description": "Dış sağlık personelinin adı ve kurumu (2–120; ör. ASM hemşiresi)"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Taramayı yapan: `staff` kurum personeli ya da `external` dış sağlık personeli"
+                      },
+                      "thresholds": {
+                        "default": {
+                          "bmiBelow": null,
+                          "bmiAbove": null
+                        },
+                        "type": "object",
+                        "properties": {
+                          "bmiBelow": {
+                            "default": null,
+                            "description": "BKİ alt eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok",
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 10,
+                                "maximum": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "bmiAbove": {
+                            "default": null,
+                            "description": "BKİ üst eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok",
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 10,
+                                "maximum": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "Boy-kilo eşikleri: BKİ alt eşiğin altında ya da üst eşiğin üstündeyse işaret"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "screenedOn",
+                      "classIds",
+                      "performer"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Görme taraması",
+                        "enum": [
+                          "vision"
+                        ]
+                      },
+                      "screenedOn": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Tarama günü (YYYY-MM-DD, Europe/Istanbul); 180 gün geriye, 90 gün ileriye"
+                      },
+                      "classIds": {
+                        "minItems": 1,
+                        "maxItems": 40,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "description": "Hedef sınıflar (1–40; kurumun sınıf kayıtları)"
+                      },
+                      "performer": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "staff"
+                                ]
+                              },
+                              "membershipId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Kurumun etkin personel üyeliği"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "membershipId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "external"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 120,
+                                "description": "Dış sağlık personelinin adı ve kurumu (2–120; ör. ASM hemşiresi)"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "description": "Taramayı yapan: `staff` kurum personeli ya da `external` dış sağlık personeli"
+                      },
+                      "thresholds": {
+                        "default": {
+                          "acuityBelow": null
+                        },
+                        "type": "object",
+                        "properties": {
+                          "acuityBelow": {
+                            "default": null,
+                            "description": "Görme eşiği (ondalık keskinlik 0,1–1,0); bir göz altındaysa işaret",
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0.1,
+                                "maximum": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "Görme eşiği"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "screenedOn",
+                      "classIds",
+                      "performer"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "growth",
+                            "vision"
+                          ],
+                          "description": "`growth` boy-kilo, `vision` görme"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "published"
+                          ],
+                          "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                        },
+                        "screenedOn": {
+                          "type": "string",
+                          "description": "Tarama günü (YYYY-MM-DD)"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hedef sınıflar"
+                        },
+                        "performer": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "staff",
+                                "external"
+                              ]
+                            },
+                            "membershipId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Taramayı yapan: kurum personeli ya da dış sağlık personeli"
+                        },
+                        "thresholds": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "bmiBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "bmiAbove": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "bmiBelow",
+                                "bmiAbove"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "acuityBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "acuityBelow"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ],
+                          "description": "Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı"
+                        },
+                        "resultCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girilmiş sonuç sayısı"
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Gönderilecek\" veli bildirim kaydı sayısı"
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "status",
+                        "screenedOn",
+                        "classes",
+                        "performer",
+                        "thresholds",
+                        "resultCount",
+                        "notificationCount",
+                        "createdByUserId",
+                        "publishedAt",
+                        "publishedByUserId",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screenings/{sessionId}": {
+      "get": {
+        "operationId": "getHealthScreening",
+        "summary": "Tarama ayrıntısı ve giriş tablosu",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Oturum ve hedef sınıfların bugünkü etkin öğrencileri (sınıf değiştirmiş ama sonucu olan öğrenci de) sonucuyla: durum, ölçüm (boy-kiloda BKİ sunucuda hesaplanır), ileri değerlendirme işareti, eşik aşımı, kısa not ve bildirim durumu. **Erişim gerekçesi zorunlu** (`X-Access-Reason`; DOM-FIN-156): okuma aynı transaction'da gerekçesiyle `finance.health_screening.read` denetimine ve sağlık erişim günlüğüne düşer (alan adları; değer yok). Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "growth",
+                            "vision"
+                          ],
+                          "description": "`growth` boy-kilo, `vision` görme"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "published"
+                          ],
+                          "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                        },
+                        "screenedOn": {
+                          "type": "string",
+                          "description": "Tarama günü (YYYY-MM-DD)"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hedef sınıflar"
+                        },
+                        "performer": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "staff",
+                                "external"
+                              ]
+                            },
+                            "membershipId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Taramayı yapan: kurum personeli ya da dış sağlık personeli"
+                        },
+                        "thresholds": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "bmiBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "bmiAbove": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "bmiBelow",
+                                "bmiAbove"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "acuityBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "acuityBelow"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ],
+                          "description": "Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı"
+                        },
+                        "resultCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girilmiş sonuç sayısı"
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Gönderilecek\" veli bildirim kaydı sayısı"
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "students": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "classId": {
+                                "type": "string"
+                              },
+                              "className": {
+                                "type": "string"
+                              },
+                              "inTargetClass": {
+                                "type": "boolean",
+                                "description": "Öğrenci bugün hedef sınıflardan birinde mi (değilse yalnız sonucu için)"
+                              },
+                              "result": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "outcome": {
+                                        "type": "string",
+                                        "enum": [
+                                          "screened",
+                                          "absent",
+                                          "refused"
+                                        ],
+                                        "description": "`screened` tarandı, `absent` katılmadı, `refused` reddetti"
+                                      },
+                                      "measurement": {
+                                        "anyOf": [
+                                          {
+                                            "oneOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "growth"
+                                                    ]
+                                                  },
+                                                  "heightCm": {
+                                                    "type": "number",
+                                                    "description": "Boy (cm)"
+                                                  },
+                                                  "weightKg": {
+                                                    "type": "number",
+                                                    "description": "Kilo (kg)"
+                                                  },
+                                                  "bmi": {
+                                                    "type": "number",
+                                                    "description": "Beden kitle indeksi (kg/m², tek ondalık; sunucuda hesaplanır)"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "heightCm",
+                                                  "weightKg",
+                                                  "bmi"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "vision"
+                                                    ]
+                                                  },
+                                                  "rightAcuity": {
+                                                    "type": "number",
+                                                    "description": "Sağ göz ondalık keskinlik"
+                                                  },
+                                                  "leftAcuity": {
+                                                    "type": "number",
+                                                    "description": "Sol göz ondalık keskinlik"
+                                                  },
+                                                  "wearsGlasses": {
+                                                    "type": "boolean"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "kind",
+                                                  "rightAcuity",
+                                                  "leftAcuity",
+                                                  "wearsGlasses"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Ölçüm (özel nitelikli; şifreli saklanır); taranmayanda boş"
+                                      },
+                                      "referralRecommended": {
+                                        "type": "boolean",
+                                        "description": "İleri değerlendirme önerilir"
+                                      },
+                                      "thresholdExceeded": {
+                                        "type": "boolean",
+                                        "description": "Ölçüm kurumun eşiğini aşıyor mu"
+                                      },
+                                      "note": {
+                                        "description": "Kısa not (veliye görünür)",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "notificationStatus": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "pending"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Veli bildirim kaydı: `pending` gönderilecek (gönderim yok); öneri yoksa boş"
+                                      },
+                                      "recordedByUserId": {
+                                        "type": "string"
+                                      },
+                                      "recordedByName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "updatedAt": {
+                                        "type": "string"
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Düzeltmede `expectedVersion`"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "outcome",
+                                      "measurement",
+                                      "referralRecommended",
+                                      "thresholdExceeded",
+                                      "note",
+                                      "notificationStatus",
+                                      "recordedByUserId",
+                                      "recordedByName",
+                                      "updatedAt",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "classId",
+                              "className",
+                              "inTargetClass",
+                              "result"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hızlı giriş tablosu: hedef sınıfların öğrencileri ve sonuçları"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "status",
+                        "screenedOn",
+                        "classes",
+                        "performer",
+                        "thresholds",
+                        "resultCount",
+                        "notificationCount",
+                        "createdByUserId",
+                        "publishedAt",
+                        "publishedByUserId",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "students"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateHealthScreening",
+        "summary": "Açık taramayı düzelt",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Kısmi: gün, sınıflar, yapan, eşikler; tür değişmez. Sonuç girildiyse eşik değişmez (422 `health_screening_thresholds_locked`), sonucu olan sınıf çıkarılmaz (422 `health_screening_class_has_results`), gün bugünden sonraya alınmaz (422 `health_screening_date_locked`). Türe uymayan eşik 422 `health_screening_thresholds_kind`; değişiklik yoksa 422 `health_screening_unchanged`; yayımlanmış tarama 409 `health_screening_published`. Denetime değişen alanların adları. `If-Match` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "screenedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Tarama günü (YYYY-MM-DD, Europe/Istanbul); 180 gün geriye, 90 gün ileriye"
+                  },
+                  "classIds": {
+                    "minItems": 1,
+                    "maxItems": 40,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "description": "Hedef sınıflar (1–40; kurumun sınıf kayıtları)"
+                  },
+                  "performer": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "staff"
+                            ]
+                          },
+                          "membershipId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Kurumun etkin personel üyeliği"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "membershipId"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "external"
+                            ]
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 120,
+                            "description": "Dış sağlık personelinin adı ve kurumu (2–120; ör. ASM hemşiresi)"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ],
+                    "description": "Taramayı yapan: `staff` kurum personeli ya da `external` dış sağlık personeli"
+                  },
+                  "thresholds": {
+                    "description": "Türün eşikleri (boy-kiloda `bmiBelow`/`bmiAbove`, görmede `acuityBelow`)",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "bmiBelow": {
+                            "default": null,
+                            "description": "BKİ alt eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok",
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 10,
+                                "maximum": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "bmiAbove": {
+                            "default": null,
+                            "description": "BKİ üst eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok",
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 10,
+                                "maximum": 50
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "Boy-kilo eşikleri: BKİ alt eşiğin altında ya da üst eşiğin üstündeyse işaret"
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "acuityBelow": {
+                            "default": null,
+                            "description": "Görme eşiği (ondalık keskinlik 0,1–1,0); bir göz altındaysa işaret",
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0.1,
+                                "maximum": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "Görme eşiği"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "growth",
+                            "vision"
+                          ],
+                          "description": "`growth` boy-kilo, `vision` görme"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "published"
+                          ],
+                          "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                        },
+                        "screenedOn": {
+                          "type": "string",
+                          "description": "Tarama günü (YYYY-MM-DD)"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hedef sınıflar"
+                        },
+                        "performer": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "staff",
+                                "external"
+                              ]
+                            },
+                            "membershipId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Taramayı yapan: kurum personeli ya da dış sağlık personeli"
+                        },
+                        "thresholds": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "bmiBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "bmiAbove": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "bmiBelow",
+                                "bmiAbove"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "acuityBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "acuityBelow"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ],
+                          "description": "Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı"
+                        },
+                        "resultCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girilmiş sonuç sayısı"
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Gönderilecek\" veli bildirim kaydı sayısı"
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "status",
+                        "screenedOn",
+                        "classes",
+                        "performer",
+                        "thresholds",
+                        "resultCount",
+                        "notificationCount",
+                        "createdByUserId",
+                        "publishedAt",
+                        "publishedByUserId",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screenings/{sessionId}/results": {
+      "post": {
+        "operationId": "recordHealthScreeningResults",
+        "summary": "Sonuçları gir (toplu)",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "1–100 satır; **oturumda öğrenci başına tek sonuç**. Yeni sonuç yalnız hedef sınıfta okuyan etkin öğrenciye (422 `health_screening_student_not_found`, `health_screening_student_not_in_classes`); sonucu olan öğrenci `expectedVersion` ile düzeltilir (yoksa 409 `health_screening_result_exists`, tutmazsa 409 `version_conflict`; olmayan sonuca sürüm 409 `health_screening_result_missing`). Taranan öğrencide türün ölçümü zorunlu (422 `health_screening_measurement_required`, `health_screening_measurement_kind`); katılmayan ve reddedende ölçüm ve öneri yok (422 `health_screening_measurement_not_allowed`, `health_screening_referral_not_screened`). Boy cm ve kilo kg tek ondalık, görme 0,05–2,00. Kurumun eşiği aşılırsa \"ileri değerlendirme önerilir\" kendiliğinden konur. Tarama günü gelmeden 422 `health_screening_not_started`; yayımlanmış tarama 409 `health_screening_published`. Değişmeyen satır yazılmaz. Ölçüm ve not şifreli; yanıtta sağlık değeri yok. Denetim `finance.health_screening.result_create|result_update` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "results": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "studentId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "description": "Öğrenci kaydı"
+                        },
+                        "expectedVersion": {
+                          "default": null,
+                          "description": "Var olan sonucun sürümü (düzeltmede zorunlu); yeni sonuçta boş",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "screened",
+                            "absent",
+                            "refused"
+                          ],
+                          "description": "`screened` tarandı, `absent` katılmadı, `refused` reddetti"
+                        },
+                        "measurement": {
+                          "default": null,
+                          "description": "Taranan öğrencide türün ölçümü; katılmayanda boş",
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "heightCm": {
+                                      "type": "number",
+                                      "minimum": 40,
+                                      "maximum": 230,
+                                      "description": "Boy (cm, 40–230, tek ondalık)"
+                                    },
+                                    "weightKg": {
+                                      "type": "number",
+                                      "minimum": 5,
+                                      "maximum": 250,
+                                      "description": "Kilo (kg, 5–250, tek ondalık)"
+                                    }
+                                  },
+                                  "required": [
+                                    "heightCm",
+                                    "weightKg"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Boy-kilo ölçümü"
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "rightAcuity": {
+                                      "type": "number",
+                                      "minimum": 0.05,
+                                      "maximum": 2,
+                                      "description": "Sağ göz (ondalık keskinlik 0,05–2,00; ör. 1,0 = 10/10)"
+                                    },
+                                    "leftAcuity": {
+                                      "type": "number",
+                                      "minimum": 0.05,
+                                      "maximum": 2,
+                                      "description": "Sol göz (ondalık keskinlik 0,05–2,00; ör. 1,0 = 10/10)"
+                                    },
+                                    "wearsGlasses": {
+                                      "type": "boolean",
+                                      "description": "Gözlük ya da lensle mi ölçüldü"
+                                    }
+                                  },
+                                  "required": [
+                                    "rightAcuity",
+                                    "leftAcuity",
+                                    "wearsGlasses"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Görme ölçümü"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "referralRecommended": {
+                          "default": false,
+                          "description": "Taramayı yapanın \"ileri değerlendirme önerilir\" işareti; eşik aşılırsa zaten konur",
+                          "type": "boolean"
+                        },
+                        "note": {
+                          "description": "Kısa not (≤ 500; şifreli; veliye görünür)",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "studentId",
+                        "outcome"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Öğrenci başına sonuç (1–100)"
+                  }
+                },
+                "required": [
+                  "results"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "created": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updated": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "unchanged": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Değişmediği için yazılmayan satır"
+                        },
+                        "session": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "growth",
+                                "vision"
+                              ],
+                              "description": "`growth` boy-kilo, `vision` görme"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "open",
+                                "published"
+                              ],
+                              "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                            },
+                            "screenedOn": {
+                              "type": "string",
+                              "description": "Tarama günü (YYYY-MM-DD)"
+                            },
+                            "classes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Hedef sınıflar"
+                            },
+                            "performer": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "staff",
+                                    "external"
+                                  ]
+                                },
+                                "membershipId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "membershipId",
+                                "name"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Taramayı yapan: kurum personeli ya da dış sağlık personeli"
+                            },
+                            "thresholds": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "bmiBelow": {
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    },
+                                    "bmiAbove": {
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "bmiBelow",
+                                    "bmiAbove"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "acuityBelow": {
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "acuityBelow"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ],
+                              "description": "Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı"
+                            },
+                            "resultCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Girilmiş sonuç sayısı"
+                            },
+                            "notificationCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "\"Gönderilecek\" veli bildirim kaydı sayısı"
+                            },
+                            "createdByUserId": {
+                              "type": "string"
+                            },
+                            "publishedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "publishedByUserId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` sürümü"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "kind",
+                            "status",
+                            "screenedOn",
+                            "classes",
+                            "performer",
+                            "thresholds",
+                            "resultCount",
+                            "notificationCount",
+                            "createdByUserId",
+                            "publishedAt",
+                            "publishedByUserId",
+                            "createdAt",
+                            "updatedAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "created",
+                        "updated",
+                        "unchanged",
+                        "session"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screenings/{sessionId}/publish": {
+      "post": {
+        "operationId": "publishHealthScreening",
+        "summary": "Taramayı veliye yayımla",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Sonuçlar veliye açılır; tarama ve sonuçları sonra değişmez (veritabanında tetikleyici). İleri değerlendirme önerilen her sonuç için **\"gönderilecek\" bildirim kaydı** yazılır; **veliye ileti gönderilmez** (K-515). Tarama günü gelmeden 422 `health_screening_not_started`, sonuç yoksa 422 `health_screening_no_results`, yayımlanmışsa 409 `health_screening_published`. Gövde boş nesne. Denetim `finance.health_screening.publish`. `If-Match` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "growth",
+                            "vision"
+                          ],
+                          "description": "`growth` boy-kilo, `vision` görme"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "published"
+                          ],
+                          "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                        },
+                        "screenedOn": {
+                          "type": "string",
+                          "description": "Tarama günü (YYYY-MM-DD)"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hedef sınıflar"
+                        },
+                        "performer": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "staff",
+                                "external"
+                              ]
+                            },
+                            "membershipId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Taramayı yapan: kurum personeli ya da dış sağlık personeli"
+                        },
+                        "thresholds": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "bmiBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "bmiAbove": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "bmiBelow",
+                                "bmiAbove"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "acuityBelow": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "acuityBelow"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ],
+                          "description": "Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı"
+                        },
+                        "resultCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girilmiş sonuç sayısı"
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Gönderilecek\" veli bildirim kaydı sayısı"
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "status",
+                        "screenedOn",
+                        "classes",
+                        "performer",
+                        "thresholds",
+                        "resultCount",
+                        "notificationCount",
+                        "createdByUserId",
+                        "publishedAt",
+                        "publishedByUserId",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screenings/{sessionId}/report": {
+      "get": {
+        "operationId": "getHealthScreeningReport",
+        "summary": "Sınıf bazında katılım ve öneri",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Hedef sınıf başına bugünkü öğrenci, taranan, katılmayan, reddeden ve sonucu girilmemiş sayısı ile ileri değerlendirme önerilen sayısı. **Küçük gruplar gizli** (K-516): taranan 5'ten azsa ya da önerilen veya önerilmeyen sayısı 1–4 ise öneri `null`; tek gizli sınıf toplamdan çıkarılamasın diye toplam da gizlenir. Ölçüm ve not okunmaz. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "growth",
+                            "vision"
+                          ],
+                          "description": "`growth` boy-kilo, `vision` görme"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "published"
+                          ],
+                          "description": "`open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "roster": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bugünkü etkin öğrenci"
+                              },
+                              "screened": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "absent": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "refused": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "missing": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Sonucu girilmemiş öğrenci"
+                              },
+                              "referral": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "İleri değerlendirme önerilen; küçük grupta gizli (`null`, K-516)"
+                              },
+                              "referralSuppressed": {
+                                "type": "boolean"
+                              },
+                              "classId": {
+                                "type": "string"
+                              },
+                              "className": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "roster",
+                              "screened",
+                              "absent",
+                              "refused",
+                              "missing",
+                              "referral",
+                              "referralSuppressed",
+                              "classId",
+                              "className"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "total": {
+                          "type": "object",
+                          "properties": {
+                            "roster": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Bugünkü etkin öğrenci"
+                            },
+                            "screened": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "absent": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "refused": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "missing": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sonucu girilmemiş öğrenci"
+                            },
+                            "referral": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "İleri değerlendirme önerilen; küçük grupta gizli (`null`, K-516)"
+                            },
+                            "referralSuppressed": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "roster",
+                            "screened",
+                            "absent",
+                            "refused",
+                            "missing",
+                            "referral",
+                            "referralSuppressed"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "sessionId",
+                        "kind",
+                        "status",
+                        "classes",
+                        "total"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screening-staff": {
+      "get": {
+        "operationId": "listHealthScreeningStaff",
+        "summary": "Tarama için personel",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Taramayı yapan personel seçimi: kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "`yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screening-classes": {
+      "get": {
+        "operationId": "listHealthScreeningClasses",
+        "summary": "Tarama için sınıflar",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Hedef sınıf seçimi: kurumun arşivlenmemiş sınıfları (ada göre) ve bugünkü etkin öğrenci sayısı. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "studentCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Bugünkü etkin öğrenci sayısı"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "studentCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-screening-results": {
+      "get": {
+        "operationId": "listGuardianHealthScreeningResults",
+        "summary": "Çocuğumun sağlık tarama sonuçları",
+        "tags": [
+          "finance-health-screenings"
+        ],
+        "description": "Velinin kapsamındaki çocukların (velayetli ve kısıtsız bağ) **yayımlanmış** taramalarının sonuçları (K-515): tür, gün, yapan, durum, ölçüm (BKİ dahil), ileri değerlendirme işareti, kısa not ve bildirim durumu. Açık tarama, eşik ve sonucu yazan dönmez. Her dönen sonuç `finance.health_screening.guardian_read` denetimine düşer. Rol: yalnız `veli`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Çocuklardan biri"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "sessionId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "growth",
+                              "vision"
+                            ],
+                            "description": "`growth` boy-kilo, `vision` görme"
+                          },
+                          "screenedOn": {
+                            "type": "string"
+                          },
+                          "performerName": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "outcome": {
+                            "type": "string",
+                            "enum": [
+                              "screened",
+                              "absent",
+                              "refused"
+                            ],
+                            "description": "`screened` tarandı, `absent` katılmadı, `refused` reddetti"
+                          },
+                          "measurement": {
+                            "anyOf": [
+                              {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "growth"
+                                        ]
+                                      },
+                                      "heightCm": {
+                                        "type": "number",
+                                        "description": "Boy (cm)"
+                                      },
+                                      "weightKg": {
+                                        "type": "number",
+                                        "description": "Kilo (kg)"
+                                      },
+                                      "bmi": {
+                                        "type": "number",
+                                        "description": "Beden kitle indeksi (kg/m², tek ondalık; sunucuda hesaplanır)"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "heightCm",
+                                      "weightKg",
+                                      "bmi"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "vision"
+                                        ]
+                                      },
+                                      "rightAcuity": {
+                                        "type": "number",
+                                        "description": "Sağ göz ondalık keskinlik"
+                                      },
+                                      "leftAcuity": {
+                                        "type": "number",
+                                        "description": "Sol göz ondalık keskinlik"
+                                      },
+                                      "wearsGlasses": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "rightAcuity",
+                                      "leftAcuity",
+                                      "wearsGlasses"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Ölçüm (özel nitelikli; şifreli saklanır); taranmayanda boş"
+                          },
+                          "referralRecommended": {
+                            "type": "boolean"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "notificationStatus": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "pending"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Veli bildirim kaydı: `pending` gönderilecek (gönderim yok); öneri yoksa boş"
+                          },
+                          "publishedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "sessionId",
+                          "kind",
+                          "screenedOn",
+                          "performerName",
+                          "studentId",
+                          "studentName",
+                          "outcome",
+                          "measurement",
+                          "referralRecommended",
+                          "note",
+                          "notificationStatus",
+                          "publishedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

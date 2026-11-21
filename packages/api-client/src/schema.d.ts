@@ -15824,6 +15824,174 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/health-screenings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sağlık tarama oturumları
+         * @description En yeni tarama günü önce. Süzgeç durum (`open`, `published`), tür ve tarama günü aralığı. Satırda ölçüm ve not yoktur; sonuç ve "gönderilecek" bildirim sayısı vardır. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        get: operations["listHealthScreenings"];
+        put?: never;
+        /**
+         * Tarama oturumu aç
+         * @description Tür (`growth` boy-kilo, `vision` görme), tarama günü (180 günden eski 422 `health_screening_date_too_old`, 90 günden ileri 422 `health_screening_date_too_far`), hedef sınıflar (1–40; olmayan 422 `health_screening_class_not_found`), yapan (kurumun etkin personeli, 422 `health_screening_performer_not_found|not_staff|inactive`; ya da dış sağlık personelinin adı) ve kurumun eşikleri (boy-kiloda BKİ alt/üst, görmede keskinlik alt sınırı; boş eşik yok sayılır). **Persentil hesabı yapılmaz** (H-110). Denetim `finance.health_screening.create`. `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        post: operations["createHealthScreening"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-screenings/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tarama ayrıntısı ve giriş tablosu
+         * @description Oturum ve hedef sınıfların bugünkü etkin öğrencileri (sınıf değiştirmiş ama sonucu olan öğrenci de) sonucuyla: durum, ölçüm (boy-kiloda BKİ sunucuda hesaplanır), ileri değerlendirme işareti, eşik aşımı, kısa not ve bildirim durumu. **Erişim gerekçesi zorunlu** (`X-Access-Reason`; DOM-FIN-156): okuma aynı transaction'da gerekçesiyle `finance.health_screening.read` denetimine ve sağlık erişim günlüğüne düşer (alan adları; değer yok). Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        get: operations["getHealthScreening"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Açık taramayı düzelt
+         * @description Kısmi: gün, sınıflar, yapan, eşikler; tür değişmez. Sonuç girildiyse eşik değişmez (422 `health_screening_thresholds_locked`), sonucu olan sınıf çıkarılmaz (422 `health_screening_class_has_results`), gün bugünden sonraya alınmaz (422 `health_screening_date_locked`). Türe uymayan eşik 422 `health_screening_thresholds_kind`; değişiklik yoksa 422 `health_screening_unchanged`; yayımlanmış tarama 409 `health_screening_published`. Denetime değişen alanların adları. `If-Match` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        patch: operations["updateHealthScreening"];
+        trace?: never;
+    };
+    "/api/v1/finance/health-screenings/{sessionId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sonuçları gir (toplu)
+         * @description 1–100 satır; **oturumda öğrenci başına tek sonuç**. Yeni sonuç yalnız hedef sınıfta okuyan etkin öğrenciye (422 `health_screening_student_not_found`, `health_screening_student_not_in_classes`); sonucu olan öğrenci `expectedVersion` ile düzeltilir (yoksa 409 `health_screening_result_exists`, tutmazsa 409 `version_conflict`; olmayan sonuca sürüm 409 `health_screening_result_missing`). Taranan öğrencide türün ölçümü zorunlu (422 `health_screening_measurement_required`, `health_screening_measurement_kind`); katılmayan ve reddedende ölçüm ve öneri yok (422 `health_screening_measurement_not_allowed`, `health_screening_referral_not_screened`). Boy cm ve kilo kg tek ondalık, görme 0,05–2,00. Kurumun eşiği aşılırsa "ileri değerlendirme önerilir" kendiliğinden konur. Tarama günü gelmeden 422 `health_screening_not_started`; yayımlanmış tarama 409 `health_screening_published`. Değişmeyen satır yazılmaz. Ölçüm ve not şifreli; yanıtta sağlık değeri yok. Denetim `finance.health_screening.result_create|result_update` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        post: operations["recordHealthScreeningResults"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-screenings/{sessionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taramayı veliye yayımla
+         * @description Sonuçlar veliye açılır; tarama ve sonuçları sonra değişmez (veritabanında tetikleyici). İleri değerlendirme önerilen her sonuç için **"gönderilecek" bildirim kaydı** yazılır; **veliye ileti gönderilmez** (K-515). Tarama günü gelmeden 422 `health_screening_not_started`, sonuç yoksa 422 `health_screening_no_results`, yayımlanmışsa 409 `health_screening_published`. Gövde boş nesne. Denetim `finance.health_screening.publish`. `If-Match` zorunlu. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        post: operations["publishHealthScreening"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-screenings/{sessionId}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sınıf bazında katılım ve öneri
+         * @description Hedef sınıf başına bugünkü öğrenci, taranan, katılmayan, reddeden ve sonucu girilmemiş sayısı ile ileri değerlendirme önerilen sayısı. **Küçük gruplar gizli** (K-516): taranan 5'ten azsa ya da önerilen veya önerilmeyen sayısı 1–4 ise öneri `null`; tek gizli sınıf toplamdan çıkarılamasın diye toplam da gizlenir. Ölçüm ve not okunmaz. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        get: operations["getHealthScreeningReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-screening-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tarama için personel
+         * @description Taramayı yapan personel seçimi: kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        get: operations["listHealthScreeningStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-screening-classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tarama için sınıflar
+         * @description Hedef sınıf seçimi: kurumun arşivlenmemiş sınıfları (ada göre) ve bugünkü etkin öğrenci sayısı. Rol: `yonetici` ve `onburo`. Öğretmen, veli ve öğrenci 403. Modül `finance`. Başka kurumun taraması 404.
+         */
+        get: operations["listHealthScreeningClasses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-screening-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çocuğumun sağlık tarama sonuçları
+         * @description Velinin kapsamındaki çocukların (velayetli ve kısıtsız bağ) **yayımlanmış** taramalarının sonuçları (K-515): tür, gün, yapan, durum, ölçüm (BKİ dahil), ileri değerlendirme işareti, kısa not ve bildirim durumu. Açık tarama, eşik ve sonucu yazan dönmez. Her dönen sonuç `finance.health_screening.guardian_read` denetimine düşer. Rol: yalnız `veli`. Modül `finance`.
+         */
+        get: operations["listGuardianHealthScreeningResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -166360,6 +166528,1590 @@ export interface operations {
                                 };
                             }[];
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHealthScreenings: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez) */
+                status?: "open" | "published";
+                /** @description `growth` boy-kilo, `vision` görme */
+                kind?: "growth" | "vision";
+                /** @description Tarama günü başlangıcı (YYYY-MM-DD) */
+                from?: string;
+                /** @description Tarama günü sonu (dahil) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            /**
+                             * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                             * @enum {string}
+                             */
+                            status: "open" | "published";
+                            /** @description Tarama günü (YYYY-MM-DD) */
+                            screenedOn: string;
+                            /** @description Hedef sınıflar */
+                            classes: {
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description Taramayı yapan: kurum personeli ya da dış sağlık personeli */
+                            performer: {
+                                /** @enum {string} */
+                                kind: "staff" | "external";
+                                membershipId: string | null;
+                                name: string;
+                            };
+                            /** @description Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı */
+                            thresholds: {
+                                bmiBelow: number | null;
+                                bmiAbove: number | null;
+                            } | {
+                                acuityBelow: number | null;
+                            };
+                            /** @description Girilmiş sonuç sayısı */
+                            resultCount: number;
+                            /** @description "Gönderilecek" veli bildirim kaydı sayısı */
+                            notificationCount: number;
+                            createdByUserId: string;
+                            publishedAt: string | null;
+                            publishedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createHealthScreening: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Boy-kilo taraması
+                     * @enum {string}
+                     */
+                    kind: "growth";
+                    /** @description Tarama günü (YYYY-MM-DD, Europe/Istanbul); 180 gün geriye, 90 gün ileriye */
+                    screenedOn: string;
+                    /** @description Hedef sınıflar (1–40; kurumun sınıf kayıtları) */
+                    classIds: string[];
+                    /** @description Taramayı yapan: `staff` kurum personeli ya da `external` dış sağlık personeli */
+                    performer: {
+                        /** @enum {string} */
+                        kind: "staff";
+                        /** @description Kurumun etkin personel üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "external";
+                        /** @description Dış sağlık personelinin adı ve kurumu (2–120; ör. ASM hemşiresi) */
+                        name: string;
+                    };
+                    /**
+                     * @description Boy-kilo eşikleri: BKİ alt eşiğin altında ya da üst eşiğin üstündeyse işaret
+                     * @default {
+                     *       "bmiBelow": null,
+                     *       "bmiAbove": null
+                     *     }
+                     */
+                    thresholds?: {
+                        /**
+                         * @description BKİ alt eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok
+                         * @default null
+                         */
+                        bmiBelow?: number | null;
+                        /**
+                         * @description BKİ üst eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok
+                         * @default null
+                         */
+                        bmiAbove?: number | null;
+                    };
+                } | {
+                    /**
+                     * @description Görme taraması
+                     * @enum {string}
+                     */
+                    kind: "vision";
+                    /** @description Tarama günü (YYYY-MM-DD, Europe/Istanbul); 180 gün geriye, 90 gün ileriye */
+                    screenedOn: string;
+                    /** @description Hedef sınıflar (1–40; kurumun sınıf kayıtları) */
+                    classIds: string[];
+                    /** @description Taramayı yapan: `staff` kurum personeli ya da `external` dış sağlık personeli */
+                    performer: {
+                        /** @enum {string} */
+                        kind: "staff";
+                        /** @description Kurumun etkin personel üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "external";
+                        /** @description Dış sağlık personelinin adı ve kurumu (2–120; ör. ASM hemşiresi) */
+                        name: string;
+                    };
+                    /**
+                     * @description Görme eşiği
+                     * @default {
+                     *       "acuityBelow": null
+                     *     }
+                     */
+                    thresholds?: {
+                        /**
+                         * @description Görme eşiği (ondalık keskinlik 0,1–1,0); bir göz altındaysa işaret
+                         * @default null
+                         */
+                        acuityBelow?: number | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            /**
+                             * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                             * @enum {string}
+                             */
+                            status: "open" | "published";
+                            /** @description Tarama günü (YYYY-MM-DD) */
+                            screenedOn: string;
+                            /** @description Hedef sınıflar */
+                            classes: {
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description Taramayı yapan: kurum personeli ya da dış sağlık personeli */
+                            performer: {
+                                /** @enum {string} */
+                                kind: "staff" | "external";
+                                membershipId: string | null;
+                                name: string;
+                            };
+                            /** @description Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı */
+                            thresholds: {
+                                bmiBelow: number | null;
+                                bmiAbove: number | null;
+                            } | {
+                                acuityBelow: number | null;
+                            };
+                            /** @description Girilmiş sonuç sayısı */
+                            resultCount: number;
+                            /** @description "Gönderilecek" veli bildirim kaydı sayısı */
+                            notificationCount: number;
+                            createdByUserId: string;
+                            publishedAt: string | null;
+                            publishedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getHealthScreening: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            /**
+                             * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                             * @enum {string}
+                             */
+                            status: "open" | "published";
+                            /** @description Tarama günü (YYYY-MM-DD) */
+                            screenedOn: string;
+                            /** @description Hedef sınıflar */
+                            classes: {
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description Taramayı yapan: kurum personeli ya da dış sağlık personeli */
+                            performer: {
+                                /** @enum {string} */
+                                kind: "staff" | "external";
+                                membershipId: string | null;
+                                name: string;
+                            };
+                            /** @description Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı */
+                            thresholds: {
+                                bmiBelow: number | null;
+                                bmiAbove: number | null;
+                            } | {
+                                acuityBelow: number | null;
+                            };
+                            /** @description Girilmiş sonuç sayısı */
+                            resultCount: number;
+                            /** @description "Gönderilecek" veli bildirim kaydı sayısı */
+                            notificationCount: number;
+                            createdByUserId: string;
+                            publishedAt: string | null;
+                            publishedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Hızlı giriş tablosu: hedef sınıfların öğrencileri ve sonuçları */
+                            students: {
+                                studentId: string;
+                                studentName: string | null;
+                                classId: string;
+                                className: string;
+                                /** @description Öğrenci bugün hedef sınıflardan birinde mi (değilse yalnız sonucu için) */
+                                inTargetClass: boolean;
+                                result: {
+                                    id: string;
+                                    /**
+                                     * @description `screened` tarandı, `absent` katılmadı, `refused` reddetti
+                                     * @enum {string}
+                                     */
+                                    outcome: "screened" | "absent" | "refused";
+                                    /** @description Ölçüm (özel nitelikli; şifreli saklanır); taranmayanda boş */
+                                    measurement: ({
+                                        /** @enum {string} */
+                                        kind: "growth";
+                                        /** @description Boy (cm) */
+                                        heightCm: number;
+                                        /** @description Kilo (kg) */
+                                        weightKg: number;
+                                        /** @description Beden kitle indeksi (kg/m², tek ondalık; sunucuda hesaplanır) */
+                                        bmi: number;
+                                    } | {
+                                        /** @enum {string} */
+                                        kind: "vision";
+                                        /** @description Sağ göz ondalık keskinlik */
+                                        rightAcuity: number;
+                                        /** @description Sol göz ondalık keskinlik */
+                                        leftAcuity: number;
+                                        wearsGlasses: boolean;
+                                    }) | null;
+                                    /** @description İleri değerlendirme önerilir */
+                                    referralRecommended: boolean;
+                                    /** @description Ölçüm kurumun eşiğini aşıyor mu */
+                                    thresholdExceeded: boolean;
+                                    /** @description Kısa not (veliye görünür) */
+                                    note: string | null;
+                                    /** @description Veli bildirim kaydı: `pending` gönderilecek (gönderim yok); öneri yoksa boş */
+                                    notificationStatus: "pending" | null;
+                                    recordedByUserId: string;
+                                    recordedByName: string | null;
+                                    updatedAt: string;
+                                    /** @description Düzeltmede `expectedVersion` */
+                                    version: number;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateHealthScreening: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Tarama günü (YYYY-MM-DD, Europe/Istanbul); 180 gün geriye, 90 gün ileriye */
+                    screenedOn?: string;
+                    /** @description Hedef sınıflar (1–40; kurumun sınıf kayıtları) */
+                    classIds?: string[];
+                    /** @description Taramayı yapan: `staff` kurum personeli ya da `external` dış sağlık personeli */
+                    performer?: {
+                        /** @enum {string} */
+                        kind: "staff";
+                        /** @description Kurumun etkin personel üyeliği */
+                        membershipId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "external";
+                        /** @description Dış sağlık personelinin adı ve kurumu (2–120; ör. ASM hemşiresi) */
+                        name: string;
+                    };
+                    /** @description Türün eşikleri (boy-kiloda `bmiBelow`/`bmiAbove`, görmede `acuityBelow`) */
+                    thresholds?: {
+                        /**
+                         * @description BKİ alt eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok
+                         * @default null
+                         */
+                        bmiBelow?: number | null;
+                        /**
+                         * @description BKİ üst eşiği (kg/m², 10–50, tek ondalık); boşsa eşik yok
+                         * @default null
+                         */
+                        bmiAbove?: number | null;
+                    } | {
+                        /**
+                         * @description Görme eşiği (ondalık keskinlik 0,1–1,0); bir göz altındaysa işaret
+                         * @default null
+                         */
+                        acuityBelow?: number | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            /**
+                             * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                             * @enum {string}
+                             */
+                            status: "open" | "published";
+                            /** @description Tarama günü (YYYY-MM-DD) */
+                            screenedOn: string;
+                            /** @description Hedef sınıflar */
+                            classes: {
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description Taramayı yapan: kurum personeli ya da dış sağlık personeli */
+                            performer: {
+                                /** @enum {string} */
+                                kind: "staff" | "external";
+                                membershipId: string | null;
+                                name: string;
+                            };
+                            /** @description Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı */
+                            thresholds: {
+                                bmiBelow: number | null;
+                                bmiAbove: number | null;
+                            } | {
+                                acuityBelow: number | null;
+                            };
+                            /** @description Girilmiş sonuç sayısı */
+                            resultCount: number;
+                            /** @description "Gönderilecek" veli bildirim kaydı sayısı */
+                            notificationCount: number;
+                            createdByUserId: string;
+                            publishedAt: string | null;
+                            publishedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordHealthScreeningResults: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrenci başına sonuç (1–100) */
+                    results: {
+                        /** @description Öğrenci kaydı */
+                        studentId: string;
+                        /**
+                         * @description Var olan sonucun sürümü (düzeltmede zorunlu); yeni sonuçta boş
+                         * @default null
+                         */
+                        expectedVersion?: number | null;
+                        /**
+                         * @description `screened` tarandı, `absent` katılmadı, `refused` reddetti
+                         * @enum {string}
+                         */
+                        outcome: "screened" | "absent" | "refused";
+                        /**
+                         * @description Taranan öğrencide türün ölçümü; katılmayanda boş
+                         * @default null
+                         */
+                        measurement?: ({
+                            /** @description Boy (cm, 40–230, tek ondalık) */
+                            heightCm: number;
+                            /** @description Kilo (kg, 5–250, tek ondalık) */
+                            weightKg: number;
+                        } | {
+                            /** @description Sağ göz (ondalık keskinlik 0,05–2,00; ör. 1,0 = 10/10) */
+                            rightAcuity: number;
+                            /** @description Sol göz (ondalık keskinlik 0,05–2,00; ör. 1,0 = 10/10) */
+                            leftAcuity: number;
+                            /** @description Gözlük ya da lensle mi ölçüldü */
+                            wearsGlasses: boolean;
+                        }) | null;
+                        /**
+                         * @description Taramayı yapanın "ileri değerlendirme önerilir" işareti; eşik aşılırsa zaten konur
+                         * @default false
+                         */
+                        referralRecommended?: boolean;
+                        /** @description Kısa not (≤ 500; şifreli; veliye görünür) */
+                        note?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            created: number;
+                            updated: number;
+                            /** @description Değişmediği için yazılmayan satır */
+                            unchanged: number;
+                            session: {
+                                id: string;
+                                /**
+                                 * @description `growth` boy-kilo, `vision` görme
+                                 * @enum {string}
+                                 */
+                                kind: "growth" | "vision";
+                                /**
+                                 * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                                 * @enum {string}
+                                 */
+                                status: "open" | "published";
+                                /** @description Tarama günü (YYYY-MM-DD) */
+                                screenedOn: string;
+                                /** @description Hedef sınıflar */
+                                classes: {
+                                    id: string;
+                                    name: string;
+                                }[];
+                                /** @description Taramayı yapan: kurum personeli ya da dış sağlık personeli */
+                                performer: {
+                                    /** @enum {string} */
+                                    kind: "staff" | "external";
+                                    membershipId: string | null;
+                                    name: string;
+                                };
+                                /** @description Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı */
+                                thresholds: {
+                                    bmiBelow: number | null;
+                                    bmiAbove: number | null;
+                                } | {
+                                    acuityBelow: number | null;
+                                };
+                                /** @description Girilmiş sonuç sayısı */
+                                resultCount: number;
+                                /** @description "Gönderilecek" veli bildirim kaydı sayısı */
+                                notificationCount: number;
+                                createdByUserId: string;
+                                publishedAt: string | null;
+                                publishedByUserId: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                                /** @description `If-Match` sürümü */
+                                version: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishHealthScreening: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            /**
+                             * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                             * @enum {string}
+                             */
+                            status: "open" | "published";
+                            /** @description Tarama günü (YYYY-MM-DD) */
+                            screenedOn: string;
+                            /** @description Hedef sınıflar */
+                            classes: {
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description Taramayı yapan: kurum personeli ya da dış sağlık personeli */
+                            performer: {
+                                /** @enum {string} */
+                                kind: "staff" | "external";
+                                membershipId: string | null;
+                                name: string;
+                            };
+                            /** @description Kurumun eşikleri: boy-kiloda BKİ alt/üst (kg/m²), görmede ondalık keskinlik alt sınırı */
+                            thresholds: {
+                                bmiBelow: number | null;
+                                bmiAbove: number | null;
+                            } | {
+                                acuityBelow: number | null;
+                            };
+                            /** @description Girilmiş sonuç sayısı */
+                            resultCount: number;
+                            /** @description "Gönderilecek" veli bildirim kaydı sayısı */
+                            notificationCount: number;
+                            createdByUserId: string;
+                            publishedAt: string | null;
+                            publishedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getHealthScreeningReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            sessionId: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            /**
+                             * @description `open` açık (sonuç girilir), `published` yayımlandı (veli görür, değişmez)
+                             * @enum {string}
+                             */
+                            status: "open" | "published";
+                            classes: {
+                                /** @description Bugünkü etkin öğrenci */
+                                roster: number;
+                                screened: number;
+                                absent: number;
+                                refused: number;
+                                /** @description Sonucu girilmemiş öğrenci */
+                                missing: number;
+                                /** @description İleri değerlendirme önerilen; küçük grupta gizli (`null`, K-516) */
+                                referral: number | null;
+                                referralSuppressed: boolean;
+                                classId: string;
+                                className: string;
+                            }[];
+                            total: {
+                                /** @description Bugünkü etkin öğrenci */
+                                roster: number;
+                                screened: number;
+                                absent: number;
+                                refused: number;
+                                /** @description Sonucu girilmemiş öğrenci */
+                                missing: number;
+                                /** @description İleri değerlendirme önerilen; küçük grupta gizli (`null`, K-516) */
+                                referral: number | null;
+                                referralSuppressed: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHealthScreeningStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            active: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHealthScreeningClasses: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Bugünkü etkin öğrenci sayısı */
+                            studentCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGuardianHealthScreeningResults: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Çocuklardan biri */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            sessionId: string;
+                            /**
+                             * @description `growth` boy-kilo, `vision` görme
+                             * @enum {string}
+                             */
+                            kind: "growth" | "vision";
+                            screenedOn: string;
+                            performerName: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /**
+                             * @description `screened` tarandı, `absent` katılmadı, `refused` reddetti
+                             * @enum {string}
+                             */
+                            outcome: "screened" | "absent" | "refused";
+                            /** @description Ölçüm (özel nitelikli; şifreli saklanır); taranmayanda boş */
+                            measurement: ({
+                                /** @enum {string} */
+                                kind: "growth";
+                                /** @description Boy (cm) */
+                                heightCm: number;
+                                /** @description Kilo (kg) */
+                                weightKg: number;
+                                /** @description Beden kitle indeksi (kg/m², tek ondalık; sunucuda hesaplanır) */
+                                bmi: number;
+                            } | {
+                                /** @enum {string} */
+                                kind: "vision";
+                                /** @description Sağ göz ondalık keskinlik */
+                                rightAcuity: number;
+                                /** @description Sol göz ondalık keskinlik */
+                                leftAcuity: number;
+                                wearsGlasses: boolean;
+                            }) | null;
+                            referralRecommended: boolean;
+                            note: string | null;
+                            /** @description Veli bildirim kaydı: `pending` gönderilecek (gönderim yok); öneri yoksa boş */
+                            notificationStatus: "pending" | null;
+                            publishedAt: string;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
                     };
                 };
             };

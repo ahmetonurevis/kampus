@@ -257,6 +257,9 @@ const FinanceInfirmarySection = lazy(async () => ({
 const FinanceHealthAccessLogSection = lazy(async () => ({
   default: (await import('./FinanceHealthAccessLogSection.tsx')).FinanceHealthAccessLogSection,
 }))
+const FinanceHealthScreeningsSection = lazy(async () => ({
+  default: (await import('./FinanceHealthScreeningsSection.tsx')).FinanceHealthScreeningsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -340,6 +343,7 @@ const VIEWS = {
   clubs: { label: 'Kulüpler', param: 'kulupler' },
   infirmary: { label: 'Revir', param: 'revir' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
+  healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -414,6 +418,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
  * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
  * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
+ * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -685,6 +690,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
         {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
+        {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

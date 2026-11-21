@@ -15600,6 +15600,158 @@ export interface paths {
         patch: operations["setMedicationSettings"];
         trace?: never;
     };
+    "/api/v1/finance/emergency-summaries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Acil durum özetleri
+         * @description Öğrenci adına göre; süzgeç durum, sınıf ve öğrenci adı. Satırda metin ve uyarı işareti yoktur, okuma denetlenmez. `needsReview`: sağlık profili onaydan sonra değişti (K-520). Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["listEmergencySummaries"];
+        put?: never;
+        /**
+         * Acil durum özeti aç
+         * @description Öğrenci (yok 422 `emergency_summary_student_not_found`, ayrılmış 422 `emergency_summary_student_inactive`) ve acil eylem metni (10–500). Özet onay bekler ve onaylanana kadar kimseye görünmez (K-520). Öğrencinin etkin özeti varsa 409 `emergency_summary_exists`. Metin şifreli saklanır; sağlık profili kopyalanmaz. Yanıt yönetim ayrıntısıdır ve okuması denetime düşer. Denetim `finance.emergency_summary.create` (alan adları). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createEmergencySummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/emergency-summaries/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Acil durum özeti olan sınıflar
+         * @description Okuyanın görebildiği sınıflar ve her sınıfta yayında özeti olan kayıtlı öğrenci sayısı (K-521). Sağlık bilgisi dönmez, okuma denetlenmez. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["listEmergencySummaryClasses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/emergency-summaries/classes/{classId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sınıfın acil durum özetleri
+         * @description Yalnız yayında özeti olan kayıtlı öğrenciler, ada göre: ad, sınıf, onaylı acil eylem, uyarı türü işaretleri (alerji, kronik durum, düzenli ilaç; ad ve tanı yok), bugün okulda verilecek onaylı ilaç var mı ve acil iletişim (en çok iki kişi, telefon maskeli; K-501, K-522). `purpose=view` ekranda (denetim `finance.emergency_summary.read`), `purpose=print` sınıf PDF'i (denetim `finance.emergency_summary.print`); öğrenci başına bir denetim satırı (alan adları) ve sağlık erişim günlüğü kaydı; gerekçe başlığı isteğe bağlıdır, gönderilmezse `emergency` yazılır (K-521). Kullanıcı başına 20/dk. Kapsam dışı, olmayan ya da başka kurumun sınıfı 404. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["getEmergencyClassCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/emergency-summaries/students/{studentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin acil durum özeti
+         * @description Sınıf kartıyla aynı alanlar. Özet yayında değilse, öğrenci kapsam dışı, ayrılmış, olmayan ya da başka kurumdaysa 404. Denetim `finance.emergency_summary.read` (öğrenci, alan adları) ve sağlık erişim günlüğü; gerekçe başlığı isteğe bağlı, yoksa `emergency` (K-521). Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["getStudentEmergencyCard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/emergency-summaries/students/{studentId}/contacts/{position}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acil iletişim kişisinin tam telefonu
+         * @description Karttaki sıradaki kişinin (1 ya da 2) tam telefonu (K-521). Yalnız kartı görebilen, yayında özeti olan kayıtlı öğrenci için; kişi yoksa 404 `emergency_contact_not_found`, telefonu yoksa 422 `emergency_contact_phone_missing`. Her açılış `finance.emergency_summary.contact_reveal` denetimine düşer (öğrenci ve alan adı; telefon yazılmaz). Yanıt `Cache-Control: no-store`; istemci değeri yalnız bellekte tutar. Kayıt oluşturmadığından `Idempotency-Key` kullanılmaz; her açılış ayrı kayıttır. Kullanıcı başına 10/dk. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        post: operations["revealEmergencyContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/emergency-summaries/{summaryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Acil durum özeti ayrıntısı
+         * @description Onay bekleyen ve yayındaki metin, sağlık profilindeki acil talimat (metne kaynak; kopyalanmaz), uyarı işaretleri, bugünkü ilaç, acil iletişim ve gözden geçirme işareti. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156). Okuma aynı transaction'da `finance.emergency_summary.manage_read` denetimine ve gerekçesiyle sağlık erişim günlüğüne düşer (öğrenci, alan adları). Olmayan, arşivli ya da başka kurumun özeti 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["getEmergencySummary"];
+        put?: never;
+        post?: never;
+        /**
+         * Acil durum özetini arşivle
+         * @description Özet görünmez olur; öğrenci için yeni özet açılabilir. Denetim `finance.emergency_summary.archive`. `If-Match` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        delete: operations["archiveEmergencySummary"];
+        options?: never;
+        head?: never;
+        /**
+         * Acil eylem metnini düzelt
+         * @description Yeni metin onay bekler; yayındaki metin onaylanana kadar görünmeye devam eder. Yayındaki metne dönen düzeltme bekleyen değişikliği kaldırır. Aynı metin 422 `emergency_summary_unchanged`. Denetim `finance.emergency_summary.update`. `If-Match` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateEmergencySummary"];
+        trace?: never;
+    };
+    "/api/v1/finance/emergency-summaries/{summaryId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acil durum özetini onayla
+         * @description Onay bekleyen metni yayına alır; bekleyen metin yoksa ve sağlık profili onaydan sonra değiştiyse yayındaki metni yeniden onaylar (gözden geçirildi). İkisi de yoksa 422 `emergency_summary_nothing_to_approve`. Onay anındaki profil damgası saklanır (K-520). Gövde boş nesne. Denetim `finance.emergency_summary.approve`. `If-Match` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["approveEmergencySummary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/health-access-logs": {
         parameters: {
             query?: never;
@@ -164258,6 +164410,1299 @@ export interface operations {
                             lateToleranceMinutes: number;
                             /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEmergencySummaries: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor */
+                state?: "draft" | "published" | "pending_revision";
+                /** @description Öğrencinin güncel sınıfı */
+                classId?: string;
+                /** @description Öğrenci adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez */
+                            studentActive: boolean;
+                            classId: string | null;
+                            className: string | null;
+                            /**
+                             * @description `draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor
+                             * @enum {string}
+                             */
+                            state: "draft" | "published" | "pending_revision";
+                            needsReview: boolean;
+                            approvedAt: string | null;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createEmergencySummary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrenci kaydı */
+                    studentId: string;
+                    /** @description Acil durumda yapılacaklar (ör. "Arı sokmasında adrenalin kalem çantada; 112 ara.") */
+                    actionText: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez */
+                            studentActive: boolean;
+                            classId: string | null;
+                            className: string | null;
+                            /**
+                             * @description `draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor
+                             * @enum {string}
+                             */
+                            state: "draft" | "published" | "pending_revision";
+                            needsReview: boolean;
+                            approvedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Onay bekleyen metin (özel nitelikli) */
+                            draftText: string | null;
+                            /** @description Yayındaki metin (özel nitelikli) */
+                            publishedText: string | null;
+                            /** @description Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz) */
+                            profileInstructions: string | null;
+                            /** @description Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok) */
+                            alerts: {
+                                allergy: boolean;
+                                chronic: boolean;
+                                medication: boolean;
+                            };
+                            medicationToday: boolean;
+                            contacts: {
+                                /** @description Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır */
+                                position: number;
+                                name: string | null;
+                                relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                /** @description Maskeli telefon (`0532 *** ** 12`) */
+                                phoneMasked: string | null;
+                                hasPhone: boolean;
+                            }[];
+                            approvedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEmergencySummaryClasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            classId: string;
+                            className: string;
+                            /** @description Yayında özeti olan etkin öğrenci sayısı */
+                            summaryCount: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEmergencyClassCards: {
+        parameters: {
+            query?: {
+                /** @description `view` ekranda görüntüleme (varsayılan), `print` sınıf PDF’i */
+                purpose?: "view" | "print";
+            };
+            header?: {
+                /** @description İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`. */
+                "x-access-reason"?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8). */
+                "x-access-reason-note"?: string;
+            };
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            classId: string;
+                            className: string;
+                            /** @description Liste günü (YYYY-MM-DD, Europe/Istanbul) */
+                            listDate: string;
+                            /** @enum {string} */
+                            purpose: "view" | "print";
+                            cards: {
+                                summaryId: string;
+                                studentId: string;
+                                studentName: string;
+                                classId: string | null;
+                                className: string | null;
+                                /** @description Onaylanmış acil eylem metni (özel nitelikli) */
+                                actionText: string;
+                                /** @description Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok) */
+                                alerts: {
+                                    allergy: boolean;
+                                    chronic: boolean;
+                                    medication: boolean;
+                                };
+                                /** @description Bugün okulda verilecek onaylı revir ilacı var mı */
+                                medicationToday: boolean;
+                                /** @description Acil iletişim (en çok iki kişi, telefon maskeli) */
+                                contacts: {
+                                    /** @description Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır */
+                                    position: number;
+                                    name: string | null;
+                                    relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                    /** @description Maskeli telefon (`0532 *** ** 12`) */
+                                    phoneMasked: string | null;
+                                    hasPhone: boolean;
+                                }[];
+                                /** @description Sağlık profili onaydan sonra değişti */
+                                needsReview: boolean;
+                                /** @description Son onay anı (ISO 8601) */
+                                approvedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentEmergencyCard: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`. */
+                "x-access-reason"?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8). */
+                "x-access-reason-note"?: string;
+            };
+            path: {
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            summaryId: string;
+                            studentId: string;
+                            studentName: string;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Onaylanmış acil eylem metni (özel nitelikli) */
+                            actionText: string;
+                            /** @description Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok) */
+                            alerts: {
+                                allergy: boolean;
+                                chronic: boolean;
+                                medication: boolean;
+                            };
+                            /** @description Bugün okulda verilecek onaylı revir ilacı var mı */
+                            medicationToday: boolean;
+                            /** @description Acil iletişim (en çok iki kişi, telefon maskeli) */
+                            contacts: {
+                                /** @description Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır */
+                                position: number;
+                                name: string | null;
+                                relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                /** @description Maskeli telefon (`0532 *** ** 12`) */
+                                phoneMasked: string | null;
+                                hasPhone: boolean;
+                            }[];
+                            /** @description Sağlık profili onaydan sonra değişti */
+                            needsReview: boolean;
+                            /** @description Son onay anı (ISO 8601) */
+                            approvedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revealEmergencyContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                studentId: string;
+                /** @description Acil iletişim kişisinin sırası (1 ya da 2) */
+                position: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            position: number;
+                            name: string | null;
+                            relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                            /** @description Tam telefon; istemci yalnız bellekte tutar */
+                            phone: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEmergencySummary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
+            path: {
+                summaryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez */
+                            studentActive: boolean;
+                            classId: string | null;
+                            className: string | null;
+                            /**
+                             * @description `draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor
+                             * @enum {string}
+                             */
+                            state: "draft" | "published" | "pending_revision";
+                            needsReview: boolean;
+                            approvedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Onay bekleyen metin (özel nitelikli) */
+                            draftText: string | null;
+                            /** @description Yayındaki metin (özel nitelikli) */
+                            publishedText: string | null;
+                            /** @description Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz) */
+                            profileInstructions: string | null;
+                            /** @description Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok) */
+                            alerts: {
+                                allergy: boolean;
+                                chronic: boolean;
+                                medication: boolean;
+                            };
+                            medicationToday: boolean;
+                            contacts: {
+                                /** @description Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır */
+                                position: number;
+                                name: string | null;
+                                relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                /** @description Maskeli telefon (`0532 *** ** 12`) */
+                                phoneMasked: string | null;
+                                hasPhone: boolean;
+                            }[];
+                            approvedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveEmergencySummary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                summaryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {boolean} */
+                            archived: true;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateEmergencySummary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                summaryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Acil durumda yapılacaklar (ör. "Arı sokmasında adrenalin kalem çantada; 112 ara.") */
+                    actionText: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez */
+                            studentActive: boolean;
+                            classId: string | null;
+                            className: string | null;
+                            /**
+                             * @description `draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor
+                             * @enum {string}
+                             */
+                            state: "draft" | "published" | "pending_revision";
+                            needsReview: boolean;
+                            approvedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Onay bekleyen metin (özel nitelikli) */
+                            draftText: string | null;
+                            /** @description Yayındaki metin (özel nitelikli) */
+                            publishedText: string | null;
+                            /** @description Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz) */
+                            profileInstructions: string | null;
+                            /** @description Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok) */
+                            alerts: {
+                                allergy: boolean;
+                                chronic: boolean;
+                                medication: boolean;
+                            };
+                            medicationToday: boolean;
+                            contacts: {
+                                /** @description Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır */
+                                position: number;
+                                name: string | null;
+                                relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                /** @description Maskeli telefon (`0532 *** ** 12`) */
+                                phoneMasked: string | null;
+                                hasPhone: boolean;
+                            }[];
+                            approvedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveEmergencySummary: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                summaryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez */
+                            studentActive: boolean;
+                            classId: string | null;
+                            className: string | null;
+                            /**
+                             * @description `draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor
+                             * @enum {string}
+                             */
+                            state: "draft" | "published" | "pending_revision";
+                            needsReview: boolean;
+                            approvedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Onay bekleyen metin (özel nitelikli) */
+                            draftText: string | null;
+                            /** @description Yayındaki metin (özel nitelikli) */
+                            publishedText: string | null;
+                            /** @description Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz) */
+                            profileInstructions: string | null;
+                            /** @description Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok) */
+                            alerts: {
+                                allergy: boolean;
+                                chronic: boolean;
+                                medication: boolean;
+                            };
+                            medicationToday: boolean;
+                            contacts: {
+                                /** @description Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır */
+                                position: number;
+                                name: string | null;
+                                relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                /** @description Maskeli telefon (`0532 *** ** 12`) */
+                                phoneMasked: string | null;
+                                hasPhone: boolean;
+                            }[];
+                            approvedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
                         };
                     };
                 };

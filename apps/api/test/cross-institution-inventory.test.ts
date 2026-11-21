@@ -4557,6 +4557,54 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: acil durum özeti (ON-165; DOM-FIN-155).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/emergency-summaries', 'get(BASE, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/emergency-summaries', 'create(a, { institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/emergency-summaries/:summaryId', 'detail(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/emergency-summaries/:summaryId',
+          "versioned('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/emergency-summaries/:summaryId/approve',
+          "versioned('POST', `${bUrl}/approve`, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/emergency-summaries/:summaryId',
+          "versioned('DELETE', bUrl, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/emergency-summaries/classes', 'get(CLASSES, a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/emergency-summaries/classes/:classId',
+          "get(classUrl('9-A'), a.admin)",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/emergency-summaries/students/:studentId',
+          "get(studentUrl('s-1'), a.admin)",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/emergency-summaries/students/:studentId/contacts/:position/reveal',
+          "call('POST', revealUrl('s-1', 1), a.admin)",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-emergency-summaries.test.ts',
+        'DOM-FIN-155: başka kurumun özeti 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

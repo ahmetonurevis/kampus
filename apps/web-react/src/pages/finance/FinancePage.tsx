@@ -254,6 +254,10 @@ const FinanceClubsSection = lazy(async () => ({
 const FinanceInfirmarySection = lazy(async () => ({
   default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
 }))
+const FinanceEmergencySummariesSection = lazy(async () => ({
+  default: (await import('./FinanceEmergencySummariesSection.tsx'))
+    .FinanceEmergencySummariesSection,
+}))
 const FinanceHealthAccessLogSection = lazy(async () => ({
   default: (await import('./FinanceHealthAccessLogSection.tsx')).FinanceHealthAccessLogSection,
 }))
@@ -342,6 +346,7 @@ const VIEWS = {
   transport: { label: 'Servis', param: 'servis' },
   clubs: { label: 'Kulüpler', param: 'kulupler' },
   infirmary: { label: 'Revir', param: 'revir' },
+  emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
 } as const
@@ -417,6 +422,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
  * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
  * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
+ * Acil durum özetleri (DOM-FIN-155) ikisine açıktır; ön büro sınıf kartlarını okur, özeti yönetici
+ * yazar ve onaylar (K-520, K-521).
  * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
  * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
  */
@@ -689,6 +696,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'transport' ? <FinanceTransportSection /> : null}
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
         {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
+        {tab === 'emergencySummaries' ? (
+          <FinanceEmergencySummariesSection isManager={isManager} />
+        ) : null}
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
       </Suspense>

@@ -139,6 +139,7 @@ import { registerFinanceTransportDocumentRoutes } from './routes/finance-transpo
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
 import { registerFinanceInfirmaryScheduleRoutes } from './routes/finance-infirmary-schedule.ts'
+import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergency-summaries.ts'
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
 import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 import { registerFinanceHealthScreeningRoutes } from './routes/finance-health-screenings.ts'
@@ -362,6 +363,15 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi günü yoklamasında eksikle devam gerekçesi (DOM-FIN-154).
   'missingReason',
   '*.missingReason',
+  // kvkk: Ö — acil durum özetinin acil eylem metni (DOM-FIN-155, ON-165).
+  'actionText',
+  '*.actionText',
+  'draftText',
+  '*.draftText',
+  'publishedText',
+  '*.publishedText',
+  'profileInstructions',
+  '*.profileInstructions',
   // kvkk: Ö — öğrencinin sağlık ve acil bilgisi (IST-020, DOM-ILT-035) ve şifreli paketi.
   'allergies',
   '*.allergies',
@@ -692,6 +702,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceClubSelectionRoutes(app)
   registerFinanceInfirmaryRoutes(app)
   registerFinanceInfirmaryScheduleRoutes(app)
+  registerFinanceEmergencySummaryRoutes(app)
   registerFinanceHealthAccessRoutes(app)
   registerFinanceTripDayRoutes(app)
   registerFinanceHealthScreeningRoutes(app)

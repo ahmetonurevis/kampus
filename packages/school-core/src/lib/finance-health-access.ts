@@ -211,6 +211,9 @@ export const HEALTH_ACCESS_ACTION_LABELS: Readonly<Record<string, string>> = {
   'finance.trip_day.emergency_card': 'Gezi acil kartı',
   'finance.trip_day.emergency_card_full': 'Gezi acil kartı (tam telefon)',
   'finance.health_screening.read': 'Sağlık taraması',
+  'finance.emergency_summary.read': 'Acil durum özeti',
+  'finance.emergency_summary.print': 'Acil durum özeti (sınıf PDF’i)',
+  'finance.emergency_summary.manage_read': 'Acil durum özeti (yönetim)',
 }
 
 export function healthAccessActionLabel(action: string): string {

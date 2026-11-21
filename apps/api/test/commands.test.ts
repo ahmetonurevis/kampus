@@ -326,6 +326,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // kez yazmaz (routes/finance-health-screenings.ts; DOM-FIN-153, ON-163).
   'POST /api/v1/finance/health-screenings',
   'POST /api/v1/finance/health-screenings/{sessionId}/results',
+  // Acil durum özeti; çift tıklama aynı öğrenciye ikinci özeti açmaz
+  // (routes/finance-emergency-summaries.ts; DOM-FIN-155, ON-165).
+  'POST /api/v1/finance/emergency-summaries',
 ]
 // Onur: kayıt ve finans sonu
 

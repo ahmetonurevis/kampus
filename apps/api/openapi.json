@@ -351707,6 +351707,2689 @@
         }
       }
     },
+    "/api/v1/finance/emergency-summaries": {
+      "get": {
+        "operationId": "listEmergencySummaries",
+        "summary": "Acil durum özetleri",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Öğrenci adına göre; süzgeç durum, sınıf ve öğrenci adı. Satırda metin ve uyarı işareti yoktur, okuma denetlenmez. `needsReview`: sağlık profili onaydan sonra değişti (K-520). Rol: yalnız `yonetici`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "pending_revision"
+              ]
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "`draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Öğrencinin güncel sınıfı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğrenci adında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentActive": {
+                            "type": "boolean",
+                            "description": "Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez"
+                          },
+                          "classId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "pending_revision"
+                            ],
+                            "description": "`draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor"
+                          },
+                          "needsReview": {
+                            "type": "boolean"
+                          },
+                          "approvedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "studentActive",
+                          "classId",
+                          "className",
+                          "state",
+                          "needsReview",
+                          "approvedAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createEmergencySummary",
+        "summary": "Acil durum özeti aç",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Öğrenci (yok 422 `emergency_summary_student_not_found`, ayrılmış 422 `emergency_summary_student_inactive`) ve acil eylem metni (10–500). Özet onay bekler ve onaylanana kadar kimseye görünmez (K-520). Öğrencinin etkin özeti varsa 409 `emergency_summary_exists`. Metin şifreli saklanır; sağlık profili kopyalanmaz. Yanıt yönetim ayrıntısıdır ve okuması denetime düşer. Denetim `finance.emergency_summary.create` (alan adları). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "Öğrenci kaydı"
+                  },
+                  "actionText": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 500,
+                    "description": "Acil durumda yapılacaklar (ör. \"Arı sokmasında adrenalin kalem çantada; 112 ara.\")"
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "actionText"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentActive": {
+                          "type": "boolean",
+                          "description": "Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "pending_revision"
+                          ],
+                          "description": "`draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor"
+                        },
+                        "needsReview": {
+                          "type": "boolean"
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "draftText": {
+                          "description": "Onay bekleyen metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedText": {
+                          "description": "Yayındaki metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "profileInstructions": {
+                          "description": "Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "alerts": {
+                          "type": "object",
+                          "properties": {
+                            "allergy": {
+                              "type": "boolean"
+                            },
+                            "chronic": {
+                              "type": "boolean"
+                            },
+                            "medication": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "allergy",
+                            "chronic",
+                            "medication"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok)"
+                        },
+                        "medicationToday": {
+                          "type": "boolean"
+                        },
+                        "contacts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "relationship": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mother",
+                                      "father",
+                                      "legal_guardian",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "phoneMasked": {
+                                "description": "Maskeli telefon (`0532 *** ** 12`)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasPhone": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "name",
+                              "relationship",
+                              "phoneMasked",
+                              "hasPhone"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "studentActive",
+                        "classId",
+                        "className",
+                        "state",
+                        "needsReview",
+                        "approvedAt",
+                        "version",
+                        "draftText",
+                        "publishedText",
+                        "profileInstructions",
+                        "alerts",
+                        "medicationToday",
+                        "contacts",
+                        "approvedByName",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/emergency-summaries/classes": {
+      "get": {
+        "operationId": "listEmergencySummaryClasses",
+        "summary": "Acil durum özeti olan sınıflar",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Okuyanın görebildiği sınıflar ve her sınıfta yayında özeti olan kayıtlı öğrenci sayısı (K-521). Sağlık bilgisi dönmez, okuma denetlenmez. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "classId": {
+                            "type": "string"
+                          },
+                          "className": {
+                            "type": "string"
+                          },
+                          "summaryCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yayında özeti olan etkin öğrenci sayısı"
+                          }
+                        },
+                        "required": [
+                          "classId",
+                          "className",
+                          "summaryCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/emergency-summaries/classes/{classId}": {
+      "get": {
+        "operationId": "getEmergencyClassCards",
+        "summary": "Sınıfın acil durum özetleri",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Yalnız yayında özeti olan kayıtlı öğrenciler, ada göre: ad, sınıf, onaylı acil eylem, uyarı türü işaretleri (alerji, kronik durum, düzenli ilaç; ad ve tanı yok), bugün okulda verilecek onaylı ilaç var mı ve acil iletişim (en çok iki kişi, telefon maskeli; K-501, K-522). `purpose=view` ekranda (denetim `finance.emergency_summary.read`), `purpose=print` sınıf PDF'i (denetim `finance.emergency_summary.print`); öğrenci başına bir denetim satırı (alan adları) ve sağlık erişim günlüğü kaydı; gerekçe başlığı isteğe bağlıdır, gönderilmezse `emergency` yazılır (K-521). Kullanıcı başına 20/dk. Kapsam dışı, olmayan ya da başka kurumun sınıfı 404. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "print"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekranda görüntüleme (varsayılan), `print` sınıf PDF’i"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "in": "path",
+            "name": "classId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": false,
+            "description": "İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "classId": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": "string"
+                        },
+                        "listDate": {
+                          "type": "string",
+                          "description": "Liste günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "purpose": {
+                          "type": "string",
+                          "enum": [
+                            "view",
+                            "print"
+                          ]
+                        },
+                        "cards": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "summaryId": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "classId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "className": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "actionText": {
+                                "type": "string",
+                                "description": "Onaylanmış acil eylem metni (özel nitelikli)"
+                              },
+                              "alerts": {
+                                "type": "object",
+                                "properties": {
+                                  "allergy": {
+                                    "type": "boolean"
+                                  },
+                                  "chronic": {
+                                    "type": "boolean"
+                                  },
+                                  "medication": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "allergy",
+                                  "chronic",
+                                  "medication"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok)"
+                              },
+                              "medicationToday": {
+                                "type": "boolean",
+                                "description": "Bugün okulda verilecek onaylı revir ilacı var mı"
+                              },
+                              "contacts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "position": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır"
+                                    },
+                                    "name": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "relationship": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "mother",
+                                            "father",
+                                            "legal_guardian",
+                                            "other"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "phoneMasked": {
+                                      "description": "Maskeli telefon (`0532 *** ** 12`)",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "hasPhone": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "position",
+                                    "name",
+                                    "relationship",
+                                    "phoneMasked",
+                                    "hasPhone"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Acil iletişim (en çok iki kişi, telefon maskeli)"
+                              },
+                              "needsReview": {
+                                "type": "boolean",
+                                "description": "Sağlık profili onaydan sonra değişti"
+                              },
+                              "approvedAt": {
+                                "type": "string",
+                                "description": "Son onay anı (ISO 8601)"
+                              }
+                            },
+                            "required": [
+                              "summaryId",
+                              "studentId",
+                              "studentName",
+                              "classId",
+                              "className",
+                              "actionText",
+                              "alerts",
+                              "medicationToday",
+                              "contacts",
+                              "needsReview",
+                              "approvedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "classId",
+                        "className",
+                        "listDate",
+                        "purpose",
+                        "cards"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/emergency-summaries/students/{studentId}": {
+      "get": {
+        "operationId": "getStudentEmergencyCard",
+        "summary": "Öğrencinin acil durum özeti",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Sınıf kartıyla aynı alanlar. Özet yayında değilse, öğrenci kapsam dışı, ayrılmış, olmayan ya da başka kurumdaysa 404. Denetim `finance.emergency_summary.read` (öğrenci, alan adları) ve sağlık erişim günlüğü; gerekçe başlığı isteğe bağlı, yoksa `emergency` (K-521). Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": false,
+            "description": "İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "summaryId": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actionText": {
+                          "type": "string",
+                          "description": "Onaylanmış acil eylem metni (özel nitelikli)"
+                        },
+                        "alerts": {
+                          "type": "object",
+                          "properties": {
+                            "allergy": {
+                              "type": "boolean"
+                            },
+                            "chronic": {
+                              "type": "boolean"
+                            },
+                            "medication": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "allergy",
+                            "chronic",
+                            "medication"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok)"
+                        },
+                        "medicationToday": {
+                          "type": "boolean",
+                          "description": "Bugün okulda verilecek onaylı revir ilacı var mı"
+                        },
+                        "contacts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "relationship": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mother",
+                                      "father",
+                                      "legal_guardian",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "phoneMasked": {
+                                "description": "Maskeli telefon (`0532 *** ** 12`)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasPhone": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "name",
+                              "relationship",
+                              "phoneMasked",
+                              "hasPhone"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Acil iletişim (en çok iki kişi, telefon maskeli)"
+                        },
+                        "needsReview": {
+                          "type": "boolean",
+                          "description": "Sağlık profili onaydan sonra değişti"
+                        },
+                        "approvedAt": {
+                          "type": "string",
+                          "description": "Son onay anı (ISO 8601)"
+                        }
+                      },
+                      "required": [
+                        "summaryId",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "actionText",
+                        "alerts",
+                        "medicationToday",
+                        "contacts",
+                        "needsReview",
+                        "approvedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/emergency-summaries/students/{studentId}/contacts/{position}/reveal": {
+      "post": {
+        "operationId": "revealEmergencyContact",
+        "summary": "Acil iletişim kişisinin tam telefonu",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Karttaki sıradaki kişinin (1 ya da 2) tam telefonu (K-521). Yalnız kartı görebilen, yayında özeti olan kayıtlı öğrenci için; kişi yoksa 404 `emergency_contact_not_found`, telefonu yoksa 422 `emergency_contact_phone_missing`. Her açılış `finance.emergency_summary.contact_reveal` denetimine düşer (öğrenci ve alan adı; telefon yazılmaz). Yanıt `Cache-Control: no-store`; istemci değeri yalnız bellekte tutar. Kayıt oluşturmadığından `Idempotency-Key` kullanılmaz; her açılış ayrı kayıttır. Kullanıcı başına 10/dk. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2
+            },
+            "in": "path",
+            "name": "position",
+            "required": true,
+            "description": "Acil iletişim kişisinin sırası (1 ya da 2)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "position": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "relationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "mother",
+                                "father",
+                                "legal_guardian",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "phone": {
+                          "type": "string",
+                          "description": "Tam telefon; istemci yalnız bellekte tutar"
+                        }
+                      },
+                      "required": [
+                        "position",
+                        "name",
+                        "relationship",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/emergency-summaries/{summaryId}": {
+      "get": {
+        "operationId": "getEmergencySummary",
+        "summary": "Acil durum özeti ayrıntısı",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Onay bekleyen ve yayındaki metin, sağlık profilindeki acil talimat (metne kaynak; kopyalanmaz), uyarı işaretleri, bugünkü ilaç, acil iletişim ve gözden geçirme işareti. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156). Okuma aynı transaction'da `finance.emergency_summary.manage_read` denetimine ve gerekçesiyle sağlık erişim günlüğüne düşer (öğrenci, alan adları). Olmayan, arşivli ya da başka kurumun özeti 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "summaryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentActive": {
+                          "type": "boolean",
+                          "description": "Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "pending_revision"
+                          ],
+                          "description": "`draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor"
+                        },
+                        "needsReview": {
+                          "type": "boolean"
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "draftText": {
+                          "description": "Onay bekleyen metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedText": {
+                          "description": "Yayındaki metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "profileInstructions": {
+                          "description": "Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "alerts": {
+                          "type": "object",
+                          "properties": {
+                            "allergy": {
+                              "type": "boolean"
+                            },
+                            "chronic": {
+                              "type": "boolean"
+                            },
+                            "medication": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "allergy",
+                            "chronic",
+                            "medication"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok)"
+                        },
+                        "medicationToday": {
+                          "type": "boolean"
+                        },
+                        "contacts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "relationship": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mother",
+                                      "father",
+                                      "legal_guardian",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "phoneMasked": {
+                                "description": "Maskeli telefon (`0532 *** ** 12`)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasPhone": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "name",
+                              "relationship",
+                              "phoneMasked",
+                              "hasPhone"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "studentActive",
+                        "classId",
+                        "className",
+                        "state",
+                        "needsReview",
+                        "approvedAt",
+                        "version",
+                        "draftText",
+                        "publishedText",
+                        "profileInstructions",
+                        "alerts",
+                        "medicationToday",
+                        "contacts",
+                        "approvedByName",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateEmergencySummary",
+        "summary": "Acil eylem metnini düzelt",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Yeni metin onay bekler; yayındaki metin onaylanana kadar görünmeye devam eder. Yayındaki metne dönen düzeltme bekleyen değişikliği kaldırır. Aynı metin 422 `emergency_summary_unchanged`. Denetim `finance.emergency_summary.update`. `If-Match` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "actionText": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 500,
+                    "description": "Acil durumda yapılacaklar (ör. \"Arı sokmasında adrenalin kalem çantada; 112 ara.\")"
+                  }
+                },
+                "required": [
+                  "actionText"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "summaryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentActive": {
+                          "type": "boolean",
+                          "description": "Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "pending_revision"
+                          ],
+                          "description": "`draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor"
+                        },
+                        "needsReview": {
+                          "type": "boolean"
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "draftText": {
+                          "description": "Onay bekleyen metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedText": {
+                          "description": "Yayındaki metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "profileInstructions": {
+                          "description": "Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "alerts": {
+                          "type": "object",
+                          "properties": {
+                            "allergy": {
+                              "type": "boolean"
+                            },
+                            "chronic": {
+                              "type": "boolean"
+                            },
+                            "medication": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "allergy",
+                            "chronic",
+                            "medication"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok)"
+                        },
+                        "medicationToday": {
+                          "type": "boolean"
+                        },
+                        "contacts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "relationship": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mother",
+                                      "father",
+                                      "legal_guardian",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "phoneMasked": {
+                                "description": "Maskeli telefon (`0532 *** ** 12`)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasPhone": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "name",
+                              "relationship",
+                              "phoneMasked",
+                              "hasPhone"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "studentActive",
+                        "classId",
+                        "className",
+                        "state",
+                        "needsReview",
+                        "approvedAt",
+                        "version",
+                        "draftText",
+                        "publishedText",
+                        "profileInstructions",
+                        "alerts",
+                        "medicationToday",
+                        "contacts",
+                        "approvedByName",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveEmergencySummary",
+        "summary": "Acil durum özetini arşivle",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Özet görünmez olur; öğrenci için yeni özet açılabilir. Denetim `finance.emergency_summary.archive`. `If-Match` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "summaryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "archived": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archived"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/emergency-summaries/{summaryId}/approve": {
+      "post": {
+        "operationId": "approveEmergencySummary",
+        "summary": "Acil durum özetini onayla",
+        "tags": [
+          "finance-emergency-summaries"
+        ],
+        "description": "Onay bekleyen metni yayına alır; bekleyen metin yoksa ve sağlık profili onaydan sonra değiştiyse yayındaki metni yeniden onaylar (gözden geçirildi). İkisi de yoksa 422 `emergency_summary_nothing_to_approve`. Onay anındaki profil damgası saklanır (K-520). Gövde boş nesne. Denetim `finance.emergency_summary.approve`. `If-Match` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "summaryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentActive": {
+                          "type": "boolean",
+                          "description": "Öğrenci kayıtlı mı; ayrılan öğrencinin özeti görünmez"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "pending_revision"
+                          ],
+                          "description": "`draft` onay bekliyor (görünmez), `published` yayında, `pending_revision` yayında; değişiklik onay bekliyor"
+                        },
+                        "needsReview": {
+                          "type": "boolean"
+                        },
+                        "approvedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "draftText": {
+                          "description": "Onay bekleyen metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishedText": {
+                          "description": "Yayındaki metin (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "profileInstructions": {
+                          "description": "Sağlık profilindeki acil talimat (DOM-ILT-035; metne kaynak, kopyalanmaz)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "alerts": {
+                          "type": "object",
+                          "properties": {
+                            "allergy": {
+                              "type": "boolean"
+                            },
+                            "chronic": {
+                              "type": "boolean"
+                            },
+                            "medication": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "allergy",
+                            "chronic",
+                            "medication"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Uyarı türü işaretleri (sağlık profilinden; ad ve tanı yok)"
+                        },
+                        "medicationToday": {
+                          "type": "boolean"
+                        },
+                        "contacts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kişi sırası (1 ya da 2); tam telefon açılışında kullanılır"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "relationship": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mother",
+                                      "father",
+                                      "legal_guardian",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "phoneMasked": {
+                                "description": "Maskeli telefon (`0532 *** ** 12`)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "hasPhone": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "position",
+                              "name",
+                              "relationship",
+                              "phoneMasked",
+                              "hasPhone"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "studentActive",
+                        "classId",
+                        "className",
+                        "state",
+                        "needsReview",
+                        "approvedAt",
+                        "version",
+                        "draftText",
+                        "publishedText",
+                        "profileInstructions",
+                        "alerts",
+                        "medicationToday",
+                        "contacts",
+                        "approvedByName",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/health-access-logs": {
       "get": {
         "operationId": "listHealthAccessLogs",

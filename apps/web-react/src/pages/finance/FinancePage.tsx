@@ -489,6 +489,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'teacherFeedback'
     )
       return isManager
+    if (value === 'socialActivities') return isManager && institutionType === 'school'
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'

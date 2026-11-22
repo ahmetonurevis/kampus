@@ -130,11 +130,12 @@ describe('DOM-FIN-158: gezi sonrası rapor, rızalı fotoğraf ve değerlendirme
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, institutionId), eq(auditLog.action, action)))
   async function snapshot(institutionId: string) {
-    const of = <T extends typeof tripReports | typeof tripReportPhotos>(table: T) =>
-      db.select().from(table).where(eq(table.institutionId, institutionId))
     return JSON.stringify([
-      await of(tripReports),
-      await of(tripReportPhotos),
+      await db.select().from(tripReports).where(eq(tripReports.institutionId, institutionId)),
+      await db
+        .select()
+        .from(tripReportPhotos)
+        .where(eq(tripReportPhotos.institutionId, institutionId)),
       await db
         .select()
         .from(tripReportPhotoTags)

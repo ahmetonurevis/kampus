@@ -427,9 +427,9 @@ describe('DOM-FIN-158: katılımcı değerlendirmesi (K-531)', () => {
       comments: null,
     })
     const many = [
-      { score: 5, comment: 'Çok güzeldi' },
+      { score: 5, comment: 'Rehber iyiydi' },
       { score: 4, comment: null },
-      { score: 4, comment: 'Rehber iyiydi' },
+      { score: 4, comment: 'Çok güzeldi' },
       { score: 3, comment: null },
       { score: 2, comment: null },
     ]

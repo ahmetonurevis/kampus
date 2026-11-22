@@ -664,7 +664,7 @@ export interface TripEvaluationSummary {
   average: number | null
   /** 1–5 puanların sayısı (dizin 0 → 1 puan); gizliyse `null`. */
   distribution: number[] | null
-  /** Yorumlar, ad ve rol olmadan, puana göre değil yazılış sırasıyla; gizliyse `null`. */
+  /** Yorumlar, ad ve rol olmadan, alfabe sırasıyla (yazılış sırası yanıtlayanı ele vermez); gizliyse `null`. */
   comments: string[] | null
 }
 
@@ -690,6 +690,8 @@ export function tripEvaluationSummary(
     hidden: false,
     average: Math.round((total / responses) * 10) / 10,
     distribution,
-    comments: rows.flatMap((row) => (row.comment === null ? [] : [row.comment])),
+    comments: rows
+      .flatMap((row) => (row.comment === null ? [] : [row.comment]))
+      .sort((a, b) => a.localeCompare(b, 'tr')),
   }
 }

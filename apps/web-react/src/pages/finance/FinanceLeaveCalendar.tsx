@@ -36,6 +36,7 @@ import {
   entriesOn,
   entryLabel,
   examWeekOn,
+  holidayOn,
   isWeekend,
   periodTitle,
   settingsBody,
@@ -52,7 +53,7 @@ import {
  * görünümü. Geniş ekranda tablo ızgarası (satır hafta, sütun gün), dar ekranda yalnız dolu günlerin
  * listesi. Yönetici bekleyen ve onaylı izinleri tür adıyla, raporu yalnız "Raporlu" görür; aynı
  * branşta eşiğe ulaşan günler ve sınav haftaları işaretlidir, eşik ve sınav haftaları ayardan
- * değişir. Ön büro yalnız onaylı izinleri türsüz ("İzinli") okur.
+ * değişir. Kurum tatilleri okul takviminden gelir (DOM-FIN-163, K-545); burada ayarlanmaz. Ön büro yalnız onaylı izinleri türsüz ("İzinli") okur.
  */
 export function FinanceLeaveCalendar({ canManage }: { canManage: boolean }) {
   const today = dayKey()
@@ -186,9 +187,13 @@ export function FinanceLeaveCalendar({ canManage }: { canManage: boolean }) {
 
 function DayDetails({ data, day }: { data: LeaveCalendar; day: string }) {
   const exam = examWeekOn(data.examWeeks, day)
+  const holiday = holidayOn(data.holidays, day)
   const busy = busyOn(data.busyDays, data.subjects, day)
   return (
     <>
+      {holiday === null ? null : (
+        <StatusBadge text={`Tatil: ${holiday}`} tone="gray" className="whitespace-normal" />
+      )}
       {exam === null ? null : (
         <StatusBadge text={`Sınav haftası: ${exam}`} tone="purple" className="whitespace-normal" />
       )}

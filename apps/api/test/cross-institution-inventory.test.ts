@@ -4892,6 +4892,49 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: okul etkinlik takvimi (ON-090; DOM-FIN-163).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/school-calendar', 'get(`${BASE}?${MONTH}`, a.admin)'],
+        [
+          'liste',
+          'GET /api/v1/finance/school-calendar/events',
+          'get(`${EVENTS}?${MONTH}`, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/school-calendar/my', 'get(`${MY}?${MONTH}`, aParent)'],
+        ['liste', 'GET /api/v1/finance/school-calendar/ical', 'get(`${ICAL}?${MONTH}`, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/school-calendar/events', "audienceIds: ['c-b']"],
+        [
+          'kayıt',
+          'GET /api/v1/finance/school-calendar/events/:eventId',
+          'assertError(await get(url, a.admin), 404)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/school-calendar/events/:eventId',
+          "{ title: 'Ele geçir' }",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/school-calendar/events/:eventId/publish',
+          '`${url}/publish`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/school-calendar/events/:eventId/cancel',
+          "{ reason: 'Başka kurumdan iptal' }",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-school-calendar.test.ts',
+        'DOM-FIN-163: başka kurumun etkinliği 404, B değişmez; listede ve takvimde B yok; institutionId ve B sınıfı etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -1219,6 +1219,13 @@
       "when": 1795343997985,
       "tag": "0173_create_meal_allergy_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1795346776161,
+      "tag": "0174_create_school_calendar_events",
+      "breakpoints": true
     }
   ]
 }

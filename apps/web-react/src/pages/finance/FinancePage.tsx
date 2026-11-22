@@ -282,6 +282,9 @@ const FinanceEarlyDismissalsSection = lazy(async () => ({
 const FinanceTripReportsSection = lazy(async () => ({
   default: (await import('./FinanceTripReportsSection.tsx')).FinanceTripReportsSection,
 }))
+const FinanceSchoolCalendarSection = lazy(async () => ({
+  default: (await import('./FinanceSchoolCalendarSection.tsx')).FinanceSchoolCalendarSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -373,6 +376,7 @@ const VIEWS = {
   socialActivities: { label: 'Sosyal etkinlik saatleri', param: 'sosyal-etkinlik' },
   earlyDismissals: { label: 'Erken çıkış', param: 'erken-cikis' },
   tripReports: { label: 'Gezi raporları', param: 'gezi-raporlari' },
+  schoolCalendar: { label: 'Okul takvimi', param: 'okul-takvimi' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -459,6 +463,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Erken çıkış (DOM-FIN-161) ikisine açıktır; ön büro onaylar ve teslim eder (K-538, K-539).
  * Gezi raporları (DOM-FIN-158) ikisine açıktır; ön büro okur, raporu görevli öğretmen ya da
  * yönetici yazar, onay yöneticide (K-529).
+ * Okul takvimi (DOM-FIN-163) ikisine açıktır; etkinliği ikisi de yazar, yayımlar ve iptal eder
+ * (K-544).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -742,6 +748,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'socialActivities' ? <FinanceSocialActivitiesSection /> : null}
         {tab === 'earlyDismissals' ? <FinanceEarlyDismissalsSection /> : null}
         {tab === 'tripReports' ? <FinanceTripReportsSection /> : null}
+        {tab === 'schoolCalendar' ? <FinanceSchoolCalendarSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -69,6 +69,11 @@ export const leaveCalendarResponse = dataResponse(
     ...period,
     entries: z.array(entry).describe('Aralığa değen izinler, başlangıca göre'),
     examWeeks: z.array(examWeek).describe('Aralığa değen sınav haftaları'),
+    holidays: z
+      .array(z.object({ title: z.string(), ...period }))
+      .describe(
+        'Aralığa değen kurum tatilleri: okul takviminin yayımlanmış, tüm kurum hedefli tatil etkinlikleri (DOM-FIN-163, K-545); takvim modülü kapalı olsa da okunur',
+      ),
     busyDays: z
       .array(z.object({ day: z.string(), subjectId: z.string(), count: z.number().int() }))
       .describe('Aynı branşta izinli sayısının eşiğe ulaştığı günler (ön büroda boş)'),

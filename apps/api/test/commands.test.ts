@@ -337,6 +337,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-teacher-feedback.ts; DOM-FIN-159, ON-213).
   'POST /api/v1/finance/teacher-feedback-surveys',
   'POST /api/v1/finance/teacher-feedback-surveys/{surveyId}/responses',
+  // Sosyal etkinlik, toplu saat girişi ve öğrenci beyanı; çift tıklama ikinci kaydı açmaz
+  // (routes/finance-social-activities.ts; DOM-FIN-160, ON-170).
+  'POST /api/v1/finance/social-activities',
+  'POST /api/v1/finance/social-activities/{activityId}/hours',
+  'POST /api/v1/finance/social-activities/my/hours',
 ]
 // Onur: kayıt ve finans sonu
 

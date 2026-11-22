@@ -4699,6 +4699,91 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: sosyal etkinlik ve gönüllülük saatleri (ON-170; DOM-FIN-160).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/social-activities/my', 'get(MY, aPupil)'],
+        [
+          'liste',
+          'GET /api/v1/finance/social-activities/my/activities',
+          'get(`${MY}/activities`, aPupil)',
+        ],
+        ['gövde', 'POST /api/v1/finance/social-activities/my/hours', 'post(`${MY}/hours`, aPupil'],
+        ['liste', 'GET /api/v1/finance/social-activities/settings', 'get(SETTINGS, b.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/social-activities/settings',
+          'totalTargetHours: 20, institutionId: b.id',
+        ],
+        ['liste', 'GET /api/v1/finance/social-activities/hours', 'get(HOURS, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/hours/:entryId/approve',
+          "entryUrl(bPending.id, 'approve'), a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/hours/:entryId/reject',
+          "entryUrl(bPending.id, 'reject'), a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/hours/:entryId/reverse',
+          "entryUrl(bEntry.id, 'reverse'), a.admin",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/social-activities/classes',
+          'get(`${BASE}/classes`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/social-activities/classes/:classId',
+          'get(`${BASE}/classes/c5`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/social-activities/students/:studentId',
+          'get(`${BASE}/students/s5`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/social-activities/students/:studentId/certificate',
+          'get(`${BASE}/students/s5/certificate`, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/social-activities', 'get(BASE, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/social-activities',
+          'activityBody(a.teacherId, { institutionId: b.id })',
+        ],
+        ['kayıt', 'GET /api/v1/finance/social-activities/:activityId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/social-activities/:activityId',
+          "versioned('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/social-activities/:activityId',
+          "versioned('DELETE', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/:activityId/hours',
+          'post(`${bUrl}/hours`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-social-activities.test.ts',
+        'DOM-FIN-160: başka kurumun etkinliği ve kaydı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

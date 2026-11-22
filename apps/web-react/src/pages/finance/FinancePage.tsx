@@ -270,6 +270,9 @@ const FinanceHealthScreeningsSection = lazy(async () => ({
 const FinanceTeacherFeedbackSection = lazy(async () => ({
   default: (await import('./FinanceTeacherFeedbackSection.tsx')).FinanceTeacherFeedbackSection,
 }))
+const FinanceSocialActivitiesSection = lazy(async () => ({
+  default: (await import('./FinanceSocialActivitiesSection.tsx')).FinanceSocialActivitiesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -357,6 +360,7 @@ const VIEWS = {
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
   teacherFeedback: { label: 'Öğretmen geri bildirimi', param: 'ogretmen-geri-bildirimi' },
+  socialActivities: { label: 'Sosyal etkinlik saatleri', param: 'sosyal-etkinlik' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -438,6 +442,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
  * Öğretmen geri bildirimi (DOM-FIN-159) yalnız yöneticidedir; öğretmen kendi sonucunu rol
  * kabuğundaki görünümde, öğrenci ve veli yanıtını kendi ekranında görür (K-532).
+ * Sosyal etkinlik saatleri (DOM-FIN-160) yalnız yöneticide ve yalnız okulda; öğretmen ekranı
+ * platform kabuğundadır (K-535).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -483,6 +489,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'teacherFeedback'
     )
       return isManager
+    if (value === 'socialActivities') return isManager && institutionType === 'school'
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
@@ -716,6 +723,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
         {tab === 'teacherFeedback' ? <FinanceTeacherFeedbackSection /> : null}
+        {tab === 'socialActivities' ? <FinanceSocialActivitiesSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

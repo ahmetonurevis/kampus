@@ -75,13 +75,13 @@ const ASSIGNMENT = 'transport_assignments'
 // --- Ortak ---------------------------------------------------------------------------------------
 
 /**
- * Okul yaşamı modülü açık mı (`transport`, `clubs`; DOM-YTK-040). Uçlar finans yolundadır ve
- * `finance` modülüne bağlıdır (kayıt/finans envanteri); servis ve kulüp ayrıca kendi modülü
+ * Okul yaşamı modülü açık mı (`transport`, `clubs`, `meals`; DOM-YTK-040). Uçlar finans yolundadır ve
+ * `finance` modülüne bağlıdır (kayıt/finans envanteri); servis, kulüp ve yemek menüsü ayrıca kendi modülü
  * kapalıyken 403 `module_disabled` döner. Rota `preValidation`'ında, gövde doğrulamasından önce.
  */
 export async function assertSchoolLifeModule(
   ctx: ServiceContext,
-  key: 'transport' | 'clubs',
+  key: 'transport' | 'clubs' | 'meals',
 ): Promise<void> {
   const institution = await getInstitutionModules(ctx.db, ctx.institutionId)
   if (institution?.modules[key] !== true) {

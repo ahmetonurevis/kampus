@@ -137,6 +137,7 @@ import { registerFinanceTransportRosterRoutes } from './routes/finance-transport
 import { registerFinanceTransportTripRoutes } from './routes/finance-transport-trips.ts'
 import { registerFinanceTransportDocumentRoutes } from './routes/finance-transport-documents.ts'
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
+import { registerFinanceMealMenuRoutes } from './routes/finance-meal-menus.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
 import { registerFinanceInfirmaryScheduleRoutes } from './routes/finance-infirmary-schedule.ts'
 import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergency-summaries.ts'
@@ -363,6 +364,9 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi günü yoklamasında eksikle devam gerekçesi (DOM-FIN-154).
   'missingReason',
   '*.missingReason',
+  // kvkk: K — yemek menüsünün geçmiş gün düzeltme gerekçesi (DOM-FIN-157, ON-149).
+  'correctionReason',
+  '*.correctionReason',
   // kvkk: Ö — acil durum özetinin acil eylem metni (DOM-FIN-155, ON-165).
   'actionText',
   '*.actionText',
@@ -700,6 +704,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTransportTripRoutes(app)
   registerFinanceTransportDocumentRoutes(app, storage)
   registerFinanceClubSelectionRoutes(app)
+  registerFinanceMealMenuRoutes(app)
   registerFinanceInfirmaryRoutes(app)
   registerFinanceInfirmaryScheduleRoutes(app)
   registerFinanceEmergencySummaryRoutes(app)

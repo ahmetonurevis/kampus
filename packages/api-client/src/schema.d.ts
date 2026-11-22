@@ -15204,6 +15204,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/meal-menus/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haftalık yemek menüsü (veli ve öğrenci)
+         * @description Velinin bağlı çocuklarının ya da öğrencinin kampüsü için haftanın **yayımlanmış** menüsü: kampüsün kendi menüsü, yoksa bütün kampüslerin menüsü (K-526). Gün başına öğünler, kalemler, 14 alerjen işareti, besin değeri ve günlük toplam (K-528). Taslak görünmez; menü yoksa `menus` boş. Kapsam sunucuda core `mealMenus` kuralıyla daralır. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `meals`.
+         */
+        get: operations["listMyMealMenus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-menus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haftalık yemek menüleri
+         * @description Arşivlenmemiş menüler, yeni hafta önce; kampüs, durum, kalem ve gün sayısı. Süzgeç durum, kampüs (`all` bütün kampüs menüleri) ve başlangıç haftası. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["listMealMenus"];
+        put?: never;
+        /**
+         * Haftalık menü aç ya da kopyala
+         * @description Taslak menü açar: hafta (pazartesi; tamamen geçmiş 422 `meal_menu_week_past`, bir yıldan ileri 422 `meal_menu_week_too_far`), isteğe bağlı kampüs (yok 422 `meal_menu_branch_not_found`). Aynı hafta ve kampüste ikinci menü 409 `meal_menu_exists`. `copyFromMenuId` verilirse kaynağın kalemleri aynı hafta günlerine kopyalanır, kurumun kapalı öğünü atlanır (kaynak yok 422 `meal_menu_source_not_found`; K-526). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        post: operations["createMealMenu"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-menus/{menuId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Haftalık menü ayrıntısı
+         * @description Haftanın yedi günü: öğünler, kalemler, alerjen işaretleri, besin değeri ve günlük toplam (K-528); geçmiş gün düzeltmeleri. Başka kurumun ya da arşivli menü 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealMenu"];
+        put?: never;
+        post?: never;
+        /**
+         * Taslak menüyü arşivle
+         * @description Yalnız taslak arşivlenir; yayımlanmış 422 `meal_menu_published` (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        delete: operations["archiveMealMenu"];
+        options?: never;
+        head?: never;
+        /**
+         * Menü hücrelerini yaz
+         * @description Gönderilen gün × öğün hücreleri yeniden yazılır (boş liste hücreyi boşaltır); gönderilmeyen hücre değişmez. Gün haftada olmalı (422 `meal_menu_date_outside_week`), öğün kurumda açık olmalı (422 `meal_kind_disabled`); hiçbir hücre değişmediyse 422 `meal_menu_unchanged`. Yayımlanmış menüde bugünden önceki gün yalnız yöneticinin gerekçeli düzeltmesidir: gerekçe yok 422 `meal_menu_day_past`, yönetici değil 403 `meal_menu_correction_forbidden`, gerekçe gereksiz 422 `meal_menu_correction_not_needed`; önceki kalemler arşivde kalır (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        patch: operations["updateMealMenu"];
+        trace?: never;
+    };
+    "/api/v1/finance/meal-menus/{menuId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Menüyü yayımla
+         * @description Taslak menü veli ve öğrenciye açılır. Yayımlanmış 422 `meal_menu_not_draft`, yemeksiz 422 `meal_menu_empty` (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        post: operations["publishMealMenu"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-menus/{menuId}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Menüyü yayımdan kaldır
+         * @description Hafta başlamadan menü taslağa döner; başlamış haftada 422 `meal_menu_week_started`, taslakta 422 `meal_menu_not_published` (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        post: operations["unpublishMealMenu"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-menu-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğün ayarı
+         * @description Kurumun kullandığı öğünler (kahvaltı, öğle, ikindi ara öğünü); hiç kaydedilmediyse yalnız öğle ve sürüm 1 (K-526). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealMenuSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öğün ayarını kaydet
+         * @description En az bir öğün; değişiklik yoksa 422 `meal_menu_settings_unchanged`. Kapanan öğünün mevcut kalemleri görünür kalır, yeni kalem yazılmaz (K-526). `If-Match` zorunlu (hiç kaydedilmediyse 1). Rol: `yonetici`; diğer roller 403. Modüller `finance` ve `meals`.
+         */
+        patch: operations["setMealMenuSettings"];
+        trace?: never;
+    };
     "/api/v1/finance/infirmary/visits": {
         parameters: {
             query?: never;
@@ -161213,6 +161349,1541 @@ export interface operations {
                                 assignedCount: number;
                                 waitlistedStudentCount: number;
                             } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyMealMenus: {
+        parameters: {
+            query?: {
+                /** @description Haftanın herhangi bir günü (YYYY-MM-DD); verilmezse bu hafta (Europe/Istanbul) */
+                weekStart?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            weekStart: string;
+                            weekEnd: string;
+                            /** @description Kampüs başına yayımlanmış menü (kampüsün kendi menüsü, yoksa bütün kampüsler); yoksa boş */
+                            menus: {
+                                id: string;
+                                branchId: string | null;
+                                branchName: string | null;
+                                publishedAt: string | null;
+                                /** @description Bu menüyü gören kapsamdaki öğrenciler */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                }[];
+                                days: {
+                                    /** @description Gün (YYYY-MM-DD) */
+                                    menuDate: string;
+                                    /** @description Kalemi olan öğünler, kahvaltı → öğle → ikindi */
+                                    meals: {
+                                        /** @enum {string} */
+                                        mealKind: "breakfast" | "lunch" | "snack";
+                                        items: {
+                                            id: string;
+                                            /** @description Öğündeki sıra (0 tabanlı) */
+                                            position: number;
+                                            name: string;
+                                            /** @description Alerjen işaretleri, yönetmelik sırasıyla */
+                                            allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                            /** @description Porsiyon besin değeri; girilmemişse `null` */
+                                            nutrition: {
+                                                /** @description Enerji (kcal) */
+                                                energyKcal: number;
+                                                /** @description Protein (gramın onda biri) */
+                                                proteinDg: number;
+                                                /** @description Yağ (gramın onda biri) */
+                                                fatDg: number;
+                                                /** @description Karbonhidrat (gramın onda biri) */
+                                                carbohydrateDg: number;
+                                                /** @description Lif (gramın onda biri); bilinmiyorsa `null` */
+                                                fiberDg: number | null;
+                                                /** @description Tuz (gramın onda biri); bilinmiyorsa `null` */
+                                                saltDg: number | null;
+                                            } | null;
+                                        }[];
+                                    }[];
+                                    /** @description Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz) */
+                                    totals: {
+                                        itemCount: number;
+                                        /** @description Besin değeri girilmemiş kalem sayısı */
+                                        missingNutrition: number;
+                                        energyKcal: number;
+                                        proteinDg: number;
+                                        fatDg: number;
+                                        carbohydrateDg: number;
+                                        fiberDg: number;
+                                        /** @description Lif değeri bilinmeyen kalem sayısı */
+                                        missingFiber: number;
+                                        saltDg: number;
+                                        /** @description Tuz değeri bilinmeyen kalem sayısı */
+                                        missingSalt: number;
+                                    };
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMealMenus: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Durum süzgeci */
+                status?: "draft" | "published";
+                /** @description Kampüs süzgeci; `all` yalnız bütün kampüs menüleri */
+                branchId?: string;
+                /** @description Bu günden başlayan ve sonraki haftalar (YYYY-MM-DD) */
+                from?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                            weekStart: string;
+                            /** @description Haftanın pazarı (YYYY-MM-DD) */
+                            weekEnd: string;
+                            /** @description Kampüs; `null` bütün kampüsler */
+                            branchId: string | null;
+                            branchName: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published";
+                            /** @description Son yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Etkin kalem sayısı */
+                            itemCount: number;
+                            /** @description Kalemi olan gün sayısı */
+                            dayCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createMealMenu: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                    weekStart: string;
+                    /** @description Kampüs (branches); boş ya da `null` bütün kampüsler */
+                    branchId?: string | null;
+                    /**
+                     * Format: uuid
+                     * @description Kalemleri kopyalanacak menü (ör. önceki hafta); günler yeni haftaya kaydırılır
+                     */
+                    copyFromMenuId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                            weekStart: string;
+                            /** @description Haftanın pazarı (YYYY-MM-DD) */
+                            weekEnd: string;
+                            /** @description Kampüs; `null` bütün kampüsler */
+                            branchId: string | null;
+                            branchName: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published";
+                            /** @description Son yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Haftanın yedi günü, pazartesiden */
+                            days: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                menuDate: string;
+                                /** @description Kalemi olan öğünler, kahvaltı → öğle → ikindi */
+                                meals: {
+                                    /** @enum {string} */
+                                    mealKind: "breakfast" | "lunch" | "snack";
+                                    items: {
+                                        id: string;
+                                        /** @description Öğündeki sıra (0 tabanlı) */
+                                        position: number;
+                                        name: string;
+                                        /** @description Alerjen işaretleri, yönetmelik sırasıyla */
+                                        allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                        /** @description Porsiyon besin değeri; girilmemişse `null` */
+                                        nutrition: {
+                                            /** @description Enerji (kcal) */
+                                            energyKcal: number;
+                                            /** @description Protein (gramın onda biri) */
+                                            proteinDg: number;
+                                            /** @description Yağ (gramın onda biri) */
+                                            fatDg: number;
+                                            /** @description Karbonhidrat (gramın onda biri) */
+                                            carbohydrateDg: number;
+                                            /** @description Lif (gramın onda biri); bilinmiyorsa `null` */
+                                            fiberDg: number | null;
+                                            /** @description Tuz (gramın onda biri); bilinmiyorsa `null` */
+                                            saltDg: number | null;
+                                        } | null;
+                                    }[];
+                                }[];
+                                /** @description Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz) */
+                                totals: {
+                                    itemCount: number;
+                                    /** @description Besin değeri girilmemiş kalem sayısı */
+                                    missingNutrition: number;
+                                    energyKcal: number;
+                                    proteinDg: number;
+                                    fatDg: number;
+                                    carbohydrateDg: number;
+                                    fiberDg: number;
+                                    /** @description Lif değeri bilinmeyen kalem sayısı */
+                                    missingFiber: number;
+                                    saltDg: number;
+                                    /** @description Tuz değeri bilinmeyen kalem sayısı */
+                                    missingSalt: number;
+                                };
+                            }[];
+                            /** @description Geçmiş gün düzeltmeleri, yeni önce */
+                            corrections: {
+                                id: string;
+                                menuDate: string;
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                reason: string;
+                                /** @description Düzeltme anı (ISO 8601) */
+                                correctedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                            weekStart: string;
+                            /** @description Haftanın pazarı (YYYY-MM-DD) */
+                            weekEnd: string;
+                            /** @description Kampüs; `null` bütün kampüsler */
+                            branchId: string | null;
+                            branchName: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published";
+                            /** @description Son yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Haftanın yedi günü, pazartesiden */
+                            days: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                menuDate: string;
+                                /** @description Kalemi olan öğünler, kahvaltı → öğle → ikindi */
+                                meals: {
+                                    /** @enum {string} */
+                                    mealKind: "breakfast" | "lunch" | "snack";
+                                    items: {
+                                        id: string;
+                                        /** @description Öğündeki sıra (0 tabanlı) */
+                                        position: number;
+                                        name: string;
+                                        /** @description Alerjen işaretleri, yönetmelik sırasıyla */
+                                        allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                        /** @description Porsiyon besin değeri; girilmemişse `null` */
+                                        nutrition: {
+                                            /** @description Enerji (kcal) */
+                                            energyKcal: number;
+                                            /** @description Protein (gramın onda biri) */
+                                            proteinDg: number;
+                                            /** @description Yağ (gramın onda biri) */
+                                            fatDg: number;
+                                            /** @description Karbonhidrat (gramın onda biri) */
+                                            carbohydrateDg: number;
+                                            /** @description Lif (gramın onda biri); bilinmiyorsa `null` */
+                                            fiberDg: number | null;
+                                            /** @description Tuz (gramın onda biri); bilinmiyorsa `null` */
+                                            saltDg: number | null;
+                                        } | null;
+                                    }[];
+                                }[];
+                                /** @description Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz) */
+                                totals: {
+                                    itemCount: number;
+                                    /** @description Besin değeri girilmemiş kalem sayısı */
+                                    missingNutrition: number;
+                                    energyKcal: number;
+                                    proteinDg: number;
+                                    fatDg: number;
+                                    carbohydrateDg: number;
+                                    fiberDg: number;
+                                    /** @description Lif değeri bilinmeyen kalem sayısı */
+                                    missingFiber: number;
+                                    saltDg: number;
+                                    /** @description Tuz değeri bilinmeyen kalem sayısı */
+                                    missingSalt: number;
+                                };
+                            }[];
+                            /** @description Geçmiş gün düzeltmeleri, yeni önce */
+                            corrections: {
+                                id: string;
+                                menuDate: string;
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                reason: string;
+                                /** @description Düzeltme anı (ISO 8601) */
+                                correctedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveMealMenu: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMealMenu: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yeniden yazılan gün × öğün hücreleri; gönderilmeyen hücre değişmez */
+                    slots: {
+                        /** @description Menü günü (YYYY-MM-DD, Europe/Istanbul); haftanın içinde */
+                        menuDate: string;
+                        /**
+                         * @description Öğün
+                         * @enum {string}
+                         */
+                        mealKind: "breakfast" | "lunch" | "snack";
+                        /** @description Öğünün yemekleri, sırasıyla; boş liste öğünü boşaltır */
+                        items: {
+                            /** @description Yemek adı (2–120) */
+                            name: string;
+                            /** @description İçerdiği alerjenler (TGK Ek-1 listesi); boş liste işaretli alerjen yok demektir */
+                            allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                            /** @description Besin değeri; bilinmiyorsa `null` */
+                            nutrition: {
+                                /** @description Enerji (kcal, tam sayı) */
+                                energyKcal: number;
+                                /** @description Protein (dg: gram × 10) */
+                                proteinDg: number;
+                                /** @description Yağ (dg: gram × 10) */
+                                fatDg: number;
+                                /** @description Karbonhidrat (dg: gram × 10) */
+                                carbohydrateDg: number;
+                                /** @description Lif (dg: gram × 10); bilinmiyorsa `null` */
+                                fiberDg: number | null;
+                                /** @description Tuz (dg: gram × 10); bilinmiyorsa `null` */
+                                saltDg: number | null;
+                            } | null;
+                        }[];
+                    }[];
+                    /** @description Yayımlanmış menünün geçmiş gününü düzeltirken zorunlu gerekçe (10–500; yalnız yönetici) */
+                    correctionReason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                            weekStart: string;
+                            /** @description Haftanın pazarı (YYYY-MM-DD) */
+                            weekEnd: string;
+                            /** @description Kampüs; `null` bütün kampüsler */
+                            branchId: string | null;
+                            branchName: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published";
+                            /** @description Son yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Haftanın yedi günü, pazartesiden */
+                            days: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                menuDate: string;
+                                /** @description Kalemi olan öğünler, kahvaltı → öğle → ikindi */
+                                meals: {
+                                    /** @enum {string} */
+                                    mealKind: "breakfast" | "lunch" | "snack";
+                                    items: {
+                                        id: string;
+                                        /** @description Öğündeki sıra (0 tabanlı) */
+                                        position: number;
+                                        name: string;
+                                        /** @description Alerjen işaretleri, yönetmelik sırasıyla */
+                                        allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                        /** @description Porsiyon besin değeri; girilmemişse `null` */
+                                        nutrition: {
+                                            /** @description Enerji (kcal) */
+                                            energyKcal: number;
+                                            /** @description Protein (gramın onda biri) */
+                                            proteinDg: number;
+                                            /** @description Yağ (gramın onda biri) */
+                                            fatDg: number;
+                                            /** @description Karbonhidrat (gramın onda biri) */
+                                            carbohydrateDg: number;
+                                            /** @description Lif (gramın onda biri); bilinmiyorsa `null` */
+                                            fiberDg: number | null;
+                                            /** @description Tuz (gramın onda biri); bilinmiyorsa `null` */
+                                            saltDg: number | null;
+                                        } | null;
+                                    }[];
+                                }[];
+                                /** @description Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz) */
+                                totals: {
+                                    itemCount: number;
+                                    /** @description Besin değeri girilmemiş kalem sayısı */
+                                    missingNutrition: number;
+                                    energyKcal: number;
+                                    proteinDg: number;
+                                    fatDg: number;
+                                    carbohydrateDg: number;
+                                    fiberDg: number;
+                                    /** @description Lif değeri bilinmeyen kalem sayısı */
+                                    missingFiber: number;
+                                    saltDg: number;
+                                    /** @description Tuz değeri bilinmeyen kalem sayısı */
+                                    missingSalt: number;
+                                };
+                            }[];
+                            /** @description Geçmiş gün düzeltmeleri, yeni önce */
+                            corrections: {
+                                id: string;
+                                menuDate: string;
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                reason: string;
+                                /** @description Düzeltme anı (ISO 8601) */
+                                correctedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishMealMenu: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                            weekStart: string;
+                            /** @description Haftanın pazarı (YYYY-MM-DD) */
+                            weekEnd: string;
+                            /** @description Kampüs; `null` bütün kampüsler */
+                            branchId: string | null;
+                            branchName: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published";
+                            /** @description Son yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Haftanın yedi günü, pazartesiden */
+                            days: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                menuDate: string;
+                                /** @description Kalemi olan öğünler, kahvaltı → öğle → ikindi */
+                                meals: {
+                                    /** @enum {string} */
+                                    mealKind: "breakfast" | "lunch" | "snack";
+                                    items: {
+                                        id: string;
+                                        /** @description Öğündeki sıra (0 tabanlı) */
+                                        position: number;
+                                        name: string;
+                                        /** @description Alerjen işaretleri, yönetmelik sırasıyla */
+                                        allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                        /** @description Porsiyon besin değeri; girilmemişse `null` */
+                                        nutrition: {
+                                            /** @description Enerji (kcal) */
+                                            energyKcal: number;
+                                            /** @description Protein (gramın onda biri) */
+                                            proteinDg: number;
+                                            /** @description Yağ (gramın onda biri) */
+                                            fatDg: number;
+                                            /** @description Karbonhidrat (gramın onda biri) */
+                                            carbohydrateDg: number;
+                                            /** @description Lif (gramın onda biri); bilinmiyorsa `null` */
+                                            fiberDg: number | null;
+                                            /** @description Tuz (gramın onda biri); bilinmiyorsa `null` */
+                                            saltDg: number | null;
+                                        } | null;
+                                    }[];
+                                }[];
+                                /** @description Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz) */
+                                totals: {
+                                    itemCount: number;
+                                    /** @description Besin değeri girilmemiş kalem sayısı */
+                                    missingNutrition: number;
+                                    energyKcal: number;
+                                    proteinDg: number;
+                                    fatDg: number;
+                                    carbohydrateDg: number;
+                                    fiberDg: number;
+                                    /** @description Lif değeri bilinmeyen kalem sayısı */
+                                    missingFiber: number;
+                                    saltDg: number;
+                                    /** @description Tuz değeri bilinmeyen kalem sayısı */
+                                    missingSalt: number;
+                                };
+                            }[];
+                            /** @description Geçmiş gün düzeltmeleri, yeni önce */
+                            corrections: {
+                                id: string;
+                                menuDate: string;
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                reason: string;
+                                /** @description Düzeltme anı (ISO 8601) */
+                                correctedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unpublishMealMenu: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Haftanın pazartesisi (YYYY-MM-DD) */
+                            weekStart: string;
+                            /** @description Haftanın pazarı (YYYY-MM-DD) */
+                            weekEnd: string;
+                            /** @description Kampüs; `null` bütün kampüsler */
+                            branchId: string | null;
+                            branchName: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published";
+                            /** @description Son yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Haftanın yedi günü, pazartesiden */
+                            days: {
+                                /** @description Gün (YYYY-MM-DD) */
+                                menuDate: string;
+                                /** @description Kalemi olan öğünler, kahvaltı → öğle → ikindi */
+                                meals: {
+                                    /** @enum {string} */
+                                    mealKind: "breakfast" | "lunch" | "snack";
+                                    items: {
+                                        id: string;
+                                        /** @description Öğündeki sıra (0 tabanlı) */
+                                        position: number;
+                                        name: string;
+                                        /** @description Alerjen işaretleri, yönetmelik sırasıyla */
+                                        allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                        /** @description Porsiyon besin değeri; girilmemişse `null` */
+                                        nutrition: {
+                                            /** @description Enerji (kcal) */
+                                            energyKcal: number;
+                                            /** @description Protein (gramın onda biri) */
+                                            proteinDg: number;
+                                            /** @description Yağ (gramın onda biri) */
+                                            fatDg: number;
+                                            /** @description Karbonhidrat (gramın onda biri) */
+                                            carbohydrateDg: number;
+                                            /** @description Lif (gramın onda biri); bilinmiyorsa `null` */
+                                            fiberDg: number | null;
+                                            /** @description Tuz (gramın onda biri); bilinmiyorsa `null` */
+                                            saltDg: number | null;
+                                        } | null;
+                                    }[];
+                                }[];
+                                /** @description Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz) */
+                                totals: {
+                                    itemCount: number;
+                                    /** @description Besin değeri girilmemiş kalem sayısı */
+                                    missingNutrition: number;
+                                    energyKcal: number;
+                                    proteinDg: number;
+                                    fatDg: number;
+                                    carbohydrateDg: number;
+                                    fiberDg: number;
+                                    /** @description Lif değeri bilinmeyen kalem sayısı */
+                                    missingFiber: number;
+                                    saltDg: number;
+                                    /** @description Tuz değeri bilinmeyen kalem sayısı */
+                                    missingSalt: number;
+                                };
+                            }[];
+                            /** @description Geçmiş gün düzeltmeleri, yeni önce */
+                            corrections: {
+                                id: string;
+                                menuDate: string;
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                reason: string;
+                                /** @description Düzeltme anı (ISO 8601) */
+                                correctedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealMenuSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun kullandığı öğünler, gösterim sırasıyla */
+                            mealKinds: ("breakfast" | "lunch" | "snack")[];
+                            /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setMealMenuSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kurumun kullandığı öğünler */
+                    mealKinds: ("breakfast" | "lunch" | "snack")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun kullandığı öğünler, gösterim sırasıyla */
+                            mealKinds: ("breakfast" | "lunch" | "snack")[];
+                            /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
                         };
                     };
                 };

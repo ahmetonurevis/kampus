@@ -16144,6 +16144,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/trip-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gezi raporlarını listele
+         * @description Biten geziler (onaylı plan dönüş anı geçmiş ya da tamamlanmış) ve raporlarının durumu: `missing` (yazılmadı), `draft`, `submitted`, `approved`, `returned`. Onay bekleyenler önce, sonra yeni dönüş önce. Satır rapor metni taşımaz; fotoğraf ve değerlendirme sayısı vardır. Öğretmen yalnız görevlisi olduğu planları görür. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız görevlisi olduğu planı görür; değilse 404; K-529). Modül `finance`.
+         */
+        get: operations["listTripReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-reports/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çocuğumun gezi fotoğrafları ve değerlendirmesi
+         * @description Veli bağlı çocuklarının, öğrenci kendinin katıldığı (kapanan yoklama turunda "var") ve dönüşü son bir yıl içinde biten geziler: onaylı raporun yayımlanmış fotoğrafları ve değerlendirme durumu (dönüşten 30 gün açık, gezi başına bir kez). Fotoğraf yayımı okuma anında hesaplanır: etiketli herkesin geçerli `photo_video_sharing` rızası yoksa ya da rıza geri çekildiyse fotoğraf dönmez (K-530, IST-017). Etiket, rıza durumu, rapor metni ve başka ailelerin yanıtları dönmez. Rol: `veli`, `ogrenci`. Modül `finance`.
+         */
+        get: operations["listMyTripReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Geziyi değerlendir
+         * @description Geziye katılan öğrenci (kendisi) ya da velisi (çocuğu için) 1–5 puan ve isteğe bağlı yorum (≤ 500) verir; gezide kişi başına bir kez (409 `trip_evaluation_exists`). Kapsam dışı öğrenci ya da gezi 404 `trip_evaluation_student_not_found`; katılmayan 422 `trip_evaluation_not_attended`; gezi bitmeden 422 `trip_evaluation_not_open`, dönüşten 30 gün sonra 422 `trip_evaluation_closed`. Yorum personele ad ve rol olmadan, en az 5 yanıtta gösterilir (K-531). Değerlendirme değişmez. Denetim `finance.trip_evaluation.create` (puan ve yorum yazılmaz). `Idempotency-Key` zorunlu; başarı 201. Rol: `veli`, `ogrenci`. Modül `finance`.
+         */
+        post: operations["createTripEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gezi raporu
+         * @description Plan özeti, rapor (yoksa `null` ve `canCreate`), bağlı kaza tutanakları (yalnız an, tür, yer, durum; ayrıntı tutanaktadır), fotoğraflar (etiketli öğrenci ve rıza var/yok, yayım durumu okuma anında; imzalı geçici bağlantı), katılım (gezi günü yoklamasından; gönderimde dondurulur) ve değerlendirme özeti (5'ten az yanıtta gizli, yorum adsız). Raporu yazabilene etiket ve tutanak seçenekleri döner. Olmayan ya da başka kurumun planı 404. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız görevlisi olduğu planı görür; değilse 404; K-529). Modül `finance`.
+         */
+        get: operations["getTripReport"];
+        put?: never;
+        /**
+         * Gezi raporu aç
+         * @description Biten gezi için taslak açar: gerçekleşme özeti, olay notu, kaza tutanağı bağları (en çok 10; kurumda değilse 422 `trip_report_incident_not_found`, olay anı gezi dışında 422 `trip_report_incident_outside_trip`) ve kazanım/değerlendirme; metinler taslakta boş kalabilir. Plan onaylı ya da tamamlanmış olmalı (422 `trip_report_plan_not_eligible`) ve gezi bitmiş olmalı (422 `trip_report_trip_not_finished`); planın raporu varsa 409 `trip_report_exists`. Denetim `finance.trip_report.create` (alan adları). `Idempotency-Key` zorunlu; başarı 201. Rol: `yonetici`, `ogretmen` (planın görevlisi; değilse 404); ön büro 403 (K-529). Modül `finance`.
+         */
+        post: operations["createTripReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Gezi raporunu düzelt
+         * @description Verilen alanlar değişir; yalnız taslak ve iade edilmiş rapor (422 `trip_report_locked`; onaylanan rapor değişmez). Değişiklik yoksa 422 `trip_report_unchanged`. Tutanak bağları bütün olarak yazılır. Denetim `finance.trip_report.update`. `If-Match` raporun sürümü; tutmazsa 409. Rol: `yonetici`, `ogretmen` (planın görevlisi; değilse 404); ön büro 403 (K-529). Modül `finance`.
+         */
+        patch: operations["updateTripReport"];
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/report/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi raporunu onaya gönder
+         * @description Taslak ya da iade edilmiş rapor onaya gider; gerçekleşme özeti ve kazanım metni en az 20 karakter olmalı (422 `trip_report_incomplete`). Katılan ve katılmayan sayısı gezi günü yoklamasının kapanan turlarından dondurulur; önceki iade gerekçesi düşer. Gövde boş nesnedir. Denetim `finance.trip_report.submit`. `If-Match` raporun sürümü. Rol: `yonetici`, `ogretmen` (planın görevlisi; değilse 404); ön büro 403 (K-529). Modül `finance`.
+         */
+        post: operations["submitTripReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/report/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi raporunu onayla
+         * @description Onay bekleyen raporu onaylar (değilse 422 `trip_report_not_submitted`); onaylanan rapor, tutanak bağları ve fotoğrafları değişmez (veritabanında tetikleyici). Rızası tam fotoğraflar ailelere yayımlanır. Gövde boş nesnedir. Denetim `finance.trip_report.approve`. `If-Match` raporun sürümü. Rol: `yonetici` (K-529). Modül `finance`.
+         */
+        post: operations["approveTripReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/report/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi raporunu iade et
+         * @description Onay bekleyen raporu gerekçeyle (5–500) iade eder (değilse 422 `trip_report_not_submitted`); yazan düzeltip yeniden gönderir. Gerekçe denetime ve loga yazılmaz. Denetim `finance.trip_report.return`. `If-Match` raporun sürümü. Rol: `yonetici` (K-529). Modül `finance`.
+         */
+        post: operations["returnTripReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/report/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi raporuna fotoğraf ekle
+         * @description `POST /files` ile `question_image` amacıyla yüklenmiş (jpg/png/webp, 2 MB; yükleme `learning` modülü ister) ve taramadan geçmiş dosyayı rapora bağlar. Görünen öğrenciler etiketlenir (gezinin katılımcısı; değilse 422 `trip_report_photo_student_not_participant`) ya da `noStudentsVisible` işaretlenir (ikisi birden ya da hiçbiri 400). `shareWithFamilies` aileye yayım isteğidir; yayım yalnız rapor onaylı ve etiketli herkesin geçerli `photo_video_sharing` rızası varken olur, rızası olmayan öğrencinin fotoğrafı iç arşivde kalır (K-530, IST-017). Yalnız düzeltilebilir rapor (422 `trip_report_locked`); en çok 20 fotoğraf (422 `trip_report_photos_full`); başkasının dosyası ya da bağlı dosya 422/409. Denetim `finance.trip_report.photo_add`. `Idempotency-Key` zorunlu; başarı 201. Rol: `yonetici`, `ogretmen` (planın görevlisi; değilse 404); ön büro 403 (K-529). Modül `finance`.
+         */
+        post: operations["addTripReportPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/report/photos/{photoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Fotoğrafı rapordan kaldır
+         * @description Fotoğraf ve etiketleri arşivlenir, dosya bağı çözülür; yalnız düzeltilebilir rapor (422 `trip_report_locked`). Denetim `finance.trip_report.photo_remove`. `If-Match` fotoğrafın sürümü. Rol: `yonetici`, `ogretmen` (planın görevlisi; değilse 404); ön büro 403 (K-529). Modül `finance`.
+         */
+        delete: operations["removeTripReportPhoto"];
+        options?: never;
+        head?: never;
+        /**
+         * Fotoğrafın etiketini ve yayım isteğini düzelt
+         * @description Verilen alanlar değişir (açıklama, etiketler, `noStudentsVisible`, `shareWithFamilies`); etiket kuralı birleşik değerde denetlenir (422 `trip_report_photo_tags_required`). Değişiklik yoksa 422 `trip_report_photo_unchanged`; yalnız düzeltilebilir rapor. Denetim `finance.trip_report.photo_update`. `If-Match` fotoğrafın sürümü. Rol: `yonetici`, `ogretmen` (planın görevlisi; değilse 404); ön büro 403 (K-529). Modül `finance`.
+         */
+        patch: operations["updateTripReportPhoto"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -169557,6 +169749,2368 @@ export interface operations {
                             publishedAt: string;
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTripReports: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Rapor durumu; `missing` raporu yazılmamış biten gezi */
+                status?: "missing" | "draft" | "submitted" | "approved" | "returned";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            reportId: string | null;
+                            /** @enum {string} */
+                            status: "missing" | "draft" | "submitted" | "approved" | "returned";
+                            authorName: string | null;
+                            submittedAt: string | null;
+                            decidedAt: string | null;
+                            photoCount: number;
+                            responseCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyTripReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planName: string;
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Geziye katılan kapsamdaki öğrenciler */
+                            students: {
+                                studentId: string;
+                                studentName: string;
+                            }[];
+                            reportApproved: boolean;
+                            /** @description Yayımlanmış fotoğraflar (rıza okuma anında); etiket ve rıza durumu yok */
+                            photos: {
+                                id: string;
+                                caption: string | null;
+                                contentType: string;
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            evaluation: {
+                                /** @description Değerlendirme verilebilir */
+                                open: boolean;
+                                closesAt: string;
+                                mine: {
+                                    studentId: string;
+                                    score: number;
+                                    comment: string | null;
+                                    createdAt: string;
+                                } | null;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTripEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    planId: string;
+                    /** @description Geziye katılan öğrenci (veli için çocuğu, öğrenci için kendisi) */
+                    studentId: string;
+                    /** @description 1 (hiç memnun değilim) – 5 (çok memnunum) */
+                    score: number;
+                    /** @description İsteğe bağlı yorum; personele ad ve rol olmadan, en az 5 yanıtta gösterilir */
+                    comment?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            score: number;
+                            comment: string | null;
+                            createdAt: string;
+                            id: string;
+                            planId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTripReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTripReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gerçekleşme özeti: gezi planlandığı gibi mi gerçekleşti, değişiklikler (göndermede en az 20 karakter) */
+                    summary?: string | null;
+                    /** @description Olaylar: kısa not; kaza ve yaralanma ayrıntısı kaza tutanağındadır (`incidentIds`) */
+                    incidentNote?: string | null;
+                    /**
+                     * @description Gezide yazılmış kaza tutanakları (DOM-FIN-146); olay anı gezi süresi içinde olmalı
+                     * @default []
+                     */
+                    incidentIds?: string[];
+                    /** @description Kazanımlar ve değerlendirme: amaca ulaşıldı mı, öneriler (göndermede en az 20 karakter) */
+                    outcomeNote?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTripReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gerçekleşme özeti: gezi planlandığı gibi mi gerçekleşti, değişiklikler (göndermede en az 20 karakter) */
+                    summary?: string | null;
+                    /** @description Olaylar: kısa not; kaza ve yaralanma ayrıntısı kaza tutanağındadır (`incidentIds`) */
+                    incidentNote?: string | null;
+                    /** @description Gezide yazılmış kaza tutanakları (DOM-FIN-146); olay anı gezi süresi içinde olmalı */
+                    incidentIds?: string[];
+                    /** @description Kazanımlar ve değerlendirme: amaca ulaşıldı mı, öneriler (göndermede en az 20 karakter) */
+                    outcomeNote?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitTripReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveTripReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    returnTripReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Raporda düzeltilmesi istenenler */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addTripReportPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description `question_image` amacıyla yüklenen dosya
+                     */
+                    fileId: string;
+                    /** @description Kısa açıklama (ör. "Müze girişi") */
+                    caption?: string | null;
+                    /**
+                     * @description Fotoğrafta görünen gezi katılımcıları (records kimliği)
+                     * @default []
+                     */
+                    studentIds?: string[];
+                    /**
+                     * @description Fotoğrafta tanınabilir öğrenci yok (manzara, eser); etiket boş kalır
+                     * @default false
+                     */
+                    noStudentsVisible?: boolean;
+                    /**
+                     * @description Aileye yayım isteği; yalnız rapor onaylı ve etiketli herkesin geçerli fotoğraf rızası varken yayımlanır
+                     * @default true
+                     */
+                    shareWithFamilies?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeTripReportPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTripReportPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kısa açıklama (ör. "Müze girişi") */
+                    caption?: string | null;
+                    /** @description Fotoğrafta görünen gezi katılımcıları (records kimliği) */
+                    studentIds?: string[];
+                    /** @description Fotoğrafta tanınabilir öğrenci yok (manzara, eser); etiket boş kalır */
+                    noStudentsVisible?: boolean;
+                    /** @description Aileye yayım isteği; yalnız rapor onaylı ve etiketli herkesin geçerli fotoğraf rızası varken yayımlanır */
+                    shareWithFamilies?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                departureAt: string;
+                                returnAt: string;
+                            };
+                            /** @description Gezi bitti; rapor yazılabilir */
+                            tripFinished: boolean;
+                            canCreate: boolean;
+                            report: {
+                                id: string;
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "approved" | "returned";
+                                summary: string | null;
+                                incidentNote: string | null;
+                                outcomeNote: string | null;
+                                /** @description Bağlı kaza tutanakları; ayrıntı yok */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                                createdByName: string | null;
+                                createdAt: string;
+                                submittedAt: string | null;
+                                submittedByName: string | null;
+                                decidedAt: string | null;
+                                decidedByName: string | null;
+                                returnReason: string | null;
+                                canEdit: boolean;
+                                canDecide: boolean;
+                                /** @description `If-Match` için raporun sürümü */
+                                version: number;
+                                photos: {
+                                    id: string;
+                                    fileId: string;
+                                    caption: string | null;
+                                    noStudentsVisible: boolean;
+                                    shareWithFamilies: boolean;
+                                    position: number;
+                                    contentType: string;
+                                    byteSize: number;
+                                    /** @description Etiketli öğrenciler, ada göre */
+                                    students: {
+                                        studentId: string;
+                                        studentName: string;
+                                        /** @description Geçerli `photo_video_sharing` rızası var (okuma anında) */
+                                        consent: boolean;
+                                    }[];
+                                    /**
+                                     * @description `internal` yayım istenmedi, `consent_missing` etiketli birinin rızası yok, `awaiting_approval` rapor onaylanınca yayımlanır, `published` ailelere açık
+                                     * @enum {string}
+                                     */
+                                    visibility: "internal" | "consent_missing" | "awaiting_approval" | "published";
+                                    /** @description İmzalı geçici bağlantı (yalnız okuma uçlarında) */
+                                    url: string | null;
+                                    expiresAt: string | null;
+                                    /** @description `If-Match` için fotoğrafın sürümü */
+                                    version: number;
+                                }[];
+                            } | null;
+                            attendance: {
+                                /**
+                                 * @description `none`: gezi günü yoklaması yapılmadı
+                                 * @enum {string}
+                                 */
+                                source: "trip_day" | "none";
+                                rosterCount: number;
+                                attendedCount: number;
+                                absentCount: number;
+                                /** @description Gönderimde dondurulan sayılar; düzeltilebilir raporda canlı */
+                                frozen: boolean;
+                            };
+                            evaluations: {
+                                responses: number;
+                                /** @description 5’ten az yanıt: ortalama, dağılım ve yorumlar gizli (K-531) */
+                                hidden: boolean;
+                                average: number | null;
+                                /** @description 1–5 puan sayıları */
+                                distribution: number[] | null;
+                                /** @description Yorumlar, ad ve rol olmadan */
+                                comments: string[] | null;
+                            };
+                            /** @description Etiket ve tutanak seçenekleri; yalnız raporu yazabilen role, düzeltilebilirken */
+                            options: {
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Kapanan turda var; yoklama yoksa boş */
+                                    attended: boolean | null;
+                                    consent: boolean;
+                                }[];
+                                studentTotal: number;
+                                /** @description Gezi süresinde yazılmış kaza tutanakları */
+                                incidents: {
+                                    id: string;
+                                    occurredAt: string;
+                                    /** @enum {string} */
+                                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                                    location: string;
+                                    /** @enum {string} */
+                                    status: "draft" | "finalized";
+                                }[];
+                            } | null;
+                        };
                     };
                 };
             };

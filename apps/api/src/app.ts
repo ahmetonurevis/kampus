@@ -143,6 +143,7 @@ import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergenc
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
 import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 import { registerFinanceHealthScreeningRoutes } from './routes/finance-health-screenings.ts'
+import { registerFinanceTripReportRoutes } from './routes/finance-trip-reports.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -363,6 +364,16 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi günü yoklamasında eksikle devam gerekçesi (DOM-FIN-154).
   'missingReason',
   '*.missingReason',
+  // kvkk: K — gezi raporunun olay notu, fotoğraf açıklaması ve katılımcı değerlendirmesi yorumu
+  // (DOM-FIN-158); özet ve kazanım metni gövdede gelir (gövde loglanmaz), iade gerekçesi `reason`.
+  'incidentNote',
+  '*.incidentNote',
+  'outcomeNote',
+  '*.outcomeNote',
+  'caption',
+  '*.caption',
+  'comment',
+  '*.comment',
   // kvkk: Ö — acil durum özetinin acil eylem metni (DOM-FIN-155, ON-165).
   'actionText',
   '*.actionText',
@@ -706,6 +717,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceHealthAccessRoutes(app)
   registerFinanceTripDayRoutes(app)
   registerFinanceHealthScreeningRoutes(app)
+  registerFinanceTripReportRoutes(app, storage)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

@@ -137,12 +137,15 @@ import { registerFinanceTransportRosterRoutes } from './routes/finance-transport
 import { registerFinanceTransportTripRoutes } from './routes/finance-transport-trips.ts'
 import { registerFinanceTransportDocumentRoutes } from './routes/finance-transport-documents.ts'
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
+import { registerFinanceMealMenuRoutes } from './routes/finance-meal-menus.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
 import { registerFinanceInfirmaryScheduleRoutes } from './routes/finance-infirmary-schedule.ts'
 import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergency-summaries.ts'
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
 import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 import { registerFinanceHealthScreeningRoutes } from './routes/finance-health-screenings.ts'
+import { registerFinanceTeacherFeedbackRoutes } from './routes/finance-teacher-feedback.ts'
+import { registerFinanceSocialActivityRoutes } from './routes/finance-social-activities.ts'
 import { registerFinanceEarlyDismissalRoutes } from './routes/finance-early-dismissals.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -364,6 +367,9 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi günü yoklamasında eksikle devam gerekçesi (DOM-FIN-154).
   'missingReason',
   '*.missingReason',
+  // kvkk: K — yemek menüsünün geçmiş gün düzeltme gerekçesi (DOM-FIN-157, ON-149).
+  'correctionReason',
+  '*.correctionReason',
   // kvkk: Ö — acil durum özetinin acil eylem metni (DOM-FIN-155, ON-165).
   'actionText',
   '*.actionText',
@@ -713,12 +719,15 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTransportTripRoutes(app)
   registerFinanceTransportDocumentRoutes(app, storage)
   registerFinanceClubSelectionRoutes(app)
+  registerFinanceMealMenuRoutes(app)
   registerFinanceInfirmaryRoutes(app)
   registerFinanceInfirmaryScheduleRoutes(app)
   registerFinanceEmergencySummaryRoutes(app)
   registerFinanceHealthAccessRoutes(app)
   registerFinanceTripDayRoutes(app)
   registerFinanceHealthScreeningRoutes(app)
+  registerFinanceTeacherFeedbackRoutes(app)
+  registerFinanceSocialActivityRoutes(app)
   registerFinanceEarlyDismissalRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

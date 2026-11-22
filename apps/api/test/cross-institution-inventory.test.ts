@@ -4605,6 +4605,185 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yemek menüsü, besin değeri ve alerjen matrisi (ON-090, ON-149; DOM-FIN-157).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/meal-menus/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/meal-menus', 'get(BASE, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/meal-menus', 'copyFromMenuId: bMenu.id'],
+        ['kayıt', 'GET /api/v1/finance/meal-menus/:menuId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/meal-menus/:menuId', 'patch(bUrl, a.admin'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/meal-menus/:menuId/publish',
+          'command(`${bUrl}/publish`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/meal-menus/:menuId/unpublish',
+          'command(`${bUrl}/unpublish`, a.admin',
+        ],
+        ['kayıt', 'DELETE /api/v1/finance/meal-menus/:menuId', 'remove(bUrl, a.admin'],
+        ['liste', 'GET /api/v1/finance/meal-menu-settings', 'get(SETTINGS, b.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/meal-menu-settings',
+          "mealKinds: ['lunch', 'snack'], institutionId: b.id",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-meal-menus.test.ts',
+        'DOM-FIN-157: başka kurumun menüsü 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: öğretmen geri bildirim anketi (ON-213; DOM-FIN-159, K-532…K-534).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/teacher-feedback-surveys', 'list(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/teacher-feedback-surveys', 'institutionId: b.id'],
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-feedback-surveys/assigned',
+          'assigned(aStudent.cookie)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/teacher-feedback-surveys/:surveyId',
+          'detail(a.admin, bDraft)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/teacher-feedback-surveys/:surveyId',
+          'patch(a.admin, bDraft',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/teacher-feedback-surveys/:surveyId',
+          'archive(a.admin, bDraft)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-feedback-surveys/:surveyId/publish',
+          'publish(a.admin, bDraft)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-feedback-surveys/:surveyId/close',
+          'closeSurvey(a.admin, bLive)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/teacher-feedback-surveys/:surveyId/results',
+          'results(a.admin, bLive)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-feedback-surveys/:surveyId/responses',
+          'respond(aStudent.cookie, bLive',
+        ],
+        ['liste', 'GET /api/v1/finance/teacher-feedback-results/mine', 'mine(aTeacher.cookie)'],
+        ['liste', 'GET /api/v1/finance/teacher-feedback-results/trend', "trend(a.admin, 't-1')"],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-teacher-feedback.test.ts',
+        'DOM-FIN-159: başka kurumun anketi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: sosyal etkinlik ve gönüllülük saatleri (ON-170; DOM-FIN-160).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/social-activities/my', 'get(MY, aPupil)'],
+        [
+          'liste',
+          'GET /api/v1/finance/social-activities/my/activities',
+          'get(`${MY}/activities`, aPupil)',
+        ],
+        ['gövde', 'POST /api/v1/finance/social-activities/my/hours', 'post(`${MY}/hours`, aPupil'],
+        ['liste', 'GET /api/v1/finance/social-activities/settings', 'get(SETTINGS, b.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/social-activities/settings',
+          'totalTargetHours: 20, institutionId: b.id',
+        ],
+        ['liste', 'GET /api/v1/finance/social-activities/hours', 'get(HOURS, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/hours/:entryId/approve',
+          "entryUrl(bPending.id, 'approve'), a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/hours/:entryId/reject',
+          "entryUrl(bPending.id, 'reject'), a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/hours/:entryId/reverse',
+          "entryUrl(bEntry.id, 'reverse'), a.admin",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/social-activities/classes',
+          'get(`${BASE}/classes`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/social-activities/classes/:classId',
+          'get(`${BASE}/classes/c5`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/social-activities/students/:studentId',
+          'get(`${BASE}/students/s5`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/social-activities/students/:studentId/certificate',
+          'get(`${BASE}/students/s5/certificate`, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/social-activities', 'get(BASE, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/social-activities',
+          'activityBody(a.teacherId, { institutionId: b.id })',
+        ],
+        ['kayıt', 'GET /api/v1/finance/social-activities/:activityId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/social-activities/:activityId',
+          "versioned('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/social-activities/:activityId',
+          "versioned('DELETE', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/social-activities/:activityId/hours',
+          'post(`${bUrl}/hours`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-social-activities.test.ts',
+        'DOM-FIN-160: başka kurumun etkinliği ve kaydı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
   // Onur: erken çıkış ve izinli ayrılış (ON-168; DOM-FIN-161).
   ...Object.fromEntries(
     (

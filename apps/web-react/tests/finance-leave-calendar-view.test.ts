@@ -16,6 +16,7 @@ import {
   entryText,
   examWeekOn,
   formConflicts,
+  holidayOn,
   isWeekend,
   periodTitle,
   settingsBody,
@@ -105,11 +106,25 @@ test('DOM-FIN-123: gün içeriği, sınav haftası, eşik günü ve dar ekran g�
   const days = calendarWeeks(calendarRange('week', '2026-11-02'))
     .concat(calendarWeeks(calendarRange('week', '2026-11-09')))
     .flat()
-  assert.deepEqual(agendaDays(days, { entries, examWeeks }), [
+  assert.deepEqual(agendaDays(days, { entries, examWeeks, holidays: [] }), [
     '2026-11-02',
     '2026-11-03',
     '2026-11-04',
     '2026-11-06',
+    '2026-11-09',
+    '2026-11-10',
+    '2026-11-11',
+    '2026-11-12',
+    '2026-11-13',
+  ])
+})
+
+test('DOM-FIN-123, DOM-FIN-163: kurum tatili okul takviminden gelir ve gün listesine girer (K-545)', () => {
+  const holidays = [{ title: 'Ara tatil', startDate: '2026-11-09', endDate: '2026-11-13' }]
+  assert.equal(holidayOn(holidays, '2026-11-10'), 'Ara tatil')
+  assert.equal(holidayOn(holidays, '2026-11-14'), null)
+  const days = calendarWeeks(calendarRange('week', '2026-11-09')).flat()
+  assert.deepEqual(agendaDays(days, { entries: [], examWeeks: [], holidays }), [
     '2026-11-09',
     '2026-11-10',
     '2026-11-11',

@@ -136,16 +136,26 @@ export function busyOn(
     )
 }
 
-/** Dar ekran listesi: yalnız izni, sınav haftası ya da uyarısı olan günler. */
+/** O günü kapsayan kurum tatili adı (okul takvimi, DOM-FIN-163; K-545). */
+export const holidayOn = (
+  holidays: readonly { title: string; startDate: string; endDate: string }[],
+  day: string,
+) => holidays.find((holiday) => holiday.startDate <= day && day <= holiday.endDate)?.title ?? null
+
+/** Dar ekran listesi: yalnız izni, sınav haftası, tatili ya da uyarısı olan günler. */
 export function agendaDays(
   days: readonly string[],
   data: {
     entries: readonly LeaveCalendarEntry[]
     examWeeks: readonly { label: string; startDate: string; endDate: string }[]
+    holidays: readonly { title: string; startDate: string; endDate: string }[]
   },
 ) {
   return days.filter(
-    (day) => entriesOn(data.entries, day).length > 0 || examWeekOn(data.examWeeks, day) !== null,
+    (day) =>
+      entriesOn(data.entries, day).length > 0 ||
+      examWeekOn(data.examWeeks, day) !== null ||
+      holidayOn(data.holidays, day) !== null,
   )
 }
 

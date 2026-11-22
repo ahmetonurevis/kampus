@@ -254,6 +254,9 @@ const FinanceClubsSection = lazy(async () => ({
 const FinanceMealMenusSection = lazy(async () => ({
   default: (await import('./FinanceMealMenusSection.tsx')).FinanceMealMenusSection,
 }))
+const FinanceMealAllergySection = lazy(async () => ({
+  default: (await import('./FinanceMealAllergySection.tsx')).FinanceMealAllergySection,
+}))
 const FinanceInfirmarySection = lazy(async () => ({
   default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
 }))
@@ -361,6 +364,7 @@ const VIEWS = {
   transport: { label: 'Servis', param: 'servis' },
   clubs: { label: 'Kulüpler', param: 'kulupler' },
   mealMenus: { label: 'Yemek menüsü', param: 'yemek-menusu' },
+  mealAllergy: { label: 'Yemekhane alerji uyarısı', param: 'yemekhane-alerji' },
   infirmary: { label: 'Revir', param: 'revir' },
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
@@ -727,6 +731,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'transport' ? <FinanceTransportSection /> : null}
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
         {tab === 'mealMenus' ? <FinanceMealMenusSection /> : null}
+        {tab === 'mealAllergy' ? <FinanceMealAllergySection /> : null}
         {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
         {tab === 'emergencySummaries' ? (
           <FinanceEmergencySummariesSection isManager={isManager} />

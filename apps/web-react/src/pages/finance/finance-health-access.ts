@@ -65,7 +65,14 @@ export const healthReasonFormSchema = z
     return z.NEVER
   })
 export type HealthReasonFormValues = z.input<typeof healthReasonFormSchema>
-export const healthReasonDefaults = (): HealthReasonFormValues => ({ code: '', note: '' })
+/**
+ * Diyaloğun başlangıç değeri: boş ya da ekranın amacından belli önerilen gerekçe (ör. yemekhane
+ * servisi). Öneri yalnız ön seçimdir; kullanıcı değiştirebilir ve onaylamadan okuma yapılmaz.
+ */
+export const healthReasonDefaults = (suggested?: HealthAccessReason): HealthReasonFormValues =>
+  suggested === undefined
+    ? { code: '', note: '' }
+    : { code: suggested.code, note: suggested.note ?? '' }
 export const HEALTH_NOTE_HINT = `Kısa açıklama (${HEALTH_ACCESS_NOTE_MIN}–${HEALTH_ACCESS_NOTE_MAX} karakter).`
 
 // --- Erişim günlüğü ------------------------------------------------------------------------------

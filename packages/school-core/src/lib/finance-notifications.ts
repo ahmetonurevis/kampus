@@ -188,6 +188,43 @@ export const PACKAGE_NOTIFICATION_TYPES = {
 } as const satisfies Record<PackageNoticeType, unknown>
 
 /**
+ * Erken çıkış bildirimleri (ON-168; DOM-FIN-161; K-538, K-539). Ödeme değil devam bildirimidir:
+ * finans türlerinden ayrı nesnedir, ödeyici bağının açtığı listeye girmez. Veliye gider (yetişkin
+ * kursiyere teslim yoktur, kitle boş); görünürlük okumada velayetli ve iletişim kısıtı olmayan
+ * velidedir. Veri yalnız talep kimliğidir; başlıkta saat, neden, teslim alanın adı ve ret gerekçesi
+ * yoktur (DOM-ILT-023). Öğrencinin güvenliğini ilgilendirdiği için kapatılamaz (DOM-ILT-020).
+ */
+const EARLY_DISMISSAL_NOTICE = {
+  topic: 'attendance',
+  category: 'service',
+  mandatory: true,
+  module: 'finance',
+  audiences: { minor: ['parent'], adult: [] },
+  subjectType: 'early_dismissals',
+  data: z.strictObject({ dismissalId: notificationId }),
+  subjectId: (data: { dismissalId: string }) => data.dismissalId,
+} as const
+
+export const EARLY_DISMISSAL_NOTIFICATION_TYPES = {
+  /** Velinin talebi onaylandı ya da reddedildi (K-538); karar ayrıntısı talepte okunur. */
+  early_dismissal_decided: defineNotificationType({
+    ...EARLY_DISMISSAL_NOTICE,
+    titles: {
+      student: 'Erken çıkış talebin yanıtlandı.',
+      parent: '{öğrenci} için erken çıkış talebiniz yanıtlandı.',
+    },
+  }),
+  /** Öğrenci yetkili kişiye teslim edildi; gerçek çıkış anı talepte okunur (K-539). */
+  early_dismissal_released: defineNotificationType({
+    ...EARLY_DISMISSAL_NOTICE,
+    titles: {
+      student: 'Okuldan erken çıkışın kaydedildi.',
+      parent: '{öğrenci} erken çıkışla okuldan teslim alındı.',
+    },
+  }),
+} as const
+
+/**
  * Sözleşme bildiriminin kitlesi ödeyicidir, yaş değil (DOM-FIN-052, DOM-KAY-012): ödeyici veli
  * (`payer: 'guardian'`; alanı olmayan eski sözleşme de veli ödeyicilidir) `parent`, kendi ödeyicisi
  * yetişkin kursiyer (`payer: 'student'`) `student` kitlesine gider. Sözleşme 18 yaş altında

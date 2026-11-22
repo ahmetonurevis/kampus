@@ -329,6 +329,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Acil durum özeti; çift tıklama aynı öğrenciye ikinci özeti açmaz
   // (routes/finance-emergency-summaries.ts; DOM-FIN-155, ON-165).
   'POST /api/v1/finance/emergency-summaries',
+  // Haftalık yemek menüsü ve kopyası; çift tıklama aynı haftaya ikinci menüyü açmaz
+  // (routes/finance-meal-menus.ts; DOM-FIN-157, ON-149).
+  'POST /api/v1/finance/meal-menus',
 ]
 // Onur: kayıt ve finans sonu
 

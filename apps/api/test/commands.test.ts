@@ -329,6 +329,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Acil durum özeti; çift tıklama aynı öğrenciye ikinci özeti açmaz
   // (routes/finance-emergency-summaries.ts; DOM-FIN-155, ON-165).
   'POST /api/v1/finance/emergency-summaries',
+  // Haftalık yemek menüsü ve kopyası; çift tıklama aynı haftaya ikinci menüyü açmaz
+  // (routes/finance-meal-menus.ts; DOM-FIN-157, ON-149).
+  'POST /api/v1/finance/meal-menus',
   // Öğretmen geri bildirim anketi taslağı ve öğrenci/velinin öğretmen değerlendirmesi; çift
   // tıklama ikinci taslağı ya da ikinci yanıtı yazmaz, yanıtın özeti cevapsızdır
   // (routes/finance-teacher-feedback.ts; DOM-FIN-159, ON-213).

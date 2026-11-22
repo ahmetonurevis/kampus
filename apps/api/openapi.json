@@ -344950,6 +344950,3712 @@
         }
       }
     },
+    "/api/v1/finance/meal-menus/my": {
+      "get": {
+        "operationId": "listMyMealMenus",
+        "summary": "Haftalık yemek menüsü (veli ve öğrenci)",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Velinin bağlı çocuklarının ya da öğrencinin kampüsü için haftanın **yayımlanmış** menüsü: kampüsün kendi menüsü, yoksa bütün kampüslerin menüsü (K-526). Gün başına öğünler, kalemler, 14 alerjen işareti, besin değeri ve günlük toplam (K-528). Taslak görünmez; menü yoksa `menus` boş. Kapsam sunucuda core `mealMenus` kuralıyla daralır. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `meals`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "weekStart",
+            "required": false,
+            "description": "Haftanın herhangi bir günü (YYYY-MM-DD); verilmezse bu hafta (Europe/Istanbul)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "weekStart": {
+                          "type": "string"
+                        },
+                        "weekEnd": {
+                          "type": "string"
+                        },
+                        "menus": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "publishedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "students": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "studentId": {
+                                      "type": "string"
+                                    },
+                                    "studentName": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "studentId",
+                                    "studentName"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Bu menüyü gören kapsamdaki öğrenciler"
+                              },
+                              "days": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "menuDate": {
+                                      "type": "string",
+                                      "description": "Gün (YYYY-MM-DD)"
+                                    },
+                                    "meals": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "mealKind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "breakfast",
+                                              "lunch",
+                                              "snack"
+                                            ]
+                                          },
+                                          "items": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "id": {
+                                                  "type": "string"
+                                                },
+                                                "position": {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991,
+                                                  "description": "Öğündeki sıra (0 tabanlı)"
+                                                },
+                                                "name": {
+                                                  "type": "string"
+                                                },
+                                                "allergens": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "gluten",
+                                                      "crustaceans",
+                                                      "eggs",
+                                                      "fish",
+                                                      "peanuts",
+                                                      "soybeans",
+                                                      "milk",
+                                                      "nuts",
+                                                      "celery",
+                                                      "mustard",
+                                                      "sesame",
+                                                      "sulphites",
+                                                      "lupin",
+                                                      "molluscs"
+                                                    ]
+                                                  },
+                                                  "description": "Alerjen işaretleri, yönetmelik sırasıyla"
+                                                },
+                                                "nutrition": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "object",
+                                                      "properties": {
+                                                        "energyKcal": {
+                                                          "type": "integer",
+                                                          "minimum": -9007199254740991,
+                                                          "maximum": 9007199254740991,
+                                                          "description": "Enerji (kcal)"
+                                                        },
+                                                        "proteinDg": {
+                                                          "type": "integer",
+                                                          "minimum": -9007199254740991,
+                                                          "maximum": 9007199254740991,
+                                                          "description": "Protein (gramın onda biri)"
+                                                        },
+                                                        "fatDg": {
+                                                          "type": "integer",
+                                                          "minimum": -9007199254740991,
+                                                          "maximum": 9007199254740991,
+                                                          "description": "Yağ (gramın onda biri)"
+                                                        },
+                                                        "carbohydrateDg": {
+                                                          "type": "integer",
+                                                          "minimum": -9007199254740991,
+                                                          "maximum": 9007199254740991,
+                                                          "description": "Karbonhidrat (gramın onda biri)"
+                                                        },
+                                                        "fiberDg": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "integer",
+                                                              "minimum": -9007199254740991,
+                                                              "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                              "type": "null"
+                                                            }
+                                                          ],
+                                                          "description": "Lif (gramın onda biri); bilinmiyorsa `null`"
+                                                        },
+                                                        "saltDg": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "integer",
+                                                              "minimum": -9007199254740991,
+                                                              "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                              "type": "null"
+                                                            }
+                                                          ],
+                                                          "description": "Tuz (gramın onda biri); bilinmiyorsa `null`"
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "energyKcal",
+                                                        "proteinDg",
+                                                        "fatDg",
+                                                        "carbohydrateDg",
+                                                        "fiberDg",
+                                                        "saltDg"
+                                                      ],
+                                                      "additionalProperties": false
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ],
+                                                  "description": "Porsiyon besin değeri; girilmemişse `null`"
+                                                }
+                                              },
+                                              "required": [
+                                                "id",
+                                                "position",
+                                                "name",
+                                                "allergens",
+                                                "nutrition"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "mealKind",
+                                          "items"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "Kalemi olan öğünler, kahvaltı → öğle → ikindi"
+                                    },
+                                    "totals": {
+                                      "type": "object",
+                                      "properties": {
+                                        "itemCount": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "missingNutrition": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Besin değeri girilmemiş kalem sayısı"
+                                        },
+                                        "energyKcal": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "proteinDg": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "fatDg": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "carbohydrateDg": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "fiberDg": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "missingFiber": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Lif değeri bilinmeyen kalem sayısı"
+                                        },
+                                        "saltDg": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "missingSalt": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Tuz değeri bilinmeyen kalem sayısı"
+                                        }
+                                      },
+                                      "required": [
+                                        "itemCount",
+                                        "missingNutrition",
+                                        "energyKcal",
+                                        "proteinDg",
+                                        "fatDg",
+                                        "carbohydrateDg",
+                                        "fiberDg",
+                                        "missingFiber",
+                                        "saltDg",
+                                        "missingSalt"
+                                      ],
+                                      "additionalProperties": false,
+                                      "description": "Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz)"
+                                    }
+                                  },
+                                  "required": [
+                                    "menuDate",
+                                    "meals",
+                                    "totals"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "branchId",
+                              "branchName",
+                              "publishedAt",
+                              "students",
+                              "days"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kampüs başına yayımlanmış menü (kampüsün kendi menüsü, yoksa bütün kampüsler); yoksa boş"
+                        }
+                      },
+                      "required": [
+                        "weekStart",
+                        "weekEnd",
+                        "menus"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-menus": {
+      "get": {
+        "operationId": "listMealMenus",
+        "summary": "Haftalık yemek menüleri",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Arşivlenmemiş menüler, yeni hafta önce; kampüs, durum, kalem ve gün sayısı. Süzgeç durum, kampüs (`all` bütün kampüs menüleri) ve başlangıç haftası. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "branchId",
+            "required": false,
+            "description": "Kampüs süzgeci; `all` yalnız bütün kampüs menüleri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Bu günden başlayan ve sonraki haftalar (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "weekStart": {
+                            "type": "string",
+                            "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                          },
+                          "weekEnd": {
+                            "type": "string",
+                            "description": "Haftanın pazarı (YYYY-MM-DD)"
+                          },
+                          "branchId": {
+                            "description": "Kampüs; `null` bütün kampüsler",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "branchName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published"
+                            ],
+                            "description": "`draft` taslak, `published` yayımlandı"
+                          },
+                          "publishedAt": {
+                            "description": "Son yayım anı (ISO 8601)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          },
+                          "itemCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Etkin kalem sayısı"
+                          },
+                          "dayCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kalemi olan gün sayısı"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "weekStart",
+                          "weekEnd",
+                          "branchId",
+                          "branchName",
+                          "status",
+                          "publishedAt",
+                          "version",
+                          "itemCount",
+                          "dayCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMealMenu",
+        "summary": "Haftalık menü aç ya da kopyala",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Taslak menü açar: hafta (pazartesi; tamamen geçmiş 422 `meal_menu_week_past`, bir yıldan ileri 422 `meal_menu_week_too_far`), isteğe bağlı kampüs (yok 422 `meal_menu_branch_not_found`). Aynı hafta ve kampüste ikinci menü 409 `meal_menu_exists`. `copyFromMenuId` verilirse kaynağın kalemleri aynı hafta günlerine kopyalanır, kurumun kapalı öğünü atlanır (kaynak yok 422 `meal_menu_source_not_found`; K-526). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "weekStart": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                  },
+                  "branchId": {
+                    "description": "Kampüs (branches); boş ya da `null` bütün kampüsler",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "copyFromMenuId": {
+                    "description": "Kalemleri kopyalanacak menü (ör. önceki hafta); günler yeni haftaya kaydırılır",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "weekStart"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "weekStart": {
+                          "type": "string",
+                          "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                        },
+                        "weekEnd": {
+                          "type": "string",
+                          "description": "Haftanın pazarı (YYYY-MM-DD)"
+                        },
+                        "branchId": {
+                          "description": "Kampüs; `null` bütün kampüsler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "branchName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "publishedAt": {
+                          "description": "Son yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "menuDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "meals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealKind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "breakfast",
+                                        "lunch",
+                                        "snack"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "position": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Öğündeki sıra (0 tabanlı)"
+                                          },
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "allergens": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "enum": [
+                                                "gluten",
+                                                "crustaceans",
+                                                "eggs",
+                                                "fish",
+                                                "peanuts",
+                                                "soybeans",
+                                                "milk",
+                                                "nuts",
+                                                "celery",
+                                                "mustard",
+                                                "sesame",
+                                                "sulphites",
+                                                "lupin",
+                                                "molluscs"
+                                              ]
+                                            },
+                                            "description": "Alerjen işaretleri, yönetmelik sırasıyla"
+                                          },
+                                          "nutrition": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "energyKcal": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Enerji (kcal)"
+                                                  },
+                                                  "proteinDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Protein (gramın onda biri)"
+                                                  },
+                                                  "fatDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Yağ (gramın onda biri)"
+                                                  },
+                                                  "carbohydrateDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Karbonhidrat (gramın onda biri)"
+                                                  },
+                                                  "fiberDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Lif (gramın onda biri); bilinmiyorsa `null`"
+                                                  },
+                                                  "saltDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Tuz (gramın onda biri); bilinmiyorsa `null`"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "energyKcal",
+                                                  "proteinDg",
+                                                  "fatDg",
+                                                  "carbohydrateDg",
+                                                  "fiberDg",
+                                                  "saltDg"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Porsiyon besin değeri; girilmemişse `null`"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "position",
+                                          "name",
+                                          "allergens",
+                                          "nutrition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "mealKind",
+                                    "items"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kalemi olan öğünler, kahvaltı → öğle → ikindi"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "itemCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingNutrition": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Besin değeri girilmemiş kalem sayısı"
+                                  },
+                                  "energyKcal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "proteinDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fatDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "carbohydrateDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fiberDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingFiber": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Lif değeri bilinmeyen kalem sayısı"
+                                  },
+                                  "saltDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingSalt": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tuz değeri bilinmeyen kalem sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "itemCount",
+                                  "missingNutrition",
+                                  "energyKcal",
+                                  "proteinDg",
+                                  "fatDg",
+                                  "carbohydrateDg",
+                                  "fiberDg",
+                                  "missingFiber",
+                                  "saltDg",
+                                  "missingSalt"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz)"
+                              }
+                            },
+                            "required": [
+                              "menuDate",
+                              "meals",
+                              "totals"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Haftanın yedi günü, pazartesiden"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "menuDate": {
+                                "type": "string"
+                              },
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correctedAt": {
+                                "type": "string",
+                                "description": "Düzeltme anı (ISO 8601)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "menuDate",
+                              "mealKind",
+                              "reason",
+                              "correctedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Geçmiş gün düzeltmeleri, yeni önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "weekStart",
+                        "weekEnd",
+                        "branchId",
+                        "branchName",
+                        "status",
+                        "publishedAt",
+                        "version",
+                        "days",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-menus/{menuId}": {
+      "get": {
+        "operationId": "getMealMenu",
+        "summary": "Haftalık menü ayrıntısı",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Haftanın yedi günü: öğünler, kalemler, alerjen işaretleri, besin değeri ve günlük toplam (K-528); geçmiş gün düzeltmeleri. Başka kurumun ya da arşivli menü 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "menuId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "weekStart": {
+                          "type": "string",
+                          "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                        },
+                        "weekEnd": {
+                          "type": "string",
+                          "description": "Haftanın pazarı (YYYY-MM-DD)"
+                        },
+                        "branchId": {
+                          "description": "Kampüs; `null` bütün kampüsler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "branchName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "publishedAt": {
+                          "description": "Son yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "menuDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "meals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealKind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "breakfast",
+                                        "lunch",
+                                        "snack"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "position": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Öğündeki sıra (0 tabanlı)"
+                                          },
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "allergens": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "enum": [
+                                                "gluten",
+                                                "crustaceans",
+                                                "eggs",
+                                                "fish",
+                                                "peanuts",
+                                                "soybeans",
+                                                "milk",
+                                                "nuts",
+                                                "celery",
+                                                "mustard",
+                                                "sesame",
+                                                "sulphites",
+                                                "lupin",
+                                                "molluscs"
+                                              ]
+                                            },
+                                            "description": "Alerjen işaretleri, yönetmelik sırasıyla"
+                                          },
+                                          "nutrition": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "energyKcal": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Enerji (kcal)"
+                                                  },
+                                                  "proteinDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Protein (gramın onda biri)"
+                                                  },
+                                                  "fatDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Yağ (gramın onda biri)"
+                                                  },
+                                                  "carbohydrateDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Karbonhidrat (gramın onda biri)"
+                                                  },
+                                                  "fiberDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Lif (gramın onda biri); bilinmiyorsa `null`"
+                                                  },
+                                                  "saltDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Tuz (gramın onda biri); bilinmiyorsa `null`"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "energyKcal",
+                                                  "proteinDg",
+                                                  "fatDg",
+                                                  "carbohydrateDg",
+                                                  "fiberDg",
+                                                  "saltDg"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Porsiyon besin değeri; girilmemişse `null`"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "position",
+                                          "name",
+                                          "allergens",
+                                          "nutrition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "mealKind",
+                                    "items"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kalemi olan öğünler, kahvaltı → öğle → ikindi"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "itemCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingNutrition": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Besin değeri girilmemiş kalem sayısı"
+                                  },
+                                  "energyKcal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "proteinDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fatDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "carbohydrateDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fiberDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingFiber": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Lif değeri bilinmeyen kalem sayısı"
+                                  },
+                                  "saltDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingSalt": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tuz değeri bilinmeyen kalem sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "itemCount",
+                                  "missingNutrition",
+                                  "energyKcal",
+                                  "proteinDg",
+                                  "fatDg",
+                                  "carbohydrateDg",
+                                  "fiberDg",
+                                  "missingFiber",
+                                  "saltDg",
+                                  "missingSalt"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz)"
+                              }
+                            },
+                            "required": [
+                              "menuDate",
+                              "meals",
+                              "totals"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Haftanın yedi günü, pazartesiden"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "menuDate": {
+                                "type": "string"
+                              },
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correctedAt": {
+                                "type": "string",
+                                "description": "Düzeltme anı (ISO 8601)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "menuDate",
+                              "mealKind",
+                              "reason",
+                              "correctedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Geçmiş gün düzeltmeleri, yeni önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "weekStart",
+                        "weekEnd",
+                        "branchId",
+                        "branchName",
+                        "status",
+                        "publishedAt",
+                        "version",
+                        "days",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMealMenu",
+        "summary": "Menü hücrelerini yaz",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Gönderilen gün × öğün hücreleri yeniden yazılır (boş liste hücreyi boşaltır); gönderilmeyen hücre değişmez. Gün haftada olmalı (422 `meal_menu_date_outside_week`), öğün kurumda açık olmalı (422 `meal_kind_disabled`); hiçbir hücre değişmediyse 422 `meal_menu_unchanged`. Yayımlanmış menüde bugünden önceki gün yalnız yöneticinin gerekçeli düzeltmesidir: gerekçe yok 422 `meal_menu_day_past`, yönetici değil 403 `meal_menu_correction_forbidden`, gerekçe gereksiz 422 `meal_menu_correction_not_needed`; önceki kalemler arşivde kalır (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slots": {
+                    "minItems": 1,
+                    "maxItems": 21,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "menuDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "Menü günü (YYYY-MM-DD, Europe/Istanbul); haftanın içinde"
+                        },
+                        "mealKind": {
+                          "type": "string",
+                          "enum": [
+                            "breakfast",
+                            "lunch",
+                            "snack"
+                          ],
+                          "description": "Öğün"
+                        },
+                        "items": {
+                          "maxItems": 10,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 120,
+                                "description": "Yemek adı (2–120)"
+                              },
+                              "allergens": {
+                                "maxItems": 14,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "gluten",
+                                    "crustaceans",
+                                    "eggs",
+                                    "fish",
+                                    "peanuts",
+                                    "soybeans",
+                                    "milk",
+                                    "nuts",
+                                    "celery",
+                                    "mustard",
+                                    "sesame",
+                                    "sulphites",
+                                    "lupin",
+                                    "molluscs"
+                                  ]
+                                },
+                                "description": "İçerdiği alerjenler (TGK Ek-1 listesi); boş liste işaretli alerjen yok demektir"
+                              },
+                              "nutrition": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "energyKcal": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 3000,
+                                        "description": "Enerji (kcal, tam sayı)"
+                                      },
+                                      "proteinDg": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 5000,
+                                        "description": "Protein (dg: gram × 10)"
+                                      },
+                                      "fatDg": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 5000,
+                                        "description": "Yağ (dg: gram × 10)"
+                                      },
+                                      "carbohydrateDg": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 5000,
+                                        "description": "Karbonhidrat (dg: gram × 10)"
+                                      },
+                                      "fiberDg": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 5000
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Lif (dg: gram × 10); bilinmiyorsa `null`"
+                                      },
+                                      "saltDg": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 200
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Tuz (dg: gram × 10); bilinmiyorsa `null`"
+                                      }
+                                    },
+                                    "required": [
+                                      "energyKcal",
+                                      "proteinDg",
+                                      "fatDg",
+                                      "carbohydrateDg",
+                                      "fiberDg",
+                                      "saltDg"
+                                    ],
+                                    "additionalProperties": false,
+                                    "description": "Porsiyon başına besin değeri; enerji, protein, yağ ve karbonhidrat birlikte girilir"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Besin değeri; bilinmiyorsa `null`"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "allergens",
+                              "nutrition"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğünün yemekleri, sırasıyla; boş liste öğünü boşaltır"
+                        }
+                      },
+                      "required": [
+                        "menuDate",
+                        "mealKind",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Yeniden yazılan gün × öğün hücreleri; gönderilmeyen hücre değişmez"
+                  },
+                  "correctionReason": {
+                    "description": "Yayımlanmış menünün geçmiş gününü düzeltirken zorunlu gerekçe (10–500; yalnız yönetici)",
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "slots"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "menuId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "weekStart": {
+                          "type": "string",
+                          "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                        },
+                        "weekEnd": {
+                          "type": "string",
+                          "description": "Haftanın pazarı (YYYY-MM-DD)"
+                        },
+                        "branchId": {
+                          "description": "Kampüs; `null` bütün kampüsler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "branchName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "publishedAt": {
+                          "description": "Son yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "menuDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "meals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealKind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "breakfast",
+                                        "lunch",
+                                        "snack"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "position": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Öğündeki sıra (0 tabanlı)"
+                                          },
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "allergens": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "enum": [
+                                                "gluten",
+                                                "crustaceans",
+                                                "eggs",
+                                                "fish",
+                                                "peanuts",
+                                                "soybeans",
+                                                "milk",
+                                                "nuts",
+                                                "celery",
+                                                "mustard",
+                                                "sesame",
+                                                "sulphites",
+                                                "lupin",
+                                                "molluscs"
+                                              ]
+                                            },
+                                            "description": "Alerjen işaretleri, yönetmelik sırasıyla"
+                                          },
+                                          "nutrition": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "energyKcal": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Enerji (kcal)"
+                                                  },
+                                                  "proteinDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Protein (gramın onda biri)"
+                                                  },
+                                                  "fatDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Yağ (gramın onda biri)"
+                                                  },
+                                                  "carbohydrateDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Karbonhidrat (gramın onda biri)"
+                                                  },
+                                                  "fiberDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Lif (gramın onda biri); bilinmiyorsa `null`"
+                                                  },
+                                                  "saltDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Tuz (gramın onda biri); bilinmiyorsa `null`"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "energyKcal",
+                                                  "proteinDg",
+                                                  "fatDg",
+                                                  "carbohydrateDg",
+                                                  "fiberDg",
+                                                  "saltDg"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Porsiyon besin değeri; girilmemişse `null`"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "position",
+                                          "name",
+                                          "allergens",
+                                          "nutrition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "mealKind",
+                                    "items"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kalemi olan öğünler, kahvaltı → öğle → ikindi"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "itemCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingNutrition": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Besin değeri girilmemiş kalem sayısı"
+                                  },
+                                  "energyKcal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "proteinDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fatDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "carbohydrateDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fiberDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingFiber": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Lif değeri bilinmeyen kalem sayısı"
+                                  },
+                                  "saltDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingSalt": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tuz değeri bilinmeyen kalem sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "itemCount",
+                                  "missingNutrition",
+                                  "energyKcal",
+                                  "proteinDg",
+                                  "fatDg",
+                                  "carbohydrateDg",
+                                  "fiberDg",
+                                  "missingFiber",
+                                  "saltDg",
+                                  "missingSalt"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz)"
+                              }
+                            },
+                            "required": [
+                              "menuDate",
+                              "meals",
+                              "totals"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Haftanın yedi günü, pazartesiden"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "menuDate": {
+                                "type": "string"
+                              },
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correctedAt": {
+                                "type": "string",
+                                "description": "Düzeltme anı (ISO 8601)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "menuDate",
+                              "mealKind",
+                              "reason",
+                              "correctedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Geçmiş gün düzeltmeleri, yeni önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "weekStart",
+                        "weekEnd",
+                        "branchId",
+                        "branchName",
+                        "status",
+                        "publishedAt",
+                        "version",
+                        "days",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveMealMenu",
+        "summary": "Taslak menüyü arşivle",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Yalnız taslak arşivlenir; yayımlanmış 422 `meal_menu_published` (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "menuId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-menus/{menuId}/publish": {
+      "post": {
+        "operationId": "publishMealMenu",
+        "summary": "Menüyü yayımla",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Taslak menü veli ve öğrenciye açılır. Yayımlanmış 422 `meal_menu_not_draft`, yemeksiz 422 `meal_menu_empty` (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "menuId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "weekStart": {
+                          "type": "string",
+                          "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                        },
+                        "weekEnd": {
+                          "type": "string",
+                          "description": "Haftanın pazarı (YYYY-MM-DD)"
+                        },
+                        "branchId": {
+                          "description": "Kampüs; `null` bütün kampüsler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "branchName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "publishedAt": {
+                          "description": "Son yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "menuDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "meals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealKind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "breakfast",
+                                        "lunch",
+                                        "snack"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "position": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Öğündeki sıra (0 tabanlı)"
+                                          },
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "allergens": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "enum": [
+                                                "gluten",
+                                                "crustaceans",
+                                                "eggs",
+                                                "fish",
+                                                "peanuts",
+                                                "soybeans",
+                                                "milk",
+                                                "nuts",
+                                                "celery",
+                                                "mustard",
+                                                "sesame",
+                                                "sulphites",
+                                                "lupin",
+                                                "molluscs"
+                                              ]
+                                            },
+                                            "description": "Alerjen işaretleri, yönetmelik sırasıyla"
+                                          },
+                                          "nutrition": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "energyKcal": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Enerji (kcal)"
+                                                  },
+                                                  "proteinDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Protein (gramın onda biri)"
+                                                  },
+                                                  "fatDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Yağ (gramın onda biri)"
+                                                  },
+                                                  "carbohydrateDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Karbonhidrat (gramın onda biri)"
+                                                  },
+                                                  "fiberDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Lif (gramın onda biri); bilinmiyorsa `null`"
+                                                  },
+                                                  "saltDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Tuz (gramın onda biri); bilinmiyorsa `null`"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "energyKcal",
+                                                  "proteinDg",
+                                                  "fatDg",
+                                                  "carbohydrateDg",
+                                                  "fiberDg",
+                                                  "saltDg"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Porsiyon besin değeri; girilmemişse `null`"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "position",
+                                          "name",
+                                          "allergens",
+                                          "nutrition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "mealKind",
+                                    "items"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kalemi olan öğünler, kahvaltı → öğle → ikindi"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "itemCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingNutrition": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Besin değeri girilmemiş kalem sayısı"
+                                  },
+                                  "energyKcal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "proteinDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fatDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "carbohydrateDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fiberDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingFiber": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Lif değeri bilinmeyen kalem sayısı"
+                                  },
+                                  "saltDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingSalt": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tuz değeri bilinmeyen kalem sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "itemCount",
+                                  "missingNutrition",
+                                  "energyKcal",
+                                  "proteinDg",
+                                  "fatDg",
+                                  "carbohydrateDg",
+                                  "fiberDg",
+                                  "missingFiber",
+                                  "saltDg",
+                                  "missingSalt"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz)"
+                              }
+                            },
+                            "required": [
+                              "menuDate",
+                              "meals",
+                              "totals"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Haftanın yedi günü, pazartesiden"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "menuDate": {
+                                "type": "string"
+                              },
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correctedAt": {
+                                "type": "string",
+                                "description": "Düzeltme anı (ISO 8601)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "menuDate",
+                              "mealKind",
+                              "reason",
+                              "correctedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Geçmiş gün düzeltmeleri, yeni önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "weekStart",
+                        "weekEnd",
+                        "branchId",
+                        "branchName",
+                        "status",
+                        "publishedAt",
+                        "version",
+                        "days",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-menus/{menuId}/unpublish": {
+      "post": {
+        "operationId": "unpublishMealMenu",
+        "summary": "Menüyü yayımdan kaldır",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Hafta başlamadan menü taslağa döner; başlamış haftada 422 `meal_menu_week_started`, taslakta 422 `meal_menu_not_published` (K-527). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "menuId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "weekStart": {
+                          "type": "string",
+                          "description": "Haftanın pazartesisi (YYYY-MM-DD)"
+                        },
+                        "weekEnd": {
+                          "type": "string",
+                          "description": "Haftanın pazarı (YYYY-MM-DD)"
+                        },
+                        "branchId": {
+                          "description": "Kampüs; `null` bütün kampüsler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "branchName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "publishedAt": {
+                          "description": "Son yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "menuDate": {
+                                "type": "string",
+                                "description": "Gün (YYYY-MM-DD)"
+                              },
+                              "meals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealKind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "breakfast",
+                                        "lunch",
+                                        "snack"
+                                      ]
+                                    },
+                                    "items": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "position": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Öğündeki sıra (0 tabanlı)"
+                                          },
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "allergens": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string",
+                                              "enum": [
+                                                "gluten",
+                                                "crustaceans",
+                                                "eggs",
+                                                "fish",
+                                                "peanuts",
+                                                "soybeans",
+                                                "milk",
+                                                "nuts",
+                                                "celery",
+                                                "mustard",
+                                                "sesame",
+                                                "sulphites",
+                                                "lupin",
+                                                "molluscs"
+                                              ]
+                                            },
+                                            "description": "Alerjen işaretleri, yönetmelik sırasıyla"
+                                          },
+                                          "nutrition": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "energyKcal": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Enerji (kcal)"
+                                                  },
+                                                  "proteinDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Protein (gramın onda biri)"
+                                                  },
+                                                  "fatDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Yağ (gramın onda biri)"
+                                                  },
+                                                  "carbohydrateDg": {
+                                                    "type": "integer",
+                                                    "minimum": -9007199254740991,
+                                                    "maximum": 9007199254740991,
+                                                    "description": "Karbonhidrat (gramın onda biri)"
+                                                  },
+                                                  "fiberDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Lif (gramın onda biri); bilinmiyorsa `null`"
+                                                  },
+                                                  "saltDg": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ],
+                                                    "description": "Tuz (gramın onda biri); bilinmiyorsa `null`"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "energyKcal",
+                                                  "proteinDg",
+                                                  "fatDg",
+                                                  "carbohydrateDg",
+                                                  "fiberDg",
+                                                  "saltDg"
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Porsiyon besin değeri; girilmemişse `null`"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "position",
+                                          "name",
+                                          "allergens",
+                                          "nutrition"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "mealKind",
+                                    "items"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kalemi olan öğünler, kahvaltı → öğle → ikindi"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "itemCount": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingNutrition": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Besin değeri girilmemiş kalem sayısı"
+                                  },
+                                  "energyKcal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "proteinDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fatDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "carbohydrateDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fiberDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingFiber": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Lif değeri bilinmeyen kalem sayısı"
+                                  },
+                                  "saltDg": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missingSalt": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tuz değeri bilinmeyen kalem sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "itemCount",
+                                  "missingNutrition",
+                                  "energyKcal",
+                                  "proteinDg",
+                                  "fatDg",
+                                  "carbohydrateDg",
+                                  "fiberDg",
+                                  "missingFiber",
+                                  "saltDg",
+                                  "missingSalt"
+                                ],
+                                "additionalProperties": false,
+                                "description": "Günlük toplam (sunucuda core `mealDayTotals` ile hesaplanır, saklanmaz)"
+                              }
+                            },
+                            "required": [
+                              "menuDate",
+                              "meals",
+                              "totals"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Haftanın yedi günü, pazartesiden"
+                        },
+                        "corrections": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "menuDate": {
+                                "type": "string"
+                              },
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              },
+                              "correctedAt": {
+                                "type": "string",
+                                "description": "Düzeltme anı (ISO 8601)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "menuDate",
+                              "mealKind",
+                              "reason",
+                              "correctedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Geçmiş gün düzeltmeleri, yeni önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "weekStart",
+                        "weekEnd",
+                        "branchId",
+                        "branchName",
+                        "status",
+                        "publishedAt",
+                        "version",
+                        "days",
+                        "corrections"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-menu-settings": {
+      "get": {
+        "operationId": "getMealMenuSettings",
+        "summary": "Öğün ayarı",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "Kurumun kullandığı öğünler (kahvaltı, öğle, ikindi ara öğünü); hiç kaydedilmediyse yalnız öğle ve sürüm 1 (K-526). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "mealKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "breakfast",
+                              "lunch",
+                              "snack"
+                            ]
+                          },
+                          "description": "Kurumun kullandığı öğünler, gösterim sırasıyla"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "mealKinds",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setMealMenuSettings",
+        "summary": "Öğün ayarını kaydet",
+        "tags": [
+          "finance-meal-menus"
+        ],
+        "description": "En az bir öğün; değişiklik yoksa 422 `meal_menu_settings_unchanged`. Kapanan öğünün mevcut kalemleri görünür kalır, yeni kalem yazılmaz (K-526). `If-Match` zorunlu (hiç kaydedilmediyse 1). Rol: `yonetici`; diğer roller 403. Modüller `finance` ve `meals`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mealKinds": {
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "breakfast",
+                        "lunch",
+                        "snack"
+                      ]
+                    },
+                    "description": "Kurumun kullandığı öğünler"
+                  }
+                },
+                "required": [
+                  "mealKinds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "mealKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "breakfast",
+                              "lunch",
+                              "snack"
+                            ]
+                          },
+                          "description": "Kurumun kullandığı öğünler, gösterim sırasıyla"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "mealKinds",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/infirmary/visits": {
       "get": {
         "operationId": "listInfirmaryVisits",

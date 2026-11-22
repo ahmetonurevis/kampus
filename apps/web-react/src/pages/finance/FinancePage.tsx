@@ -251,6 +251,9 @@ const FinanceTransportSection = lazy(async () => ({
 const FinanceClubsSection = lazy(async () => ({
   default: (await import('./FinanceClubsSection.tsx')).FinanceClubsSection,
 }))
+const FinanceMealMenusSection = lazy(async () => ({
+  default: (await import('./FinanceMealMenusSection.tsx')).FinanceMealMenusSection,
+}))
 const FinanceInfirmarySection = lazy(async () => ({
   default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
 }))
@@ -348,6 +351,7 @@ const VIEWS = {
   lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
   transport: { label: 'Servis', param: 'servis' },
   clubs: { label: 'Kulüpler', param: 'kulupler' },
+  mealMenus: { label: 'Yemek menüsü', param: 'yemek-menusu' },
   infirmary: { label: 'Revir', param: 'revir' },
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
@@ -425,6 +429,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * ek not ve PDF yöneticidedir (K-494).
  * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
  * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
+ * Yemek menüsü (DOM-FIN-157) ikisine açıktır; geçmiş gün düzeltmesi ve öğün ayarı yöneticide
+ * (K-526, K-527).
  * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
  * Acil durum özetleri (DOM-FIN-155) ikisine açıktır; ön büro sınıf kartlarını okur, özeti yönetici
  * yazar ve onaylar (K-520, K-521).
@@ -702,6 +708,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
         {tab === 'transport' ? <FinanceTransportSection /> : null}
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
+        {tab === 'mealMenus' ? <FinanceMealMenusSection /> : null}
         {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
         {tab === 'emergencySummaries' ? (
           <FinanceEmergencySummariesSection isManager={isManager} />

@@ -251,6 +251,9 @@ const FinanceTransportSection = lazy(async () => ({
 const FinanceClubsSection = lazy(async () => ({
   default: (await import('./FinanceClubsSection.tsx')).FinanceClubsSection,
 }))
+const FinanceMealMenusSection = lazy(async () => ({
+  default: (await import('./FinanceMealMenusSection.tsx')).FinanceMealMenusSection,
+}))
 const FinanceInfirmarySection = lazy(async () => ({
   default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
 }))
@@ -263,6 +266,9 @@ const FinanceHealthAccessLogSection = lazy(async () => ({
 }))
 const FinanceHealthScreeningsSection = lazy(async () => ({
   default: (await import('./FinanceHealthScreeningsSection.tsx')).FinanceHealthScreeningsSection,
+}))
+const FinanceTeacherFeedbackSection = lazy(async () => ({
+  default: (await import('./FinanceTeacherFeedbackSection.tsx')).FinanceTeacherFeedbackSection,
 }))
 const FinanceSocialActivitiesSection = lazy(async () => ({
   default: (await import('./FinanceSocialActivitiesSection.tsx')).FinanceSocialActivitiesSection,
@@ -348,10 +354,12 @@ const VIEWS = {
   lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
   transport: { label: 'Servis', param: 'servis' },
   clubs: { label: 'Kulüpler', param: 'kulupler' },
+  mealMenus: { label: 'Yemek menüsü', param: 'yemek-menusu' },
   infirmary: { label: 'Revir', param: 'revir' },
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
+  teacherFeedback: { label: 'Öğretmen geri bildirimi', param: 'ogretmen-geri-bildirimi' },
   socialActivities: { label: 'Sosyal etkinlik saatleri', param: 'sosyal-etkinlik' },
 } as const
 type FinanceView = keyof typeof VIEWS
@@ -425,11 +433,15 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * ek not ve PDF yöneticidedir (K-494).
  * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
  * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
+ * Yemek menüsü (DOM-FIN-157) ikisine açıktır; geçmiş gün düzeltmesi ve öğün ayarı yöneticide
+ * (K-526, K-527).
  * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
  * Acil durum özetleri (DOM-FIN-155) ikisine açıktır; ön büro sınıf kartlarını okur, özeti yönetici
  * yazar ve onaylar (K-520, K-521).
  * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
  * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
+ * Öğretmen geri bildirimi (DOM-FIN-159) yalnız yöneticidedir; öğretmen kendi sonucunu rol
+ * kabuğundaki görünümde, öğrenci ve veli yanıtını kendi ekranında görür (K-532).
  * Sosyal etkinlik saatleri (DOM-FIN-160) yalnız yöneticide ve yalnız okulda; öğretmen ekranı
  * platform kabuğundadır (K-535).
  */
@@ -473,10 +485,10 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices' ||
-      value === 'healthAccessLog'
+      value === 'healthAccessLog' ||
+      value === 'teacherFeedback'
     )
       return isManager
-    if (value === 'socialActivities') return isManager && institutionType === 'school'
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
       return institutionType === 'language_school'
     if (value === 'eOzel') return institutionType !== 'school'
@@ -702,12 +714,14 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
         {tab === 'transport' ? <FinanceTransportSection /> : null}
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
+        {tab === 'mealMenus' ? <FinanceMealMenusSection /> : null}
         {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
         {tab === 'emergencySummaries' ? (
           <FinanceEmergencySummariesSection isManager={isManager} />
         ) : null}
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
+        {tab === 'teacherFeedback' ? <FinanceTeacherFeedbackSection /> : null}
         {tab === 'socialActivities' ? <FinanceSocialActivitiesSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel

@@ -1,5 +1,5 @@
 {
-  "id": "712c02bb-df71-41a4-8a3a-bcd8ed43208c",
+  "id": "878281c1-bd7c-4b92-95a6-c2ac81a905eb",
   "prevId": "f17d2e89-30f5-4d3a-a786-8b23f4335a24",
   "version": "7",
   "dialect": "postgresql",
@@ -26559,6 +26559,641 @@
       },
       "isRLSEnabled": false
     },
+    "public.meal_menu_corrections": {
+      "name": "meal_menu_corrections",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "menu_id": {
+          "name": "menu_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "menu_date": {
+          "name": "menu_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meal_kind": {
+          "name": "meal_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "corrected_by_user_id": {
+          "name": "corrected_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "meal_menu_corrections_menu_idx": {
+          "name": "meal_menu_corrections_menu_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "menu_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "meal_menu_corrections_institution_id_institutions_id_fk": {
+          "name": "meal_menu_corrections_institution_id_institutions_id_fk",
+          "tableFrom": "meal_menu_corrections",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "meal_menu_corrections_menu_fkey": {
+          "name": "meal_menu_corrections_menu_fkey",
+          "tableFrom": "meal_menu_corrections",
+          "tableTo": "meal_menus",
+          "columnsFrom": [
+            "institution_id",
+            "menu_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "meal_menu_corrections_pkey": {
+          "name": "meal_menu_corrections_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "meal_menu_corrections_meal_kind_check": {
+          "name": "meal_menu_corrections_meal_kind_check",
+          "value": "\"meal_menu_corrections\".\"meal_kind\" in ('breakfast', 'lunch', 'snack')"
+        },
+        "meal_menu_corrections_reason_check": {
+          "name": "meal_menu_corrections_reason_check",
+          "value": "char_length(\"meal_menu_corrections\".\"reason\") between 10 and 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.meal_menu_items": {
+      "name": "meal_menu_items",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "menu_id": {
+          "name": "menu_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "menu_date": {
+          "name": "menu_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meal_kind": {
+          "name": "meal_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allergens": {
+          "name": "allergens",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "energy_kcal": {
+          "name": "energy_kcal",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "protein_dg": {
+          "name": "protein_dg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fat_dg": {
+          "name": "fat_dg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "carbohydrate_dg": {
+          "name": "carbohydrate_dg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fiber_dg": {
+          "name": "fiber_dg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "salt_dg": {
+          "name": "salt_dg",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "meal_menu_items_slot_key": {
+          "name": "meal_menu_items_slot_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "menu_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "menu_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "meal_kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"meal_menu_items\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "meal_menu_items_menu_idx": {
+          "name": "meal_menu_items_menu_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "menu_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "menu_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "meal_menu_items_institution_id_institutions_id_fk": {
+          "name": "meal_menu_items_institution_id_institutions_id_fk",
+          "tableFrom": "meal_menu_items",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "meal_menu_items_menu_fkey": {
+          "name": "meal_menu_items_menu_fkey",
+          "tableFrom": "meal_menu_items",
+          "tableTo": "meal_menus",
+          "columnsFrom": [
+            "institution_id",
+            "menu_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "meal_menu_items_pkey": {
+          "name": "meal_menu_items_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "meal_menu_items_meal_kind_check": {
+          "name": "meal_menu_items_meal_kind_check",
+          "value": "\"meal_menu_items\".\"meal_kind\" in ('breakfast', 'lunch', 'snack')"
+        },
+        "meal_menu_items_position_check": {
+          "name": "meal_menu_items_position_check",
+          "value": "\"meal_menu_items\".\"position\" between 0 and 9"
+        },
+        "meal_menu_items_name_check": {
+          "name": "meal_menu_items_name_check",
+          "value": "char_length(\"meal_menu_items\".\"name\") between 2 and 120"
+        },
+        "meal_menu_items_allergens_check": {
+          "name": "meal_menu_items_allergens_check",
+          "value": "\"meal_menu_items\".\"allergens\" <@ array['gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soybeans', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs']::text[]"
+        },
+        "meal_menu_items_nutrition_check": {
+          "name": "meal_menu_items_nutrition_check",
+          "value": "((\"meal_menu_items\".\"energy_kcal\" is null) = (\"meal_menu_items\".\"protein_dg\" is null)\n        and (\"meal_menu_items\".\"energy_kcal\" is null) = (\"meal_menu_items\".\"fat_dg\" is null)\n        and (\"meal_menu_items\".\"energy_kcal\" is null) = (\"meal_menu_items\".\"carbohydrate_dg\" is null)\n        and (\"meal_menu_items\".\"energy_kcal\" is not null or (\"meal_menu_items\".\"fiber_dg\" is null and \"meal_menu_items\".\"salt_dg\" is null)))\n        and (\"meal_menu_items\".\"energy_kcal\" is null or \"meal_menu_items\".\"energy_kcal\" between 0 and 3000)\n        and (\"meal_menu_items\".\"protein_dg\" is null or \"meal_menu_items\".\"protein_dg\" between 0 and 5000)\n        and (\"meal_menu_items\".\"fat_dg\" is null or \"meal_menu_items\".\"fat_dg\" between 0 and 5000)\n        and (\"meal_menu_items\".\"carbohydrate_dg\" is null or \"meal_menu_items\".\"carbohydrate_dg\" between 0 and 5000)\n        and (\"meal_menu_items\".\"fiber_dg\" is null or \"meal_menu_items\".\"fiber_dg\" between 0 and 5000)\n        and (\"meal_menu_items\".\"salt_dg\" is null or \"meal_menu_items\".\"salt_dg\" between 0 and 200)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.meal_menu_settings": {
+      "name": "meal_menu_settings",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "meal_kinds": {
+          "name": "meal_kinds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meal_menu_settings_institution_id_institutions_id_fk": {
+          "name": "meal_menu_settings_institution_id_institutions_id_fk",
+          "tableFrom": "meal_menu_settings",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "meal_menu_settings_meal_kinds_check": {
+          "name": "meal_menu_settings_meal_kinds_check",
+          "value": "cardinality(\"meal_menu_settings\".\"meal_kinds\") >= 1 and \"meal_menu_settings\".\"meal_kinds\" <@ array['breakfast', 'lunch', 'snack']::text[]"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.meal_menus": {
+      "name": "meal_menus",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "week_start": {
+          "name": "week_start",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published_by_user_id": {
+          "name": "published_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "copied_from_menu_id": {
+          "name": "copied_from_menu_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "meal_menus_week_key": {
+          "name": "meal_menus_week_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "week_start",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"branch_id\", '')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"meal_menus\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "meal_menus_institution_id_institutions_id_fk": {
+          "name": "meal_menus_institution_id_institutions_id_fk",
+          "tableFrom": "meal_menus",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "meal_menus_pkey": {
+          "name": "meal_menus_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "meal_menus_status_check": {
+          "name": "meal_menus_status_check",
+          "value": "\"meal_menus\".\"status\" in ('draft', 'published')"
+        },
+        "meal_menus_week_start_check": {
+          "name": "meal_menus_week_start_check",
+          "value": "extract(isodow from \"meal_menus\".\"week_start\") = 1"
+        },
+        "meal_menus_published_check": {
+          "name": "meal_menus_published_check",
+          "value": "(\"meal_menus\".\"status\" = 'published') = (\"meal_menus\".\"published_at\" is not null)\n        and (\"meal_menus\".\"published_at\" is null) = (\"meal_menus\".\"published_by_user_id\" is null)"
+        },
+        "meal_menus_archive_check": {
+          "name": "meal_menus_archive_check",
+          "value": "\"meal_menus\".\"archived_at\" is null or \"meal_menus\".\"status\" = 'draft'"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.staff_medical_reports": {
       "name": "staff_medical_reports",
       "schema": "",
@@ -40082,682 +40717,6 @@
         "sgk_missing_days_archive_check": {
           "name": "sgk_missing_days_archive_check",
           "value": "(\"sgk_missing_days\".\"archived_at\" is null) = (\"sgk_missing_days\".\"archived_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.social_activities": {
-      "name": "social_activities",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "responsible_membership_id": {
-          "name": "responsible_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "organization_scope": {
-          "name": "organization_scope",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "organization_name": {
-          "name": "organization_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "club_id": {
-          "name": "club_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "social_activities_responsible_idx": {
-          "name": "social_activities_responsible_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "responsible_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_activities_club_idx": {
-          "name": "social_activities_club_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "club_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"social_activities\".\"club_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_activities_start_idx": {
-          "name": "social_activities_start_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "social_activities_institution_id_institutions_id_fk": {
-          "name": "social_activities_institution_id_institutions_id_fk",
-          "tableFrom": "social_activities",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "social_activities_responsible_fkey": {
-          "name": "social_activities_responsible_fkey",
-          "tableFrom": "social_activities",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "responsible_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "social_activities_club_fkey": {
-          "name": "social_activities_club_fkey",
-          "tableFrom": "social_activities",
-          "tableTo": "school_clubs",
-          "columnsFrom": [
-            "institution_id",
-            "club_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "social_activities_pkey": {
-          "name": "social_activities_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "social_activities_name_check": {
-          "name": "social_activities_name_check",
-          "value": "char_length(\"social_activities\".\"name\") between 2 and 120"
-        },
-        "social_activities_kind_check": {
-          "name": "social_activities_kind_check",
-          "value": "\"social_activities\".\"kind\" in ('club', 'volunteering')"
-        },
-        "social_activities_scope_check": {
-          "name": "social_activities_scope_check",
-          "value": "\"social_activities\".\"organization_scope\" in ('internal', 'external')"
-        },
-        "social_activities_location_check": {
-          "name": "social_activities_location_check",
-          "value": "char_length(\"social_activities\".\"location\") between 2 and 160"
-        },
-        "social_activities_organization_check": {
-          "name": "social_activities_organization_check",
-          "value": "(\"social_activities\".\"organization_name\" is null or char_length(\"social_activities\".\"organization_name\") between 2 and 160)\n        and (\"social_activities\".\"organization_scope\" = 'internal' or \"social_activities\".\"organization_name\" is not null)"
-        },
-        "social_activities_dates_check": {
-          "name": "social_activities_dates_check",
-          "value": "\"social_activities\".\"end_date\" is null or \"social_activities\".\"end_date\" >= \"social_activities\".\"start_date\""
-        },
-        "social_activities_club_check": {
-          "name": "social_activities_club_check",
-          "value": "\"social_activities\".\"club_id\" is null or \"social_activities\".\"kind\" = 'club'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.social_activity_hours": {
-      "name": "social_activity_hours",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "activity_id": {
-          "name": "activity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "activity_date": {
-          "name": "activity_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "minutes": {
-          "name": "minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entered_by_user_id": {
-          "name": "entered_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "decided_by_user_id": {
-          "name": "decided_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_at": {
-          "name": "decided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rejection_reason": {
-          "name": "rejection_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reverses_entry_id": {
-          "name": "reverses_entry_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reversed_by_entry_id": {
-          "name": "reversed_by_entry_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "social_activity_hours_day_key": {
-          "name": "social_activity_hours_day_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"social_activity_hours\".\"kind\" = 'entry' and \"social_activity_hours\".\"status\" <> 'rejected' and \"social_activity_hours\".\"reversed_by_entry_id\" is null and \"social_activity_hours\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_activity_hours_reverses_key": {
-          "name": "social_activity_hours_reverses_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "reverses_entry_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"social_activity_hours\".\"reverses_entry_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_activity_hours_student_idx": {
-          "name": "social_activity_hours_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "social_activity_hours_activity_idx": {
-          "name": "social_activity_hours_activity_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "social_activity_hours_institution_id_institutions_id_fk": {
-          "name": "social_activity_hours_institution_id_institutions_id_fk",
-          "tableFrom": "social_activity_hours",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "social_activity_hours_activity_fkey": {
-          "name": "social_activity_hours_activity_fkey",
-          "tableFrom": "social_activity_hours",
-          "tableTo": "social_activities",
-          "columnsFrom": [
-            "institution_id",
-            "activity_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "social_activity_hours_reverses_fkey": {
-          "name": "social_activity_hours_reverses_fkey",
-          "tableFrom": "social_activity_hours",
-          "tableTo": "social_activity_hours",
-          "columnsFrom": [
-            "institution_id",
-            "reverses_entry_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "social_activity_hours_pkey": {
-          "name": "social_activity_hours_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "social_activity_hours_kind_check": {
-          "name": "social_activity_hours_kind_check",
-          "value": "\"social_activity_hours\".\"kind\" in ('entry', 'reversal')"
-        },
-        "social_activity_hours_status_check": {
-          "name": "social_activity_hours_status_check",
-          "value": "\"social_activity_hours\".\"status\" in ('pending', 'approved', 'rejected')"
-        },
-        "social_activity_hours_source_check": {
-          "name": "social_activity_hours_source_check",
-          "value": "\"social_activity_hours\".\"source\" in ('teacher', 'student')"
-        },
-        "social_activity_hours_minutes_check": {
-          "name": "social_activity_hours_minutes_check",
-          "value": "\"social_activity_hours\".\"minutes\" % 30 = 0 and (\n        (\"social_activity_hours\".\"kind\" = 'entry' and \"social_activity_hours\".\"minutes\" between 30 and 600)\n        or (\"social_activity_hours\".\"kind\" = 'reversal' and \"social_activity_hours\".\"minutes\" between -600 and -30))"
-        },
-        "social_activity_hours_reversal_check": {
-          "name": "social_activity_hours_reversal_check",
-          "value": "(\"social_activity_hours\".\"kind\" = 'reversal') = (\"social_activity_hours\".\"reverses_entry_id\" is not null)\n        and (\"social_activity_hours\".\"kind\" = 'entry' or (\"social_activity_hours\".\"status\" = 'approved' and \"social_activity_hours\".\"reversed_by_entry_id\" is null))\n        and (\"social_activity_hours\".\"reversed_by_entry_id\" is null or (\"social_activity_hours\".\"kind\" = 'entry' and \"social_activity_hours\".\"status\" = 'approved'))"
-        },
-        "social_activity_hours_decision_check": {
-          "name": "social_activity_hours_decision_check",
-          "value": "(\"social_activity_hours\".\"status\" = 'pending') = (\"social_activity_hours\".\"decided_by_user_id\" is null)\n        and (\"social_activity_hours\".\"decided_by_user_id\" is null) = (\"social_activity_hours\".\"decided_at\" is null)\n        and (\"social_activity_hours\".\"status\" = 'rejected') = (\"social_activity_hours\".\"rejection_reason\" is not null)\n        and (\"social_activity_hours\".\"rejection_reason\" is null or char_length(\"social_activity_hours\".\"rejection_reason\") between 1 and 500)"
-        },
-        "social_activity_hours_note_check": {
-          "name": "social_activity_hours_note_check",
-          "value": "\"social_activity_hours\".\"note\" is null or char_length(\"social_activity_hours\".\"note\") between 1 and 500"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.social_activity_settings": {
-      "name": "social_activity_settings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "total_target_hours": {
-          "name": "total_target_hours",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "yearly_target_hours": {
-          "name": "yearly_target_hours",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_by_user_id": {
-          "name": "updated_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "social_activity_settings_institution_id_institutions_id_fk": {
-          "name": "social_activity_settings_institution_id_institutions_id_fk",
-          "tableFrom": "social_activity_settings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "social_activity_settings_pkey": {
-          "name": "social_activity_settings_pkey",
-          "columns": [
-            "institution_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "social_activity_settings_targets_check": {
-          "name": "social_activity_settings_targets_check",
-          "value": "\"social_activity_settings\".\"total_target_hours\" between 1 and 200\n        and (\"social_activity_settings\".\"yearly_target_hours\" is null or \"social_activity_settings\".\"yearly_target_hours\" between 1 and 200)"
         }
       },
       "isRLSEnabled": false

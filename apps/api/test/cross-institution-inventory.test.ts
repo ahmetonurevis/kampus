@@ -4605,6 +4605,47 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: erken çıkış ve izinli ayrılış (ON-168; DOM-FIN-161).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/early-dismissals', 'get(BASE, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/early-dismissals', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/early-dismissal-summary', 'get(SUMMARY, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/early-dismissal-pickup-options', 'studentId=s-9'],
+        [
+          'liste',
+          'GET /api/v1/finance/early-dismissal-attendance-effects',
+          'get(EFFECTS, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/my-early-dismissals', 'get(MY, a.mother)'],
+        ['kayıt', 'GET /api/v1/finance/early-dismissals/:dismissalId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/early-dismissals/:dismissalId/approve',
+          "for (const verb of ['approve', 'cancel'])",
+        ],
+        ['kayıt', 'POST /api/v1/finance/early-dismissals/:dismissalId/reject', '`${bUrl}/reject`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/early-dismissals/:dismissalId/cancel',
+          "for (const verb of ['approve', 'cancel'])",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/early-dismissals/:dismissalId/release',
+          '`${bUrl}/release`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-early-dismissals.test.ts',
+        'DOM-FIN-161: başka kurumun talebi 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

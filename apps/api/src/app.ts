@@ -143,6 +143,7 @@ import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergenc
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
 import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 import { registerFinanceHealthScreeningRoutes } from './routes/finance-health-screenings.ts'
+import { registerFinanceEarlyDismissalRoutes } from './routes/finance-early-dismissals.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -372,6 +373,18 @@ export const REDACTED_PATHS = [
   '*.publishedText',
   'profileInstructions',
   '*.profileInstructions',
+  // kvkk: K — erken çıkışta teslim alanın adı, kimliğinin son dört hanesi ve neden açıklaması
+  // (DOM-FIN-161, ON-168); ret ve iptal gerekçesi `reason`, `rejectionReason`, `cancelReason` ile.
+  'pickupName',
+  '*.pickupName',
+  'pickupIdLast4',
+  '*.pickupIdLast4',
+  'idLast4',
+  '*.idLast4',
+  'reasonNote',
+  '*.reasonNote',
+  'releasedToName',
+  '*.releasedToName',
   // kvkk: Ö — öğrencinin sağlık ve acil bilgisi (IST-020, DOM-ILT-035) ve şifreli paketi.
   'allergies',
   '*.allergies',
@@ -706,6 +719,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceHealthAccessRoutes(app)
   registerFinanceTripDayRoutes(app)
   registerFinanceHealthScreeningRoutes(app)
+  registerFinanceEarlyDismissalRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

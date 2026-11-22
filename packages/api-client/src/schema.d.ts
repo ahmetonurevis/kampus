@@ -16144,6 +16144,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/early-dismissals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Erken çıkışlar
+         * @description Gün süzgecinde planlanan saat sırasıyla, gün yoksa en yeni gün önce. Süzgeç gün, durum ve sınıf. Satır neden açıklaması ve kimlik son dört hanesi taşımaz (ayrıntıda). Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listEarlyDismissals"];
+        put?: never;
+        /**
+         * Erken çıkış talebi
+         * @description Öğrenci, gün (bugün ya da 30 gün içinde), saat (SS:DD), neden (`other` açıklama ister, 400) ve teslim alacak kişi: `self` (yalnız veli), `guardian` (öğrencinin teslim yetkilisi bağı) ya da `other` (kayıtlı olmayan kişi: ad, kimliğin yalnız son dört hanesi, yakınlık; tam numara 400). Velinin talebi onay bekler (`pending`), okulun açtığı acil kayıt onaylı doğar (`approved`). Öğrenci yok ya da velinin kapsamı dışında 404; velayetsiz ya da iletişim kısıtlı veli 403 `early_dismissal_custody_required`; kaydı kapalı öğrenci 422 `early_dismissal_student_inactive`; geçmiş gün 422 `early_dismissal_date_past`, 30 günden ileri `early_dismissal_date_too_far`, bugün 30 dakikadan eski saat `early_dismissal_time_past`; yetkisiz bağ 422 `early_dismissal_pickup_not_authorized`; okulun `self` seçmesi 422 `early_dismissal_pickup_self_school`; aynı gün açık talep 409 `early_dismissal_exists` (K-538). Denetim `finance.early_dismissal.create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` ve `veli` (yalnız velayetli ve iletişim kısıtı olmayan çocuğu). Modül `finance`.
+         */
+        post: operations["createEarlyDismissal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissal-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Erken çıkış gün özeti
+         * @description Günün (varsayılan bugün) durum sayıları. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getEarlyDismissalSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissal-pickup-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teslim alabilecek kişiler
+         * @description Öğrencinin teslim yetkilileri: velayetli ve iletişim kısıtı olmayan veliler ile teslim alma yetkisi işaretli bağlar (K-538). Velide yalnız velayetli olduğu çocuk ve kendi bağı `isSelf`; kapsam dışı, kaydı kapalı ya da başka kurumun öğrencisi 404. Rol: `yonetici`, `onburo` ve `veli` (yalnız velayetli ve iletişim kısıtı olmayan çocuğu). Modül `finance`.
+         */
+        get: operations["listEarlyDismissalPickupOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissal-attendance-effects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Erken çıkışın yoklamaya yansıması
+         * @description Günün (varsayılan bugün) teslim edilmiş (gerçek çıkış anı, `basis=released`) ve onaylı (planlanan saat, `basis=planned`) erken çıkışları ve etkilenen ders saatleri: `fromPeriod` ilk etkilenen dersin sırası, ders sırasında çıkışta ders `partial`. Yoklama kaydı değişmez; yoklama modülü bunu mazeretli devamsızlık olarak okur (K-540). Öğretmen yalnız sınıf öğretmeni olduğu ve derse girdiği sınıfları görür. Rol: `yonetici`, `onburo`, `ogretmen`. Modül `finance`.
+         */
+        get: operations["listEarlyDismissalAttendanceEffects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/my-early-dismissals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Velinin erken çıkış talepleri
+         * @description Velinin velayetli ve iletişim kısıtı olmayan çocuklarının son 30 günden bu yana ve ilerideki talepleri; karar, ret gerekçesi ve teslim (teslim alanın adı, gerçek çıkış). İletişim kısıtlı veli boş liste alır. Rol: `veli`. Modül `finance`.
+         */
+        get: operations["listMyEarlyDismissals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissals/{dismissalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Erken çıkış ayrıntısı
+         * @description Neden açıklaması, kayıtlı olmayan kişinin kimlik son dört hanesi, öğrencinin şu anki teslim yetkilileri ve etkilenen dersler. Okuma aynı transaction'da `finance.early_dismissal.read` denetimine düşer. Başka kurumun kaydı 404. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getEarlyDismissal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissals/{dismissalId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Erken çıkışı onayla
+         * @description Bekleyen talebi onaylar; kayıtlı olmayan teslim alan da böylece onaylanır. Onaylı talep 422 `early_dismissal_not_pending`, günü geçmiş 422 `early_dismissal_expired`, kapanmış 422 `early_dismissal_closed`, teslim edilmiş 422 `early_dismissal_already_released` (K-538). Veli talebinde veliye `early_dismissal_decided` bildirimi. `If-Match` zorunlu. Denetim `finance.early_dismissal.approve`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["approveEarlyDismissal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissals/{dismissalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Erken çıkışı reddet
+         * @description Bekleyen talebi gerekçeyle (5–300, veliye görünür) reddeder. Onaylı talep 422 `early_dismissal_not_pending` (iptal edilir), kapanmış 422 `early_dismissal_closed` (K-538). Veli talebinde veliye `early_dismissal_decided` bildirimi. `If-Match` zorunlu. Denetim `finance.early_dismissal.reject` (gerekçe yazılmaz). Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["rejectEarlyDismissal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissals/{dismissalId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Erken çıkışı iptal et
+         * @description Bekleyen ya da onaylı, teslim edilmemiş talebi isteğe bağlı gerekçeyle iptal eder. Veli yalnız velayetli olduğu çocuğun talebini (başkası 404). Teslim edilmiş 422 `early_dismissal_already_released`, kapanmış 422 `early_dismissal_closed`. `If-Match` zorunlu. Denetim `finance.early_dismissal.cancel`. Rol: `yonetici`, `onburo` ve `veli` (yalnız velayetli ve iletişim kısıtı olmayan çocuğu). Modül `finance`.
+         */
+        post: operations["cancelEarlyDismissal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/early-dismissals/{dismissalId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğrenciyi teslim et
+         * @description Teslim alan kişi listeden seçilir: `guardian` (öğrencinin şu anki teslim yetkilisi bağı) ya da `other` (talepte onaylanan kayıtlı olmayan kişi; görülen kimliğin son dört hanesi). Kimlik görüldü (`identityVerified: true`) zorunlu, değilse 400; gerçek çıkış anı boşsa şimdi. Yetkisiz kişi 422 `early_dismissal_pickup_not_authorized`, son dört hane eşleşmiyor 422 `early_dismissal_pickup_mismatch`, onaysız 422 `early_dismissal_not_approved`, çıkış günü değil 422 `early_dismissal_not_today`, gelecek 422 `early_dismissal_release_future`, başka gün 422 `early_dismissal_release_other_day`, ikinci teslim 422 `early_dismissal_already_released` (K-539). Veliye `early_dismissal_released` bildirimi. `If-Match` zorunlu. Denetim `finance.early_dismissal.release`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["releaseEarlyDismissal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -20182,7 +20386,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended" | "early_dismissal_decided" | "early_dismissal_released";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -25214,7 +25418,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned" | "package_hours_low" | "package_expiring" | "package_expired" | "scholarship_ended" | "early_dismissal_decided" | "early_dismissal_released";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -169557,6 +169761,1803 @@ export interface operations {
                             publishedAt: string;
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEarlyDismissals: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Çıkış günü (YYYY-MM-DD) */
+                date?: string;
+                /** @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi */
+                status?: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                /** @description Sınıf */
+                classId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createEarlyDismissal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrenci (veli yalnız velayetli olduğu çocuğu) */
+                    studentId: string;
+                    /** @description Çıkış günü (YYYY-MM-DD, Europe/Istanbul); bugün ya da 30 gün içinde */
+                    date: string;
+                    /** @description Planlanan çıkış saati (SS:DD, Europe/Istanbul) */
+                    time: string;
+                    /**
+                     * @description `health` sağlık, `appointment` randevu (doktor, resmî işlem), `family` aile işi, `other` diğer
+                     * @enum {string}
+                     */
+                    reason: "health" | "appointment" | "family" | "other";
+                    /** @description Açıklama (≤ 300); `other` nedeninde zorunlu; denetime ve loga yazılmaz */
+                    reasonNote?: string | null;
+                    /** @description Teslim alacak kişi */
+                    pickup: {
+                        /**
+                         * @description Talebi açan veli kendisi (yalnız veli)
+                         * @enum {string}
+                         */
+                        kind: "self";
+                    } | {
+                        /**
+                         * @description Öğrencinin kayıtlı teslim yetkilisi
+                         * @enum {string}
+                         */
+                        kind: "guardian";
+                        /**
+                         * Format: uuid
+                         * @description Veli–öğrenci bağı (`pickup-options` listesinden)
+                         */
+                        guardianLinkId: string;
+                    } | {
+                        /**
+                         * @description Kayıtlı olmayan kişi; okul onayı şart
+                         * @enum {string}
+                         */
+                        kind: "other";
+                        /** @description Ad soyad (2–120) */
+                        name: string;
+                        /** @description Kimliğin yalnız son dört hanesi (rakam ya da harf); tamamı gönderilmez ve saklanmaz */
+                        idLast4: string;
+                        /**
+                         * @description `grandparent` büyükanne/büyükbaba, `sibling` reşit kardeş, `relative` akraba, `family_friend` aile dostu, `other` diğer
+                         * @enum {string}
+                         */
+                        relationship: "grandparent" | "sibling" | "relative" | "family_friend" | "other";
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            maskedIdLast4: string | null;
+                            /** @description Ret gerekçesi */
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEarlyDismissalSummary: {
+        parameters: {
+            query?: {
+                /** @description Gün (varsayılan bugün) */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            date: string;
+                            /** @description Günün durum sayıları */
+                            counts: {
+                                pending: number;
+                                approved: number;
+                                rejected: number;
+                                cancelled: number;
+                                released: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEarlyDismissalPickupOptions: {
+        parameters: {
+            query: {
+                /** @description Öğrenci */
+                studentId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            guardianLinkId: string;
+                            name: string;
+                            /** @enum {string} */
+                            relationship: "mother" | "father" | "legal_guardian" | "other";
+                            /** @enum {string} */
+                            custody: "full" | "joint" | "none";
+                            /** @description Teslim alma yetkisi işaretli (velayetsiz yetkili) */
+                            canPickUp: boolean;
+                            /** @description İsteyen velinin kendi bağı */
+                            isSelf: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEarlyDismissalAttendanceEffects: {
+        parameters: {
+            query?: {
+                /** @description Gün (varsayılan bugün) */
+                date?: string;
+                /** @description Sınıf */
+                classId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            date: string;
+                            items: {
+                                /**
+                                 * @description `released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati
+                                 * @enum {string}
+                                 */
+                                basis: "released" | "planned";
+                                departureAt: string;
+                                /** @description İlk etkilenen dersin sırası ("4. dersten itibaren"); yoksa `null` */
+                                fromPeriod: number | null;
+                                lessons: {
+                                    lessonId: string;
+                                    /** @description Günün kaçıncı dersi (1’den) */
+                                    period: number;
+                                    startsAt: string;
+                                    endsAt: string;
+                                    subjectId: string;
+                                    title: string | null;
+                                    /** @description Ders sürerken çıktı */
+                                    partial: boolean;
+                                }[];
+                                dismissalId: string;
+                                studentId: string;
+                                studentName: string | null;
+                                classId: string | null;
+                                /** @enum {string} */
+                                status: "approved" | "released";
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyEarlyDismissals: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Çocuk (velayetli olduğu) */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            maskedIdLast4: string | null;
+                            /** @description Ret gerekçesi */
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEarlyDismissal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dismissalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            /** @description Kayıtlı olmayan kişinin kimlik son dört hanesi */
+                            pickupIdLast4: string | null;
+                            /** @description `•••• 1234` */
+                            maskedIdLast4: string | null;
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            releasedToKind: ("guardian" | "other") | null;
+                            /** @description Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste) */
+                            authorizedPickups: {
+                                guardianLinkId: string;
+                                name: string;
+                                /** @enum {string} */
+                                relationship: "mother" | "father" | "legal_guardian" | "other";
+                                /** @enum {string} */
+                                custody: "full" | "joint" | "none";
+                                /** @description Teslim alma yetkisi işaretli (velayetsiz yetkili) */
+                                canPickUp: boolean;
+                                /** @description İsteyen velinin kendi bağı */
+                                isSelf: boolean;
+                            }[];
+                            /** @description Etkilenen dersler; onaylı ya da teslim edilmişte dolu */
+                            effect: {
+                                /**
+                                 * @description `released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati
+                                 * @enum {string}
+                                 */
+                                basis: "released" | "planned";
+                                departureAt: string;
+                                /** @description İlk etkilenen dersin sırası ("4. dersten itibaren"); yoksa `null` */
+                                fromPeriod: number | null;
+                                lessons: {
+                                    lessonId: string;
+                                    /** @description Günün kaçıncı dersi (1’den) */
+                                    period: number;
+                                    startsAt: string;
+                                    endsAt: string;
+                                    subjectId: string;
+                                    title: string | null;
+                                    /** @description Ders sürerken çıktı */
+                                    partial: boolean;
+                                }[];
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveEarlyDismissal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                dismissalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            /** @description Kayıtlı olmayan kişinin kimlik son dört hanesi */
+                            pickupIdLast4: string | null;
+                            /** @description `•••• 1234` */
+                            maskedIdLast4: string | null;
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            releasedToKind: ("guardian" | "other") | null;
+                            /** @description Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste) */
+                            authorizedPickups: {
+                                guardianLinkId: string;
+                                name: string;
+                                /** @enum {string} */
+                                relationship: "mother" | "father" | "legal_guardian" | "other";
+                                /** @enum {string} */
+                                custody: "full" | "joint" | "none";
+                                /** @description Teslim alma yetkisi işaretli (velayetsiz yetkili) */
+                                canPickUp: boolean;
+                                /** @description İsteyen velinin kendi bağı */
+                                isSelf: boolean;
+                            }[];
+                            /** @description Etkilenen dersler; onaylı ya da teslim edilmişte dolu */
+                            effect: {
+                                /**
+                                 * @description `released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati
+                                 * @enum {string}
+                                 */
+                                basis: "released" | "planned";
+                                departureAt: string;
+                                /** @description İlk etkilenen dersin sırası ("4. dersten itibaren"); yoksa `null` */
+                                fromPeriod: number | null;
+                                lessons: {
+                                    lessonId: string;
+                                    /** @description Günün kaçıncı dersi (1’den) */
+                                    period: number;
+                                    startsAt: string;
+                                    endsAt: string;
+                                    subjectId: string;
+                                    title: string | null;
+                                    /** @description Ders sürerken çıktı */
+                                    partial: boolean;
+                                }[];
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectEarlyDismissal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                dismissalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ret gerekçesi (5–300); veliye görünür, denetime ve loga yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            /** @description Kayıtlı olmayan kişinin kimlik son dört hanesi */
+                            pickupIdLast4: string | null;
+                            /** @description `•••• 1234` */
+                            maskedIdLast4: string | null;
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            releasedToKind: ("guardian" | "other") | null;
+                            /** @description Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste) */
+                            authorizedPickups: {
+                                guardianLinkId: string;
+                                name: string;
+                                /** @enum {string} */
+                                relationship: "mother" | "father" | "legal_guardian" | "other";
+                                /** @enum {string} */
+                                custody: "full" | "joint" | "none";
+                                /** @description Teslim alma yetkisi işaretli (velayetsiz yetkili) */
+                                canPickUp: boolean;
+                                /** @description İsteyen velinin kendi bağı */
+                                isSelf: boolean;
+                            }[];
+                            /** @description Etkilenen dersler; onaylı ya da teslim edilmişte dolu */
+                            effect: {
+                                /**
+                                 * @description `released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati
+                                 * @enum {string}
+                                 */
+                                basis: "released" | "planned";
+                                departureAt: string;
+                                /** @description İlk etkilenen dersin sırası ("4. dersten itibaren"); yoksa `null` */
+                                fromPeriod: number | null;
+                                lessons: {
+                                    lessonId: string;
+                                    /** @description Günün kaçıncı dersi (1’den) */
+                                    period: number;
+                                    startsAt: string;
+                                    endsAt: string;
+                                    subjectId: string;
+                                    title: string | null;
+                                    /** @description Ders sürerken çıktı */
+                                    partial: boolean;
+                                }[];
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelEarlyDismissal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                dismissalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi (isteğe bağlı, ≤ 300) */
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            maskedIdLast4: string | null;
+                            /** @description Ret gerekçesi */
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    releaseEarlyDismissal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                dismissalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrenciyi teslim alan kişi */
+                    pickup: {
+                        /**
+                         * @description Öğrencinin teslim yetkilisi
+                         * @enum {string}
+                         */
+                        kind: "guardian";
+                        /**
+                         * Format: uuid
+                         * @description Teslim alan veli–öğrenci bağı (ayrıntıdaki `authorizedPickups`)
+                         */
+                        guardianLinkId: string;
+                    } | {
+                        /**
+                         * @description Talepte onaylanan kayıtlı olmayan kişi
+                         * @enum {string}
+                         */
+                        kind: "other";
+                        /** @description Görülen kimliğin son dört hanesi; talepte onaylananla eşleşmeli */
+                        idLast4: string;
+                    };
+                    /**
+                     * @description Teslim alanın kimliği görüldü (zorunlu `true`; numara yazılmaz)
+                     * @enum {boolean}
+                     */
+                    identityVerified: true;
+                    /**
+                     * @description Gerçek çıkış anı (ISO 8601); boşsa şimdi. Gelecekte ve başka günde olamaz
+                     * @default null
+                     */
+                    releasedAt?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Talep açıldığındaki sınıf */
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Çıkış günü (Europe/Istanbul, YYYY-MM-DD) */
+                            dismissalOn: string;
+                            /** @description Planlanan çıkış anı (ISO 8601) */
+                            plannedAt: string;
+                            /**
+                             * @description `health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer
+                             * @enum {string}
+                             */
+                            reason: "health" | "appointment" | "family" | "other";
+                            /**
+                             * @description `guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi
+                             * @enum {string}
+                             */
+                            pickupKind: "guardian" | "other";
+                            pickupGuardianLinkId: string | null;
+                            /** @description Teslim alacak kişinin adı; bağ kaldırıldıysa `null` */
+                            pickupName: string | null;
+                            /** @description Yalnız `other` türünde */
+                            pickupRelationship: ("grandparent" | "sibling" | "relative" | "family_friend" | "other") | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled" | "released";
+                            /**
+                             * @description `guardian` veli talebi, `school` okulun açtığı (acil) kayıt
+                             * @enum {string}
+                             */
+                            source: "guardian" | "school";
+                            decidedAt: string | null;
+                            /** @description Gerçek çıkış anı */
+                            releasedAt: string | null;
+                            /** @description Teslim alanın teslim anındaki adı */
+                            releasedToName: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            reasonNote: string | null;
+                            /** @description Kayıtlı olmayan kişinin kimlik son dört hanesi */
+                            pickupIdLast4: string | null;
+                            /** @description `•••• 1234` */
+                            maskedIdLast4: string | null;
+                            rejectionReason: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            releasedToKind: ("guardian" | "other") | null;
+                            /** @description Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste) */
+                            authorizedPickups: {
+                                guardianLinkId: string;
+                                name: string;
+                                /** @enum {string} */
+                                relationship: "mother" | "father" | "legal_guardian" | "other";
+                                /** @enum {string} */
+                                custody: "full" | "joint" | "none";
+                                /** @description Teslim alma yetkisi işaretli (velayetsiz yetkili) */
+                                canPickUp: boolean;
+                                /** @description İsteyen velinin kendi bağı */
+                                isSelf: boolean;
+                            }[];
+                            /** @description Etkilenen dersler; onaylı ya da teslim edilmişte dolu */
+                            effect: {
+                                /**
+                                 * @description `released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati
+                                 * @enum {string}
+                                 */
+                                basis: "released" | "planned";
+                                departureAt: string;
+                                /** @description İlk etkilenen dersin sırası ("4. dersten itibaren"); yoksa `null` */
+                                fromPeriod: number | null;
+                                lessons: {
+                                    lessonId: string;
+                                    /** @description Günün kaçıncı dersi (1’den) */
+                                    period: number;
+                                    startsAt: string;
+                                    endsAt: string;
+                                    subjectId: string;
+                                    title: string | null;
+                                    /** @description Ders sürerken çıktı */
+                                    partial: boolean;
+                                }[];
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
                     };
                 };
             };

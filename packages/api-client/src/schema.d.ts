@@ -16144,6 +16144,322 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/social-activities/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kendi (çocuğumun) sosyal etkinlik saatleri
+         * @description Öğrencinin kendi ya da velinin bağlı lise (9–12) çocuklarının yıl ve toplam onaylı saati, hedefe göre durumu ve bütün kayıtları (bekleyen, reddedilen gerekçesiyle, ters kayıt) (K-536, K-537). Kapsam sunucuda core kuralıyla daralır; lise dışı çocuk dönmez. Rol: `ogrenci`, `veli`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["listMySocialHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/my/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Beyan edilebilecek etkinlikler
+         * @description Başlamış ve arşivlenmemiş etkinlikler; öğrenci saat beyanında seçer. Rol: `ogrenci`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["listDeclarableSocialActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/my/hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sosyal etkinlik saati beyan et
+         * @description Öğrenci kendi saatini beyan eder; kayıt onay bekler (K-536). Gün bugünü geçmez (422 `social_activity_date_future`) ve etkinlik aralığındadır (422 `social_activity_date_outside`); saat 0,5–10, yarım saat adımlı. Lise dışı öğrenci 422 `social_activity_student_not_high_school`; aynı etkinlik ve günün etkin kaydı 409 `social_activity_entry_exists`. Arşivli ya da başka kurumun etkinliği 404. `Idempotency-Key` zorunlu. Rol: `ogrenci`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        post: operations["declareSocialHour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sosyal etkinlik hedefleri
+         * @description Kurumun toplam ve yıllık hedefi; ayar yoksa mevzuat önerisi (40 ve 10 saat; `isDefault`) (K-537). Rol: `yonetici`, `ogretmen`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["getSocialActivitySettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Sosyal etkinlik hedeflerini değiştir
+         * @description Toplam hedef (1–200 tam saat) ve yıllık hedef (1–200 ya da `null`) (K-537). Ayar yokken `If-Match` gönderilmez; ayar varsa okunan sürümle zorunludur (yoksa ya da tutmazsa 409 `version_conflict`). Rol: yalnız `yonetici`. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        patch: operations["updateSocialActivitySettings"];
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sosyal etkinlik saat kayıtları
+         * @description Saat kayıtları, yeni gün önce; `status=pending` onay kuyruğudur. `activityId` ve `studentId` süzer; öğretmen yalnız sorumlu olduğu etkinliklerin kayıtlarını görür (başka etkinlik süzgeci 404). Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["listSocialHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/hours/{entryId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Beyanı onayla
+         * @description Bekleyen öğrenci beyanı onaylanır; sonra değişmez (K-536). Karar verilmiş kayıt 409 `social_activity_entry_decided`. `If-Match` kaydın sürümü. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        post: operations["approveSocialHour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/hours/{entryId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Beyanı reddet
+         * @description Bekleyen öğrenci beyanı gerekçeyle (5–500) reddedilir; öğrenci ve veli gerekçeyi görür, aynı gün yeniden beyan edilebilir (K-536). Karar verilmiş kayıt 409 `social_activity_entry_decided`. `If-Match` kaydın sürümü. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        post: operations["rejectSocialHour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/hours/{entryId}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Onaylı saati ters kayıtla düzelt
+         * @description Onaylı saat değişmez: gerekçeli (5–500) ters kayıt eksi dakikayla yazılır, kayıt toplamdan ve belgeden düşer; aynı gün doğru saat yeniden girilebilir (K-536). Onaylı olmayan kayıt 409 `social_activity_entry_not_reversible`, düzeltilmiş kayıt 409 `social_activity_entry_reversed`. `If-Match` düzeltilen kaydın sürümü. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        post: operations["reverseSocialHour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sınıflara göre sosyal etkinlik durumu
+         * @description Lise (9–12) sınıfları: etkin öğrenci sayısı ve hedefe göre tamamlayan, yıllık hedefte ve eksik sayıları (K-537). Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["listSocialActivityClasses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/classes/{classId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sınıfın sosyal etkinlik özeti
+         * @description Sınıfın etkin öğrencileri: yıl ve toplam onaylı net dakika, eksik dakika, durum ve bekleyen beyan; `status=behind` eksik kalanlar (K-537). Lise dışı, görülemeyen ya da başka kurumun sınıfı 404. Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["getSocialActivityClass"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/students/{studentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin sosyal etkinlik saatleri
+         * @description Lise öğrencisinin hedefe göre durumu ve bütün kayıtları (K-537). Lise dışı, kapsam dışı ya da başka kurumun öğrencisi 404. Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["getSocialActivityStudent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/students/{studentId}/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sosyal etkinlik ve gönüllülük belgesi verisi
+         * @description Belge PDF'inin verisi: yalnız onaylı ve ters kayıtla düzeltilmemiş saatler, gün sırasıyla; öğretim yılı toplamları ve toplam hedef (K-537). Her okuma denetime yazılır (`finance.social_activity.certificate`). Lise dışı, kapsam dışı ya da başka kurumun öğrencisi 404. Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["getSocialActivityCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sosyal etkinlikler
+         * @description Arşivlenmemiş etkinlikler, yeni başlangıç önce; onaylı net dakika ve bekleyen beyan sayısıyla. `q` ad ve kuruluşta arar, `kind` süzer. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["listSocialActivities"];
+        put?: never;
+        /**
+         * Sosyal etkinlik aç
+         * @description Ad, tür (kulüp/topluluk ya da gönüllülük), başlangıç ve isteğe bağlı bitiş günü, yer, sorumlu (kurumun etkin öğretmeni ya da yöneticisi; 422 `social_activity_teacher_not_found`, `social_activity_teacher_not_teacher`, `social_activity_teacher_inactive`), kurum içi/dışı ve kuruluş adı (dışarıda zorunlu), kulüp çalışmasında isteğe bağlı kulüp (422 `social_activity_club_not_found`) (K-535). Öğretmen yalnız kendini sorumlu yazar (422 `social_activity_teacher_not_self`). `Idempotency-Key` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        post: operations["createSocialActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/{activityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sosyal etkinlik ayrıntısı
+         * @description Etkinlik ve toplamları; kayıtlar `GET …/hours?activityId=` ile. Başka kurumun ya da arşivli etkinlik 404. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        get: operations["getSocialActivity"];
+        put?: never;
+        post?: never;
+        /**
+         * Sosyal etkinliği arşivle
+         * @description Onay bekleyen beyanı olan etkinlik arşivlenmez (422 `social_activity_has_pending`); onaylı saatler belgede kalır (K-535). `If-Match` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        delete: operations["archiveSocialActivity"];
+        options?: never;
+        head?: never;
+        /**
+         * Sosyal etkinliği düzenle
+         * @description Gönderilen alanlar değişir. Kayıtlı günler yeni aralığın dışında kalamaz (422 `social_activity_entries_outside_range`); sorumluyu yalnız yönetici değiştirir; değişiklik yoksa 422 `social_activity_unchanged` (K-535). `If-Match` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        patch: operations["updateSocialActivity"];
+        trace?: never;
+    };
+    "/api/v1/finance/social-activities/{activityId}/hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sosyal etkinlik saati gir
+         * @description Sorumlu öğretmen ya da yönetici seçilen öğrencilere (1–100) aynı gün ve saati onaylı yazar (K-536). Gün bugünü geçmez (422 `social_activity_date_future`) ve etkinlik aralığındadır (422 `social_activity_date_outside`); öğrenci kurumda yok 422 `social_activity_student_not_found`, etkin değil `social_activity_student_inactive`, lise dışı `social_activity_student_not_high_school`; aynı öğrenci, etkinlik ve günün etkin kaydı 409 `social_activity_entry_exists`. Bir satır reddedilirse hiçbiri yazılmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.
+         */
+        post: operations["createSocialHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -169557,6 +169873,2527 @@ export interface operations {
                             publishedAt: string;
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMySocialHours: {
+        parameters: {
+            query?: {
+                /** @description Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı */
+                academicYear?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            progress: {
+                                /** @description Ortaöğrenim boyunca onaylı net dakika (bu kurumda) */
+                                totalMinutes: number;
+                                /** @description Seçilen öğretim yılının onaylı net dakikası */
+                                yearMinutes: number;
+                                totalTargetHours: number;
+                                yearlyTargetHours: number | null;
+                                totalMissingMinutes: number;
+                                yearMissingMinutes: number | null;
+                                /**
+                                 * @description `met` toplam hedef tamam, `on_track` yıllık hedef tamam, `behind` eksik
+                                 * @enum {string}
+                                 */
+                                status: "met" | "on_track" | "behind";
+                                pendingCount: number;
+                            };
+                            /** @description Bütün kayıtlar, yeni gün önce */
+                            entries: {
+                                id: string;
+                                activityId: string;
+                                activityName: string;
+                                /** @enum {string} */
+                                activityKind: "club" | "volunteering";
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                                /** @description Çalışma günü (YYYY-MM-DD) */
+                                activityDate: string;
+                                /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                                academicYear: number;
+                                /**
+                                 * @description `entry` kayıt, `reversal` ters kayıt
+                                 * @enum {string}
+                                 */
+                                kind: "entry" | "reversal";
+                                /** @description Dakika; ters kayıtta eksi */
+                                minutes: number;
+                                /** @enum {string} */
+                                status: "pending" | "approved" | "rejected";
+                                /** @enum {string} */
+                                source: "teacher" | "student";
+                                /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                                note: string | null;
+                                /** @description Karar anı (ISO 8601) */
+                                decidedAt: string | null;
+                                rejectionReason: string | null;
+                                reversesEntryId: string | null;
+                                reversedByEntryId: string | null;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                                version: number;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDeclarableSocialActivities: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Etkinlik ya da kuruluş adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "club" | "volunteering";
+                            /** @description YYYY-MM-DD */
+                            startDate: string;
+                            /** @description YYYY-MM-DD; boşsa süren etkinlik */
+                            endDate: string | null;
+                            location: string;
+                            responsibleName: string | null;
+                            /** @enum {string} */
+                            organizationScope: "internal" | "external";
+                            organizationName: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    declareSocialHour: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Etkinlik
+                     */
+                    activityId: string;
+                    /** @description Çalışma günü (YYYY-MM-DD); bugünden sonra olamaz */
+                    activityDate: string;
+                    /** @description Saat (0,5–10, yarım saat adımlı) */
+                    hours: number;
+                    /** @description Yapılan çalışmanın kısa açıklaması (≤ 500) */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @enum {string} */
+                            activityKind: "club" | "volunteering";
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Çalışma günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            /**
+                             * @description `entry` kayıt, `reversal` ters kayıt
+                             * @enum {string}
+                             */
+                            kind: "entry" | "reversal";
+                            /** @description Dakika; ters kayıtta eksi */
+                            minutes: number;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            /** @enum {string} */
+                            source: "teacher" | "student";
+                            /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                            note: string | null;
+                            /** @description Karar anı (ISO 8601) */
+                            decidedAt: string | null;
+                            rejectionReason: string | null;
+                            reversesEntryId: string | null;
+                            reversedByEntryId: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSocialActivitySettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            totalTargetHours: number;
+                            yearlyTargetHours: number | null;
+                            /** @description Kurum ayarı yok; mevzuat önerisi uygulanıyor */
+                            isDefault: boolean;
+                            /** @description `If-Match` sürümü; ayar yokken 0 (başlık gönderilmez) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSocialActivitySettings: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ortaöğrenim boyunca hedef (tam saat; öneri 40) */
+                    totalTargetHours?: number;
+                    /** @description Öğretim yılı hedefi (tam saat; öneri 10); `null` yıllık hedef yok */
+                    yearlyTargetHours?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            totalTargetHours: number;
+                            yearlyTargetHours: number | null;
+                            /** @description Kurum ayarı yok; mevzuat önerisi uygulanıyor */
+                            isDefault: boolean;
+                            /** @description `If-Match` sürümü; ayar yokken 0 (başlık gönderilmez) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSocialHours: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Durum süzgeci (`pending` onay kuyruğu) */
+                status?: "pending" | "approved" | "rejected";
+                /** @description Etkinlik süzgeci */
+                activityId?: string;
+                /** @description Öğrenci süzgeci */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @enum {string} */
+                            activityKind: "club" | "volunteering";
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Çalışma günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            /**
+                             * @description `entry` kayıt, `reversal` ters kayıt
+                             * @enum {string}
+                             */
+                            kind: "entry" | "reversal";
+                            /** @description Dakika; ters kayıtta eksi */
+                            minutes: number;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            /** @enum {string} */
+                            source: "teacher" | "student";
+                            /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                            note: string | null;
+                            /** @description Karar anı (ISO 8601) */
+                            decidedAt: string | null;
+                            rejectionReason: string | null;
+                            reversesEntryId: string | null;
+                            reversedByEntryId: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveSocialHour: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @enum {string} */
+                            activityKind: "club" | "volunteering";
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Çalışma günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            /**
+                             * @description `entry` kayıt, `reversal` ters kayıt
+                             * @enum {string}
+                             */
+                            kind: "entry" | "reversal";
+                            /** @description Dakika; ters kayıtta eksi */
+                            minutes: number;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            /** @enum {string} */
+                            source: "teacher" | "student";
+                            /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                            note: string | null;
+                            /** @description Karar anı (ISO 8601) */
+                            decidedAt: string | null;
+                            rejectionReason: string | null;
+                            reversesEntryId: string | null;
+                            reversedByEntryId: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectSocialHour: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ret gerekçesi (5–500); öğrenci ve veli görür */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @enum {string} */
+                            activityKind: "club" | "volunteering";
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Çalışma günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            /**
+                             * @description `entry` kayıt, `reversal` ters kayıt
+                             * @enum {string}
+                             */
+                            kind: "entry" | "reversal";
+                            /** @description Dakika; ters kayıtta eksi */
+                            minutes: number;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            /** @enum {string} */
+                            source: "teacher" | "student";
+                            /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                            note: string | null;
+                            /** @description Karar anı (ISO 8601) */
+                            decidedAt: string | null;
+                            rejectionReason: string | null;
+                            reversesEntryId: string | null;
+                            reversedByEntryId: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reverseSocialHour: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Düzeltme gerekçesi (5–500) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @enum {string} */
+                            activityKind: "club" | "volunteering";
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Çalışma günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            /**
+                             * @description `entry` kayıt, `reversal` ters kayıt
+                             * @enum {string}
+                             */
+                            kind: "entry" | "reversal";
+                            /** @description Dakika; ters kayıtta eksi */
+                            minutes: number;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            /** @enum {string} */
+                            source: "teacher" | "student";
+                            /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                            note: string | null;
+                            /** @description Karar anı (ISO 8601) */
+                            decidedAt: string | null;
+                            rejectionReason: string | null;
+                            reversesEntryId: string | null;
+                            reversedByEntryId: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSocialActivityClasses: {
+        parameters: {
+            query?: {
+                /** @description Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı */
+                academicYear?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            classId: string;
+                            className: string;
+                            grade: number;
+                            studentCount: number;
+                            metCount: number;
+                            onTrackCount: number;
+                            behindCount: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSocialActivityClass: {
+        parameters: {
+            query?: {
+                /** @description Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı */
+                academicYear?: number;
+                /** @description Durum süzgeci; `behind` eksik kalanlar */
+                status?: "met" | "on_track" | "behind";
+            };
+            header?: never;
+            path: {
+                classId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            classId: string;
+                            className: string;
+                            grade: number;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            totalTargetHours: number;
+                            yearlyTargetHours: number | null;
+                            students: {
+                                /** @description Ortaöğrenim boyunca onaylı net dakika (bu kurumda) */
+                                totalMinutes: number;
+                                /** @description Seçilen öğretim yılının onaylı net dakikası */
+                                yearMinutes: number;
+                                totalTargetHours: number;
+                                yearlyTargetHours: number | null;
+                                totalMissingMinutes: number;
+                                yearMissingMinutes: number | null;
+                                /**
+                                 * @description `met` toplam hedef tamam, `on_track` yıllık hedef tamam, `behind` eksik
+                                 * @enum {string}
+                                 */
+                                status: "met" | "on_track" | "behind";
+                                pendingCount: number;
+                                studentId: string;
+                                studentName: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSocialActivityStudent: {
+        parameters: {
+            query?: {
+                /** @description Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı */
+                academicYear?: number;
+            };
+            header?: never;
+            path: {
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            progress: {
+                                /** @description Ortaöğrenim boyunca onaylı net dakika (bu kurumda) */
+                                totalMinutes: number;
+                                /** @description Seçilen öğretim yılının onaylı net dakikası */
+                                yearMinutes: number;
+                                totalTargetHours: number;
+                                yearlyTargetHours: number | null;
+                                totalMissingMinutes: number;
+                                yearMissingMinutes: number | null;
+                                /**
+                                 * @description `met` toplam hedef tamam, `on_track` yıllık hedef tamam, `behind` eksik
+                                 * @enum {string}
+                                 */
+                                status: "met" | "on_track" | "behind";
+                                pendingCount: number;
+                            };
+                            /** @description Bütün kayıtlar, yeni gün önce */
+                            entries: {
+                                id: string;
+                                activityId: string;
+                                activityName: string;
+                                /** @enum {string} */
+                                activityKind: "club" | "volunteering";
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                                /** @description Çalışma günü (YYYY-MM-DD) */
+                                activityDate: string;
+                                /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                                academicYear: number;
+                                /**
+                                 * @description `entry` kayıt, `reversal` ters kayıt
+                                 * @enum {string}
+                                 */
+                                kind: "entry" | "reversal";
+                                /** @description Dakika; ters kayıtta eksi */
+                                minutes: number;
+                                /** @enum {string} */
+                                status: "pending" | "approved" | "rejected";
+                                /** @enum {string} */
+                                source: "teacher" | "student";
+                                /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                                note: string | null;
+                                /** @description Karar anı (ISO 8601) */
+                                decidedAt: string | null;
+                                rejectionReason: string | null;
+                                reversesEntryId: string | null;
+                                reversedByEntryId: string | null;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                                version: number;
+                            }[];
+                            grade: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSocialActivityCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            grade: number | null;
+                            /** @description Düzenleme günü (YYYY-MM-DD) */
+                            issuedOn: string;
+                            /** @description Onaylı ve düzeltilmemiş kayıtların toplamı */
+                            totalMinutes: number;
+                            totalTargetHours: number;
+                            /** @enum {string} */
+                            status: "met" | "on_track" | "behind";
+                            years: {
+                                /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                                academicYear: number;
+                                minutes: number;
+                            }[];
+                            rows: {
+                                entryId: string;
+                                activityDate: string;
+                                /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                                academicYear: number;
+                                activityName: string;
+                                /** @enum {string} */
+                                activityKind: "club" | "volunteering";
+                                /** @enum {string} */
+                                organizationScope: "internal" | "external";
+                                organizationName: string | null;
+                                location: string;
+                                responsibleName: string | null;
+                                minutes: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSocialActivities: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Etkinlik ya da kuruluş adında arama */
+                q?: string;
+                /** @description Tür süzgeci */
+                kind?: "club" | "volunteering";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "club" | "volunteering";
+                            /** @description YYYY-MM-DD */
+                            startDate: string;
+                            /** @description YYYY-MM-DD; boşsa süren etkinlik */
+                            endDate: string | null;
+                            location: string;
+                            /** @description Sorumlu öğretmenin kurum üyeliği */
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @enum {string} */
+                            organizationScope: "internal" | "external";
+                            organizationName: string | null;
+                            clubId: string | null;
+                            clubName: string | null;
+                            /** @description Onaylı net dakika (ters kayıtlar düşülmüş) */
+                            approvedMinutes: number;
+                            /** @description Onay bekleyen beyan sayısı */
+                            pendingCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSocialActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Etkinlik adı (2–120) */
+                    name: string;
+                    /**
+                     * @description `club` kulüp/topluluk çalışması, `volunteering` gönüllülük/toplum hizmeti
+                     * @enum {string}
+                     */
+                    kind: "club" | "volunteering";
+                    /** @description Başlangıç günü (YYYY-MM-DD) */
+                    startDate: string;
+                    /**
+                     * @description Bitiş günü (dahil); boşsa süren etkinlik
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /** @description Etkinliğin yapıldığı yer (2–160) */
+                    location: string;
+                    /** @description Sorumlu öğretmenin (ya da yöneticinin) kurum üyeliği */
+                    responsibleMembershipId: string;
+                    /**
+                     * @description `internal` kurum içi, `external` kurum dışı (dış kuruluşla)
+                     * @enum {string}
+                     */
+                    organizationScope: "internal" | "external";
+                    /**
+                     * @description Kuruluş adı (2–160); kurum dışında zorunlu
+                     * @default null
+                     */
+                    organizationName?: string | null;
+                    /**
+                     * @description Bağlı kulüp (`/finance/clubs`); yalnız kulüp çalışmasında
+                     * @default null
+                     */
+                    clubId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "club" | "volunteering";
+                            /** @description YYYY-MM-DD */
+                            startDate: string;
+                            /** @description YYYY-MM-DD; boşsa süren etkinlik */
+                            endDate: string | null;
+                            location: string;
+                            /** @description Sorumlu öğretmenin kurum üyeliği */
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @enum {string} */
+                            organizationScope: "internal" | "external";
+                            organizationName: string | null;
+                            clubId: string | null;
+                            clubName: string | null;
+                            /** @description Onaylı net dakika (ters kayıtlar düşülmüş) */
+                            approvedMinutes: number;
+                            /** @description Onay bekleyen beyan sayısı */
+                            pendingCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSocialActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "club" | "volunteering";
+                            /** @description YYYY-MM-DD */
+                            startDate: string;
+                            /** @description YYYY-MM-DD; boşsa süren etkinlik */
+                            endDate: string | null;
+                            location: string;
+                            /** @description Sorumlu öğretmenin kurum üyeliği */
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @enum {string} */
+                            organizationScope: "internal" | "external";
+                            organizationName: string | null;
+                            clubId: string | null;
+                            clubName: string | null;
+                            /** @description Onaylı net dakika (ters kayıtlar düşülmüş) */
+                            approvedMinutes: number;
+                            /** @description Onay bekleyen beyan sayısı */
+                            pendingCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveSocialActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSocialActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Etkinlik adı (2–120) */
+                    name?: string;
+                    /**
+                     * @description `club` kulüp/topluluk çalışması, `volunteering` gönüllülük/toplum hizmeti
+                     * @enum {string}
+                     */
+                    kind?: "club" | "volunteering";
+                    /** @description Başlangıç günü */
+                    startDate?: string;
+                    /** @description Bitiş günü; `null` süren etkinlik */
+                    endDate?: string | null;
+                    /** @description Etkinliğin yapıldığı yer (2–160) */
+                    location?: string;
+                    /** @description Sorumlu öğretmenin (ya da yöneticinin) kurum üyeliği */
+                    responsibleMembershipId?: string;
+                    /**
+                     * @description `internal` kurum içi, `external` kurum dışı (dış kuruluşla)
+                     * @enum {string}
+                     */
+                    organizationScope?: "internal" | "external";
+                    /** @description Kuruluş adı (2–160); kurum dışında zorunlu */
+                    organizationName?: string | null;
+                    /** @description Bağlı kulüp (`/finance/clubs`); yalnız kulüp çalışmasında */
+                    clubId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "club" | "volunteering";
+                            /** @description YYYY-MM-DD */
+                            startDate: string;
+                            /** @description YYYY-MM-DD; boşsa süren etkinlik */
+                            endDate: string | null;
+                            location: string;
+                            /** @description Sorumlu öğretmenin kurum üyeliği */
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @enum {string} */
+                            organizationScope: "internal" | "external";
+                            organizationName: string | null;
+                            clubId: string | null;
+                            clubName: string | null;
+                            /** @description Onaylı net dakika (ters kayıtlar düşülmüş) */
+                            approvedMinutes: number;
+                            /** @description Onay bekleyen beyan sayısı */
+                            pendingCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSocialHours: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Çalışma günü (YYYY-MM-DD); bugünden sonra olamaz */
+                    activityDate: string;
+                    /** @description Saat (0,5–10, yarım saat adımlı) */
+                    hours: number;
+                    /** @description Saati yazılacak öğrenciler (1–100); hepsi aynı gün ve saatle */
+                    studentIds: string[];
+                    /** @description Yapılan çalışmanın kısa açıklaması (≤ 500) */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @enum {string} */
+                            activityKind: "club" | "volunteering";
+                            studentId: string;
+                            studentName: string;
+                            className: string | null;
+                            /** @description Çalışma günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı) */
+                            academicYear: number;
+                            /**
+                             * @description `entry` kayıt, `reversal` ters kayıt
+                             * @enum {string}
+                             */
+                            kind: "entry" | "reversal";
+                            /** @description Dakika; ters kayıtta eksi */
+                            minutes: number;
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            /** @enum {string} */
+                            source: "teacher" | "student";
+                            /** @description Çalışma açıklaması; ters kayıtta düzeltme gerekçesi */
+                            note: string | null;
+                            /** @description Karar anı (ISO 8601) */
+                            decidedAt: string | null;
+                            rejectionReason: string | null;
+                            reversesEntryId: string | null;
+                            reversedByEntryId: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (onay, ret, ters kayıt) */
+                            version: number;
+                        }[];
                     };
                 };
             };

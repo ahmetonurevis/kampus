@@ -364302,6 +364302,5166 @@
         }
       }
     },
+    "/api/v1/finance/social-activities/my": {
+      "get": {
+        "operationId": "listMySocialHours",
+        "summary": "Kendi (çocuğumun) sosyal etkinlik saatleri",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Öğrencinin kendi ya da velinin bağlı lise (9–12) çocuklarının yıl ve toplam onaylı saati, hedefe göre durumu ve bütün kayıtları (bekleyen, reddedilen gerekçesiyle, ters kayıt) (K-536, K-537). Kapsam sunucuda core kuralıyla daralır; lise dışı çocuk dönmez. Rol: `ogrenci`, `veli`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                          },
+                          "progress": {
+                            "type": "object",
+                            "properties": {
+                              "totalMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ortaöğrenim boyunca onaylı net dakika (bu kurumda)"
+                              },
+                              "yearMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Seçilen öğretim yılının onaylı net dakikası"
+                              },
+                              "totalTargetHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "yearlyTargetHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "totalMissingMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "yearMissingMinutes": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "met",
+                                  "on_track",
+                                  "behind"
+                                ],
+                                "description": "`met` toplam hedef tamam, `on_track` yıllık hedef tamam, `behind` eksik"
+                              },
+                              "pendingCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "totalMinutes",
+                              "yearMinutes",
+                              "totalTargetHours",
+                              "yearlyTargetHours",
+                              "totalMissingMinutes",
+                              "yearMissingMinutes",
+                              "status",
+                              "pendingCount"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "entries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "activityId": {
+                                  "type": "string"
+                                },
+                                "activityName": {
+                                  "type": "string"
+                                },
+                                "activityKind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "club",
+                                    "volunteering"
+                                  ]
+                                },
+                                "studentId": {
+                                  "type": "string"
+                                },
+                                "studentName": {
+                                  "type": "string"
+                                },
+                                "className": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "activityDate": {
+                                  "type": "string",
+                                  "description": "Çalışma günü (YYYY-MM-DD)"
+                                },
+                                "academicYear": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "entry",
+                                    "reversal"
+                                  ],
+                                  "description": "`entry` kayıt, `reversal` ters kayıt"
+                                },
+                                "minutes": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Dakika; ters kayıtta eksi"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "pending",
+                                    "approved",
+                                    "rejected"
+                                  ]
+                                },
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "teacher",
+                                    "student"
+                                  ]
+                                },
+                                "note": {
+                                  "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "decidedAt": {
+                                  "description": "Karar anı (ISO 8601)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "rejectionReason": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "reversesEntryId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "reversedByEntryId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "activityId",
+                                "activityName",
+                                "activityKind",
+                                "studentId",
+                                "studentName",
+                                "className",
+                                "activityDate",
+                                "academicYear",
+                                "kind",
+                                "minutes",
+                                "status",
+                                "source",
+                                "note",
+                                "decidedAt",
+                                "rejectionReason",
+                                "reversesEntryId",
+                                "reversedByEntryId",
+                                "createdAt",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Bütün kayıtlar, yeni gün önce"
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "studentName",
+                          "className",
+                          "academicYear",
+                          "progress",
+                          "entries"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/my/activities": {
+      "get": {
+        "operationId": "listDeclarableSocialActivities",
+        "summary": "Beyan edilebilecek etkinlikler",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Başlamış ve arşivlenmemiş etkinlikler; öğrenci saat beyanında seçer. Rol: `ogrenci`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Etkinlik ya da kuruluş adında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "club",
+                              "volunteering"
+                            ]
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "YYYY-MM-DD"
+                          },
+                          "endDate": {
+                            "description": "YYYY-MM-DD; boşsa süren etkinlik",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "responsibleName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "organizationScope": {
+                            "type": "string",
+                            "enum": [
+                              "internal",
+                              "external"
+                            ]
+                          },
+                          "organizationName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "startDate",
+                          "endDate",
+                          "location",
+                          "responsibleName",
+                          "organizationScope",
+                          "organizationName"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/my/hours": {
+      "post": {
+        "operationId": "declareSocialHour",
+        "summary": "Sosyal etkinlik saati beyan et",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Öğrenci kendi saatini beyan eder; kayıt onay bekler (K-536). Gün bugünü geçmez (422 `social_activity_date_future`) ve etkinlik aralığındadır (422 `social_activity_date_outside`); saat 0,5–10, yarım saat adımlı. Lise dışı öğrenci 422 `social_activity_student_not_high_school`; aynı etkinlik ve günün etkin kaydı 409 `social_activity_entry_exists`. Arşivli ya da başka kurumun etkinliği 404. `Idempotency-Key` zorunlu. Rol: `ogrenci`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "activityId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Etkinlik"
+                  },
+                  "activityDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Çalışma günü (YYYY-MM-DD); bugünden sonra olamaz"
+                  },
+                  "hours": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 10,
+                    "multipleOf": 0.5,
+                    "description": "Saat (0,5–10, yarım saat adımlı)"
+                  },
+                  "note": {
+                    "description": "Yapılan çalışmanın kısa açıklaması (≤ 500)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "activityId",
+                  "activityDate",
+                  "hours"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "activityId": {
+                          "type": "string"
+                        },
+                        "activityName": {
+                          "type": "string"
+                        },
+                        "activityKind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activityDate": {
+                          "type": "string",
+                          "description": "Çalışma günü (YYYY-MM-DD)"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "entry",
+                            "reversal"
+                          ],
+                          "description": "`entry` kayıt, `reversal` ters kayıt"
+                        },
+                        "minutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dakika; ters kayıtta eksi"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "teacher",
+                            "student"
+                          ]
+                        },
+                        "note": {
+                          "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "description": "Karar anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversesEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversedByEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "activityId",
+                        "activityName",
+                        "activityKind",
+                        "studentId",
+                        "studentName",
+                        "className",
+                        "activityDate",
+                        "academicYear",
+                        "kind",
+                        "minutes",
+                        "status",
+                        "source",
+                        "note",
+                        "decidedAt",
+                        "rejectionReason",
+                        "reversesEntryId",
+                        "reversedByEntryId",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/settings": {
+      "get": {
+        "operationId": "getSocialActivitySettings",
+        "summary": "Sosyal etkinlik hedefleri",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Kurumun toplam ve yıllık hedefi; ayar yoksa mevzuat önerisi (40 ve 10 saat; `isDefault`) (K-537). Rol: `yonetici`, `ogretmen`; diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalTargetHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "yearlyTargetHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "description": "Kurum ayarı yok; mevzuat önerisi uygulanıyor"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü; ayar yokken 0 (başlık gönderilmez)"
+                        }
+                      },
+                      "required": [
+                        "totalTargetHours",
+                        "yearlyTargetHours",
+                        "isDefault",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSocialActivitySettings",
+        "summary": "Sosyal etkinlik hedeflerini değiştir",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Toplam hedef (1–200 tam saat) ve yıllık hedef (1–200 ya da `null`) (K-537). Ayar yokken `If-Match` gönderilmez; ayar varsa okunan sürümle zorunludur (yoksa ya da tutmazsa 409 `version_conflict`). Rol: yalnız `yonetici`. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "totalTargetHours": {
+                    "description": "Ortaöğrenim boyunca hedef (tam saat; öneri 40)",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "yearlyTargetHours": {
+                    "description": "Öğretim yılı hedefi (tam saat; öneri 10); `null` yıllık hedef yok",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalTargetHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "yearlyTargetHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "description": "Kurum ayarı yok; mevzuat önerisi uygulanıyor"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü; ayar yokken 0 (başlık gönderilmez)"
+                        }
+                      },
+                      "required": [
+                        "totalTargetHours",
+                        "yearlyTargetHours",
+                        "isDefault",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/hours": {
+      "get": {
+        "operationId": "listSocialHours",
+        "summary": "Sosyal etkinlik saat kayıtları",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Saat kayıtları, yeni gün önce; `status=pending` onay kuyruğudur. `activityId` ve `studentId` süzer; öğretmen yalnız sorumlu olduğu etkinliklerin kayıtlarını görür (başka etkinlik süzgeci 404). Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci (`pending` onay kuyruğu)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "activityId",
+            "required": false,
+            "description": "Etkinlik süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Öğrenci süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "activityId": {
+                            "type": "string"
+                          },
+                          "activityName": {
+                            "type": "string"
+                          },
+                          "activityKind": {
+                            "type": "string",
+                            "enum": [
+                              "club",
+                              "volunteering"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "activityDate": {
+                            "type": "string",
+                            "description": "Çalışma günü (YYYY-MM-DD)"
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "entry",
+                              "reversal"
+                            ],
+                            "description": "`entry` kayıt, `reversal` ters kayıt"
+                          },
+                          "minutes": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Dakika; ters kayıtta eksi"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "teacher",
+                              "student"
+                            ]
+                          },
+                          "note": {
+                            "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "description": "Karar anı (ISO 8601)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reversesEntryId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reversedByEntryId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "activityId",
+                          "activityName",
+                          "activityKind",
+                          "studentId",
+                          "studentName",
+                          "className",
+                          "activityDate",
+                          "academicYear",
+                          "kind",
+                          "minutes",
+                          "status",
+                          "source",
+                          "note",
+                          "decidedAt",
+                          "rejectionReason",
+                          "reversesEntryId",
+                          "reversedByEntryId",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/hours/{entryId}/approve": {
+      "post": {
+        "operationId": "approveSocialHour",
+        "summary": "Beyanı onayla",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Bekleyen öğrenci beyanı onaylanır; sonra değişmez (K-536). Karar verilmiş kayıt 409 `social_activity_entry_decided`. `If-Match` kaydın sürümü. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "entryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "activityId": {
+                          "type": "string"
+                        },
+                        "activityName": {
+                          "type": "string"
+                        },
+                        "activityKind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activityDate": {
+                          "type": "string",
+                          "description": "Çalışma günü (YYYY-MM-DD)"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "entry",
+                            "reversal"
+                          ],
+                          "description": "`entry` kayıt, `reversal` ters kayıt"
+                        },
+                        "minutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dakika; ters kayıtta eksi"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "teacher",
+                            "student"
+                          ]
+                        },
+                        "note": {
+                          "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "description": "Karar anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversesEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversedByEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "activityId",
+                        "activityName",
+                        "activityKind",
+                        "studentId",
+                        "studentName",
+                        "className",
+                        "activityDate",
+                        "academicYear",
+                        "kind",
+                        "minutes",
+                        "status",
+                        "source",
+                        "note",
+                        "decidedAt",
+                        "rejectionReason",
+                        "reversesEntryId",
+                        "reversedByEntryId",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/hours/{entryId}/reject": {
+      "post": {
+        "operationId": "rejectSocialHour",
+        "summary": "Beyanı reddet",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Bekleyen öğrenci beyanı gerekçeyle (5–500) reddedilir; öğrenci ve veli gerekçeyi görür, aynı gün yeniden beyan edilebilir (K-536). Karar verilmiş kayıt 409 `social_activity_entry_decided`. `If-Match` kaydın sürümü. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Ret gerekçesi (5–500); öğrenci ve veli görür"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "entryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "activityId": {
+                          "type": "string"
+                        },
+                        "activityName": {
+                          "type": "string"
+                        },
+                        "activityKind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activityDate": {
+                          "type": "string",
+                          "description": "Çalışma günü (YYYY-MM-DD)"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "entry",
+                            "reversal"
+                          ],
+                          "description": "`entry` kayıt, `reversal` ters kayıt"
+                        },
+                        "minutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dakika; ters kayıtta eksi"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "teacher",
+                            "student"
+                          ]
+                        },
+                        "note": {
+                          "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "description": "Karar anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversesEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversedByEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "activityId",
+                        "activityName",
+                        "activityKind",
+                        "studentId",
+                        "studentName",
+                        "className",
+                        "activityDate",
+                        "academicYear",
+                        "kind",
+                        "minutes",
+                        "status",
+                        "source",
+                        "note",
+                        "decidedAt",
+                        "rejectionReason",
+                        "reversesEntryId",
+                        "reversedByEntryId",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/hours/{entryId}/reverse": {
+      "post": {
+        "operationId": "reverseSocialHour",
+        "summary": "Onaylı saati ters kayıtla düzelt",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Onaylı saat değişmez: gerekçeli (5–500) ters kayıt eksi dakikayla yazılır, kayıt toplamdan ve belgeden düşer; aynı gün doğru saat yeniden girilebilir (K-536). Onaylı olmayan kayıt 409 `social_activity_entry_not_reversible`, düzeltilmiş kayıt 409 `social_activity_entry_reversed`. `If-Match` düzeltilen kaydın sürümü. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Düzeltme gerekçesi (5–500)"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "entryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "activityId": {
+                          "type": "string"
+                        },
+                        "activityName": {
+                          "type": "string"
+                        },
+                        "activityKind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "activityDate": {
+                          "type": "string",
+                          "description": "Çalışma günü (YYYY-MM-DD)"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "entry",
+                            "reversal"
+                          ],
+                          "description": "`entry` kayıt, `reversal` ters kayıt"
+                        },
+                        "minutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dakika; ters kayıtta eksi"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "teacher",
+                            "student"
+                          ]
+                        },
+                        "note": {
+                          "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "description": "Karar anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversesEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reversedByEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "activityId",
+                        "activityName",
+                        "activityKind",
+                        "studentId",
+                        "studentName",
+                        "className",
+                        "activityDate",
+                        "academicYear",
+                        "kind",
+                        "minutes",
+                        "status",
+                        "source",
+                        "note",
+                        "decidedAt",
+                        "rejectionReason",
+                        "reversesEntryId",
+                        "reversedByEntryId",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/classes": {
+      "get": {
+        "operationId": "listSocialActivityClasses",
+        "summary": "Sınıflara göre sosyal etkinlik durumu",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Lise (9–12) sınıfları: etkin öğrenci sayısı ve hedefe göre tamamlayan, yıllık hedefte ve eksik sayıları (K-537). Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "classId": {
+                            "type": "string"
+                          },
+                          "className": {
+                            "type": "string"
+                          },
+                          "grade": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "studentCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "metCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "onTrackCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "behindCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "classId",
+                          "className",
+                          "grade",
+                          "studentCount",
+                          "metCount",
+                          "onTrackCount",
+                          "behindCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/classes/{classId}": {
+      "get": {
+        "operationId": "getSocialActivityClass",
+        "summary": "Sınıfın sosyal etkinlik özeti",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Sınıfın etkin öğrencileri: yıl ve toplam onaylı net dakika, eksik dakika, durum ve bekleyen beyan; `status=behind` eksik kalanlar (K-537). Lise dışı, görülemeyen ya da başka kurumun sınıfı 404. Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "met",
+                "on_track",
+                "behind"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci; `behind` eksik kalanlar"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "classId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "classId": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": "string"
+                        },
+                        "grade": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                        },
+                        "totalTargetHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "yearlyTargetHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "students": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "totalMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ortaöğrenim boyunca onaylı net dakika (bu kurumda)"
+                              },
+                              "yearMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Seçilen öğretim yılının onaylı net dakikası"
+                              },
+                              "totalTargetHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "yearlyTargetHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "totalMissingMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "yearMissingMinutes": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "met",
+                                  "on_track",
+                                  "behind"
+                                ],
+                                "description": "`met` toplam hedef tamam, `on_track` yıllık hedef tamam, `behind` eksik"
+                              },
+                              "pendingCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "totalMinutes",
+                              "yearMinutes",
+                              "totalTargetHours",
+                              "yearlyTargetHours",
+                              "totalMissingMinutes",
+                              "yearMissingMinutes",
+                              "status",
+                              "pendingCount",
+                              "studentId",
+                              "studentName"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "classId",
+                        "className",
+                        "grade",
+                        "academicYear",
+                        "totalTargetHours",
+                        "yearlyTargetHours",
+                        "students"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/students/{studentId}": {
+      "get": {
+        "operationId": "getSocialActivityStudent",
+        "summary": "Öğrencinin sosyal etkinlik saatleri",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Lise öğrencisinin hedefe göre durumu ve bütün kayıtları (K-537). Lise dışı, kapsam dışı ya da başka kurumun öğrencisi 404. Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Öğretim yılının başlangıç yılı; boşsa bugünün öğretim yılı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                        },
+                        "progress": {
+                          "type": "object",
+                          "properties": {
+                            "totalMinutes": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ortaöğrenim boyunca onaylı net dakika (bu kurumda)"
+                            },
+                            "yearMinutes": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Seçilen öğretim yılının onaylı net dakikası"
+                            },
+                            "totalTargetHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "yearlyTargetHours": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "totalMissingMinutes": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "yearMissingMinutes": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "met",
+                                "on_track",
+                                "behind"
+                              ],
+                              "description": "`met` toplam hedef tamam, `on_track` yıllık hedef tamam, `behind` eksik"
+                            },
+                            "pendingCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "totalMinutes",
+                            "yearMinutes",
+                            "totalTargetHours",
+                            "yearlyTargetHours",
+                            "totalMissingMinutes",
+                            "yearMissingMinutes",
+                            "status",
+                            "pendingCount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "activityId": {
+                                "type": "string"
+                              },
+                              "activityName": {
+                                "type": "string"
+                              },
+                              "activityKind": {
+                                "type": "string",
+                                "enum": [
+                                  "club",
+                                  "volunteering"
+                                ]
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "className": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "activityDate": {
+                                "type": "string",
+                                "description": "Çalışma günü (YYYY-MM-DD)"
+                              },
+                              "academicYear": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "entry",
+                                  "reversal"
+                                ],
+                                "description": "`entry` kayıt, `reversal` ters kayıt"
+                              },
+                              "minutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dakika; ters kayıtta eksi"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "approved",
+                                  "rejected"
+                                ]
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "teacher",
+                                  "student"
+                                ]
+                              },
+                              "note": {
+                                "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "decidedAt": {
+                                "description": "Karar anı (ISO 8601)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectionReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reversesEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reversedByEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "activityId",
+                              "activityName",
+                              "activityKind",
+                              "studentId",
+                              "studentName",
+                              "className",
+                              "activityDate",
+                              "academicYear",
+                              "kind",
+                              "minutes",
+                              "status",
+                              "source",
+                              "note",
+                              "decidedAt",
+                              "rejectionReason",
+                              "reversesEntryId",
+                              "reversedByEntryId",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bütün kayıtlar, yeni gün önce"
+                        },
+                        "grade": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "studentId",
+                        "studentName",
+                        "className",
+                        "academicYear",
+                        "progress",
+                        "entries",
+                        "grade"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/students/{studentId}/certificate": {
+      "get": {
+        "operationId": "getSocialActivityCertificate",
+        "summary": "Sosyal etkinlik ve gönüllülük belgesi verisi",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Belge PDF'inin verisi: yalnız onaylı ve ters kayıtla düzeltilmemiş saatler, gün sırasıyla; öğretim yılı toplamları ve toplam hedef (K-537). Her okuma denetime yazılır (`finance.social_activity.certificate`). Lise dışı, kapsam dışı ya da başka kurumun öğrencisi 404. Rol: `yonetici` bütün sınıflar, `ogretmen` sınıf öğretmeni olduğu ve derse girdiği sınıflar (başkası 404); diğer roller 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "grade": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "issuedOn": {
+                          "type": "string",
+                          "description": "Düzenleme günü (YYYY-MM-DD)"
+                        },
+                        "totalMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onaylı ve düzeltilmemiş kayıtların toplamı"
+                        },
+                        "totalTargetHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "met",
+                            "on_track",
+                            "behind"
+                          ]
+                        },
+                        "years": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "academicYear": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                              },
+                              "minutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "academicYear",
+                              "minutes"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entryId": {
+                                "type": "string"
+                              },
+                              "activityDate": {
+                                "type": "string"
+                              },
+                              "academicYear": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                              },
+                              "activityName": {
+                                "type": "string"
+                              },
+                              "activityKind": {
+                                "type": "string",
+                                "enum": [
+                                  "club",
+                                  "volunteering"
+                                ]
+                              },
+                              "organizationScope": {
+                                "type": "string",
+                                "enum": [
+                                  "internal",
+                                  "external"
+                                ]
+                              },
+                              "organizationName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "location": {
+                                "type": "string"
+                              },
+                              "responsibleName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "minutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "entryId",
+                              "activityDate",
+                              "academicYear",
+                              "activityName",
+                              "activityKind",
+                              "organizationScope",
+                              "organizationName",
+                              "location",
+                              "responsibleName",
+                              "minutes"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "studentId",
+                        "studentName",
+                        "className",
+                        "grade",
+                        "issuedOn",
+                        "totalMinutes",
+                        "totalTargetHours",
+                        "status",
+                        "years",
+                        "rows"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities": {
+      "get": {
+        "operationId": "listSocialActivities",
+        "summary": "Sosyal etkinlikler",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Arşivlenmemiş etkinlikler, yeni başlangıç önce; onaylı net dakika ve bekleyen beyan sayısıyla. `q` ad ve kuruluşta arar, `kind` süzer. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Etkinlik ya da kuruluş adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "club",
+                "volunteering"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Tür süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "club",
+                              "volunteering"
+                            ]
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "YYYY-MM-DD"
+                          },
+                          "endDate": {
+                            "description": "YYYY-MM-DD; boşsa süren etkinlik",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "responsibleMembershipId": {
+                            "type": "string",
+                            "description": "Sorumlu öğretmenin kurum üyeliği"
+                          },
+                          "responsibleName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "organizationScope": {
+                            "type": "string",
+                            "enum": [
+                              "internal",
+                              "external"
+                            ]
+                          },
+                          "organizationName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "clubId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "clubName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "approvedMinutes": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Onaylı net dakika (ters kayıtlar düşülmüş)"
+                          },
+                          "pendingCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Onay bekleyen beyan sayısı"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "startDate",
+                          "endDate",
+                          "location",
+                          "responsibleMembershipId",
+                          "responsibleName",
+                          "organizationScope",
+                          "organizationName",
+                          "clubId",
+                          "clubName",
+                          "approvedMinutes",
+                          "pendingCount",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSocialActivity",
+        "summary": "Sosyal etkinlik aç",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Ad, tür (kulüp/topluluk ya da gönüllülük), başlangıç ve isteğe bağlı bitiş günü, yer, sorumlu (kurumun etkin öğretmeni ya da yöneticisi; 422 `social_activity_teacher_not_found`, `social_activity_teacher_not_teacher`, `social_activity_teacher_inactive`), kurum içi/dışı ve kuruluş adı (dışarıda zorunlu), kulüp çalışmasında isteğe bağlı kulüp (422 `social_activity_club_not_found`) (K-535). Öğretmen yalnız kendini sorumlu yazar (422 `social_activity_teacher_not_self`). `Idempotency-Key` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Etkinlik adı (2–120)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "club",
+                      "volunteering"
+                    ],
+                    "description": "`club` kulüp/topluluk çalışması, `volunteering` gönüllülük/toplum hizmeti"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Başlangıç günü (YYYY-MM-DD)"
+                  },
+                  "endDate": {
+                    "default": null,
+                    "description": "Bitiş günü (dahil); boşsa süren etkinlik",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "Etkinliğin yapıldığı yer (2–160)"
+                  },
+                  "responsibleMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Sorumlu öğretmenin (ya da yöneticinin) kurum üyeliği"
+                  },
+                  "organizationScope": {
+                    "type": "string",
+                    "enum": [
+                      "internal",
+                      "external"
+                    ],
+                    "description": "`internal` kurum içi, `external` kurum dışı (dış kuruluşla)"
+                  },
+                  "organizationName": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 160
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Kuruluş adı (2–160); kurum dışında zorunlu"
+                  },
+                  "clubId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Bağlı kulüp (`/finance/clubs`); yalnız kulüp çalışmasında"
+                  }
+                },
+                "required": [
+                  "name",
+                  "kind",
+                  "startDate",
+                  "location",
+                  "responsibleMembershipId",
+                  "organizationScope"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD"
+                        },
+                        "endDate": {
+                          "description": "YYYY-MM-DD; boşsa süren etkinlik",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string",
+                          "description": "Sorumlu öğretmenin kurum üyeliği"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "organizationScope": {
+                          "type": "string",
+                          "enum": [
+                            "internal",
+                            "external"
+                          ]
+                        },
+                        "organizationName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onaylı net dakika (ters kayıtlar düşülmüş)"
+                        },
+                        "pendingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onay bekleyen beyan sayısı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "organizationScope",
+                        "organizationName",
+                        "clubId",
+                        "clubName",
+                        "approvedMinutes",
+                        "pendingCount",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/{activityId}": {
+      "get": {
+        "operationId": "getSocialActivity",
+        "summary": "Sosyal etkinlik ayrıntısı",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Etkinlik ve toplamları; kayıtlar `GET …/hours?activityId=` ile. Başka kurumun ya da arşivli etkinlik 404. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "activityId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD"
+                        },
+                        "endDate": {
+                          "description": "YYYY-MM-DD; boşsa süren etkinlik",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string",
+                          "description": "Sorumlu öğretmenin kurum üyeliği"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "organizationScope": {
+                          "type": "string",
+                          "enum": [
+                            "internal",
+                            "external"
+                          ]
+                        },
+                        "organizationName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onaylı net dakika (ters kayıtlar düşülmüş)"
+                        },
+                        "pendingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onay bekleyen beyan sayısı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "organizationScope",
+                        "organizationName",
+                        "clubId",
+                        "clubName",
+                        "approvedMinutes",
+                        "pendingCount",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSocialActivity",
+        "summary": "Sosyal etkinliği düzenle",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Gönderilen alanlar değişir. Kayıtlı günler yeni aralığın dışında kalamaz (422 `social_activity_entries_outside_range`); sorumluyu yalnız yönetici değiştirir; değişiklik yoksa 422 `social_activity_unchanged` (K-535). `If-Match` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Etkinlik adı (2–120)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "club",
+                      "volunteering"
+                    ],
+                    "description": "`club` kulüp/topluluk çalışması, `volunteering` gönüllülük/toplum hizmeti"
+                  },
+                  "startDate": {
+                    "description": "Başlangıç günü",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "description": "Bitiş günü; `null` süren etkinlik",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "Etkinliğin yapıldığı yer (2–160)"
+                  },
+                  "responsibleMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Sorumlu öğretmenin (ya da yöneticinin) kurum üyeliği"
+                  },
+                  "organizationScope": {
+                    "type": "string",
+                    "enum": [
+                      "internal",
+                      "external"
+                    ],
+                    "description": "`internal` kurum içi, `external` kurum dışı (dış kuruluşla)"
+                  },
+                  "organizationName": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 160
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Kuruluş adı (2–160); kurum dışında zorunlu"
+                  },
+                  "clubId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Bağlı kulüp (`/finance/clubs`); yalnız kulüp çalışmasında"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "activityId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "club",
+                            "volunteering"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "YYYY-MM-DD"
+                        },
+                        "endDate": {
+                          "description": "YYYY-MM-DD; boşsa süren etkinlik",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string",
+                          "description": "Sorumlu öğretmenin kurum üyeliği"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "organizationScope": {
+                          "type": "string",
+                          "enum": [
+                            "internal",
+                            "external"
+                          ]
+                        },
+                        "organizationName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedMinutes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onaylı net dakika (ters kayıtlar düşülmüş)"
+                        },
+                        "pendingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Onay bekleyen beyan sayısı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "organizationScope",
+                        "organizationName",
+                        "clubId",
+                        "clubName",
+                        "approvedMinutes",
+                        "pendingCount",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveSocialActivity",
+        "summary": "Sosyal etkinliği arşivle",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Onay bekleyen beyanı olan etkinlik arşivlenmez (422 `social_activity_has_pending`); onaylı saatler belgede kalır (K-535). `If-Match` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "activityId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/social-activities/{activityId}/hours": {
+      "post": {
+        "operationId": "createSocialHours",
+        "summary": "Sosyal etkinlik saati gir",
+        "tags": [
+          "finance-social-activities"
+        ],
+        "description": "Sorumlu öğretmen ya da yönetici seçilen öğrencilere (1–100) aynı gün ve saati onaylı yazar (K-536). Gün bugünü geçmez (422 `social_activity_date_future`) ve etkinlik aralığındadır (422 `social_activity_date_outside`); öğrenci kurumda yok 422 `social_activity_student_not_found`, etkin değil `social_activity_student_inactive`, lise dışı `social_activity_student_not_high_school`; aynı öğrenci, etkinlik ve günün etkin kaydı 409 `social_activity_entry_exists`. Bir satır reddedilirse hiçbiri yazılmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` bütün etkinlikler, `ogretmen` yalnız sorumlu olduğu etkinlik (başkası 404); ön büro, veli ve öğrenci 403. Yalnız okul (`school`) kurumunda; dil okulunda her rol için 404, rol denetiminden önce. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "activityDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Çalışma günü (YYYY-MM-DD); bugünden sonra olamaz"
+                  },
+                  "hours": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 10,
+                    "multipleOf": 0.5,
+                    "description": "Saat (0,5–10, yarım saat adımlı)"
+                  },
+                  "studentIds": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "description": "Saati yazılacak öğrenciler (1–100); hepsi aynı gün ve saatle"
+                  },
+                  "note": {
+                    "description": "Yapılan çalışmanın kısa açıklaması (≤ 500)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "activityDate",
+                  "hours",
+                  "studentIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "activityId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "activityId": {
+                            "type": "string"
+                          },
+                          "activityName": {
+                            "type": "string"
+                          },
+                          "activityKind": {
+                            "type": "string",
+                            "enum": [
+                              "club",
+                              "volunteering"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "activityDate": {
+                            "type": "string",
+                            "description": "Çalışma günü (YYYY-MM-DD)"
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027; Eylül başı)"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "entry",
+                              "reversal"
+                            ],
+                            "description": "`entry` kayıt, `reversal` ters kayıt"
+                          },
+                          "minutes": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Dakika; ters kayıtta eksi"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected"
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "teacher",
+                              "student"
+                            ]
+                          },
+                          "note": {
+                            "description": "Çalışma açıklaması; ters kayıtta düzeltme gerekçesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "description": "Karar anı (ISO 8601)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reversesEntryId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reversedByEntryId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (onay, ret, ters kayıt)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "activityId",
+                          "activityName",
+                          "activityKind",
+                          "studentId",
+                          "studentName",
+                          "className",
+                          "activityDate",
+                          "academicYear",
+                          "kind",
+                          "minutes",
+                          "status",
+                          "source",
+                          "note",
+                          "decidedAt",
+                          "rejectionReason",
+                          "reversesEntryId",
+                          "reversedByEntryId",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

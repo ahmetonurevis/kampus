@@ -1177,6 +1177,13 @@
       "when": 1795261560619,
       "tag": "0167_create_emergency_summaries",
       "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1795336286766,
+      "tag": "0168_create_social_activity_hours",
+      "breakpoints": true
     }
   ]
 }

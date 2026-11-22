@@ -200,7 +200,7 @@ export function healthAccessReasonText(reason: {
 
 /**
  * Gerekçeli okumanın denetim eylemi → günlükte görünen kayıt türü. Yeni sağlık okuması (ON-161,
- * ON-163, ON-165) eylemini buraya ekler; bilinmeyen eylem "Sağlık kaydı" görünür.
+ * ON-163, ON-165, ON-151) eylemini buraya ekler; bilinmeyen eylem "Sağlık kaydı" görünür.
  */
 export const HEALTH_ACCESS_ACTION_LABELS: Readonly<Record<string, string>> = {
   'finance.incident.read': 'Kaza tutanağı',
@@ -214,6 +214,7 @@ export const HEALTH_ACCESS_ACTION_LABELS: Readonly<Record<string, string>> = {
   'finance.emergency_summary.read': 'Acil durum özeti',
   'finance.emergency_summary.print': 'Acil durum özeti (sınıf PDF’i)',
   'finance.emergency_summary.manage_read': 'Acil durum özeti (yönetim)',
+  'finance.meal_allergy.roster_read': 'Yemekhane alerji uyarısı',
 }
 
 export function healthAccessActionLabel(action: string): string {

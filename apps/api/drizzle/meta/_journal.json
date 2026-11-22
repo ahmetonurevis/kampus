@@ -1212,6 +1212,13 @@
       "when": 1795341272422,
       "tag": "0172_create_trip_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1795343997985,
+      "tag": "0173_create_meal_allergy_checks",
+      "breakpoints": true
     }
   ]
 }

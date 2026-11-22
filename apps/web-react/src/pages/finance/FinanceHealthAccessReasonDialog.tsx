@@ -71,12 +71,15 @@ export function FinanceHealthAccessReasonDialog({
   open,
   onOpenChange,
   subject,
+  suggested,
   onConfirm,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Açılan bilgi (ör. "kaza tutanağının sağlık bilgisi"). */
   subject: string
+  /** Ekranın amacından belli önerilen gerekçe; diyalogda ön seçilidir. */
+  suggested?: HealthAccessReason | undefined
   onConfirm: (reason: HealthAccessReason) => void
 }) {
   return (
@@ -86,21 +89,29 @@ export function FinanceHealthAccessReasonDialog({
       title="Sağlık bilgisine erişim gerekçesi"
       description={`Sağlık bilgisi özel niteliklidir. ${subject} açılışı gerekçesiyle kayda geçer; seçtiğiniz gerekçe 15 dakika geçerli kalır.`}
     >
-      {open ? <ReasonForm onCancel={() => onOpenChange(false)} onConfirm={onConfirm} /> : null}
+      {open ? (
+        <ReasonForm
+          suggested={suggested}
+          onCancel={() => onOpenChange(false)}
+          onConfirm={onConfirm}
+        />
+      ) : null}
     </Modal>
   )
 }
 
 function ReasonForm({
+  suggested,
   onCancel,
   onConfirm,
 }: {
+  suggested: HealthAccessReason | undefined
   onCancel: () => void
   onConfirm: (reason: HealthAccessReason) => void
 }) {
   const form = useForm<HealthReasonFormValues, unknown, HealthAccessReason>({
     resolver: zodResolver(healthReasonFormSchema),
-    defaultValues: healthReasonDefaults(),
+    defaultValues: healthReasonDefaults(suggested),
   })
   const code = useWatch({ control: form.control, name: 'code' })
   const errors = form.formState.errors
@@ -153,10 +164,12 @@ function ReasonForm({
 export function HealthAccessPrompt({
   subject,
   askOnOpen,
+  suggested,
   onConfirm,
 }: {
   subject: string
   askOnOpen: boolean
+  suggested?: HealthAccessReason | undefined
   onConfirm: (reason: HealthAccessReason) => void
 }) {
   const [asking, setAsking] = useState(askOnOpen)
@@ -176,6 +189,7 @@ export function HealthAccessPrompt({
         open={asking}
         onOpenChange={setAsking}
         subject={subject}
+        suggested={suggested}
         onConfirm={(next) => {
           setAsking(false)
           onConfirm(next)
@@ -190,14 +204,24 @@ export function HealthAccessGate({
   scope,
   subject,
   askOnOpen,
+  suggested,
   children,
 }: {
   scope: string
   subject: string
   askOnOpen: boolean
+  /** Önerilen gerekçe (diyalogda ön seçili; kullanıcı onaylar). */
+  suggested?: HealthAccessReason | undefined
   children: (reason: HealthAccessReason) => ReactNode
 }) {
   const { reason, choose } = useHealthAccessReason(scope)
   if (reason !== null) return children(reason)
-  return <HealthAccessPrompt subject={subject} askOnOpen={askOnOpen} onConfirm={choose} />
+  return (
+    <HealthAccessPrompt
+      subject={subject}
+      askOnOpen={askOnOpen}
+      suggested={suggested}
+      onConfirm={choose}
+    />
+  )
 }

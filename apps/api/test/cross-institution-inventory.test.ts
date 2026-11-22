@@ -4605,6 +4605,42 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yemek menüsü, besin değeri ve alerjen matrisi (ON-090, ON-149; DOM-FIN-157).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/meal-menus/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/meal-menus', 'get(BASE, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/meal-menus', 'copyFromMenuId: bMenu.id'],
+        ['kayıt', 'GET /api/v1/finance/meal-menus/:menuId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/meal-menus/:menuId', 'patch(bUrl, a.admin'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/meal-menus/:menuId/publish',
+          'command(`${bUrl}/publish`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/meal-menus/:menuId/unpublish',
+          'command(`${bUrl}/unpublish`, a.admin',
+        ],
+        ['kayıt', 'DELETE /api/v1/finance/meal-menus/:menuId', 'remove(bUrl, a.admin'],
+        ['liste', 'GET /api/v1/finance/meal-menu-settings', 'get(SETTINGS, b.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/meal-menu-settings',
+          "mealKinds: ['lunch', 'snack'], institutionId: b.id",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-meal-menus.test.ts',
+        'DOM-FIN-157: başka kurumun menüsü 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

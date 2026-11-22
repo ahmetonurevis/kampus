@@ -350,6 +350,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/trip-plans/{planId}/report',
   'POST /api/v1/finance/trip-plans/{planId}/report/photos',
   'POST /api/v1/finance/trip-evaluations',
+  // Yemekhane alerji uyarısının görevli onayı; çift tıklama ikinci işareti yazmaz
+  // (routes/finance-meal-allergy-checks.ts; DOM-FIN-162, ON-151).
+  'POST /api/v1/finance/meal-allergy-checks/acknowledgements',
 ]
 // Onur: kayıt ve finans sonu
 

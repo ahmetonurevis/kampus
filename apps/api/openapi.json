@@ -387951,6 +387951,856 @@
         }
       }
     },
+    "/api/v1/finance/meal-allergy-checks/options": {
+      "get": {
+        "operationId": "getMealAllergyOptions",
+        "summary": "Yemekhane alerji listesi seçenekleri",
+        "tags": [
+          "finance-meal-allergy-checks"
+        ],
+        "description": "Sınıflar, sınıf düzeyleri, kurumun açık öğünleri ve açılabilen gün aralığı (bugün ile 7 gün sonrası). Sağlık bilgisi dönmez, okuma denetlenmez. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "today": {
+                          "type": "string",
+                          "description": "Bugün (Europe/Istanbul)"
+                        },
+                        "lastDate": {
+                          "type": "string",
+                          "description": "Açılabilen son gün"
+                        },
+                        "mealKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "breakfast",
+                              "lunch",
+                              "snack"
+                            ]
+                          },
+                          "description": "Kurumun açık öğünleri"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "classId": {
+                                "type": "string"
+                              },
+                              "className": {
+                                "type": "string"
+                              },
+                              "grade": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "classId",
+                              "className",
+                              "grade"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "grades": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        }
+                      },
+                      "required": [
+                        "today",
+                        "lastDate",
+                        "mealKinds",
+                        "classes",
+                        "grades"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-allergy-checks": {
+      "get": {
+        "operationId": "getMealAllergyRoster",
+        "summary": "Yemekhane alerji servis listesi",
+        "tags": [
+          "finance-meal-allergy-checks"
+        ],
+        "description": "Seçilen gün (boşsa bugün; geçmiş 422 `meal_allergy_date_past`, 7 günden ileri 422 `meal_allergy_date_too_far`), öğün ve sınıf ya da sınıf düzeyinin (tam olarak biri; ikisi ya da hiçbiri 400) kayıtlı öğrencilerinden **yalnız uyarısı olanlar**: ad, sınıf, hangi yemekte hangi alerjen ve şiddet; menüyle karşılaştırılamayan alerji adıyla ayrıca (\"elle kontrol\"). Öğrencinin menüsü kampüsünün yayımlanmış menüsü, yoksa bütün kampüs menüsüdür; menüsünde o gün ve öğünde yemek olmayan öğrenci `studentsWithoutMenu` sayısına girer. Teşhis, ilaç ve not dönmez. Olmayan ya da başka kurumun sınıfı 404. Erişim gerekçesi zorunlu; listelenen her öğrenci gerekçesiyle `finance.meal_allergy.roster_read` denetimine ve sağlık erişim günlüğüne düşer (DOM-FIN-156). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "serviceDate",
+            "required": false,
+            "description": "Servis günü (YYYY-MM-DD, Europe/Istanbul); boşsa bugün. Bugün ile 7 gün sonrası"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "snack"
+              ]
+            },
+            "in": "query",
+            "name": "mealKind",
+            "required": true,
+            "description": "Öğün: `breakfast` kahvaltı, `lunch` öğle yemeği, `snack` ikindi ara öğünü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf (records classes)"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "in": "query",
+            "name": "grade",
+            "required": false,
+            "description": "Sınıf düzeyi (ör. 7: bütün 7. sınıflar)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "serviceDate": {
+                          "type": "string"
+                        },
+                        "mealKind": {
+                          "type": "string",
+                          "enum": [
+                            "breakfast",
+                            "lunch",
+                            "snack"
+                          ]
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "grade": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Seçimdeki kayıtlı öğrenci sayısı"
+                        },
+                        "studentsWithoutMenu": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kampüsünde o gün ve öğünde yayımlanmış yemek olmayan öğrenci sayısı"
+                        },
+                        "menus": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "menuId": {
+                                "type": "string"
+                              },
+                              "branchId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "branchName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "menuId",
+                              "branchId",
+                              "branchName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Karşılaştırılan yayımlanmış menüler"
+                        },
+                        "students": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "classId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "className": {
+                                "type": "string"
+                              },
+                              "severity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "mild",
+                                      "moderate",
+                                      "severe"
+                                    ],
+                                    "description": "Alerji şiddeti: `mild` hafif, `moderate` orta, `severe` ağır (anafilaksi riski)"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Uyarıların en ağır şiddeti; profil okunamadıysa `null`"
+                              },
+                              "profileUnreadable": {
+                                "type": "boolean",
+                                "description": "Sağlık bilgisi okunamadı: menüyle karşılaştırılamadı, elle kontrol"
+                              },
+                              "conflicts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "itemName": {
+                                      "type": "string",
+                                      "description": "Yemek"
+                                    },
+                                    "position": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğündeki sıra (0 tabanlı)"
+                                    },
+                                    "allergens": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "enum": [
+                                          "gluten",
+                                          "crustaceans",
+                                          "eggs",
+                                          "fish",
+                                          "peanuts",
+                                          "soybeans",
+                                          "milk",
+                                          "nuts",
+                                          "celery",
+                                          "mustard",
+                                          "sesame",
+                                          "sulphites",
+                                          "lupin",
+                                          "molluscs"
+                                        ],
+                                        "description": "TGK Ek-1 alerjen anahtarı"
+                                      },
+                                      "description": "Yemekte olup öğrencinin alerjisine denk gelenler"
+                                    },
+                                    "severity": {
+                                      "type": "string",
+                                      "enum": [
+                                        "mild",
+                                        "moderate",
+                                        "severe"
+                                      ],
+                                      "description": "Alerji şiddeti: `mild` hafif, `moderate` orta, `severe` ağır (anafilaksi riski)"
+                                    }
+                                  },
+                                  "required": [
+                                    "itemName",
+                                    "position",
+                                    "allergens",
+                                    "severity"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Yemek başına alerjen uyarısı"
+                              },
+                              "unmatched": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "allergyName": {
+                                      "type": "string",
+                                      "description": "Menüyle karşılaştırılamayan alerjinin profildeki adı (özel nitelikli)"
+                                    },
+                                    "severity": {
+                                      "type": "string",
+                                      "enum": [
+                                        "mild",
+                                        "moderate",
+                                        "severe"
+                                      ],
+                                      "description": "Alerji şiddeti: `mild` hafif, `moderate` orta, `severe` ağır (anafilaksi riski)"
+                                    },
+                                    "partial": {
+                                      "type": "boolean",
+                                      "description": "Adın bir kısmı eşlendi; eşlenen kısım çakışmada görünür"
+                                    }
+                                  },
+                                  "required": [
+                                    "allergyName",
+                                    "severity",
+                                    "partial"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Menüyle karşılaştırılamadı, elle kontrol"
+                              },
+                              "acknowledgement": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "acknowledgedAt": {
+                                        "type": "string",
+                                        "description": "İşaret anı (ISO 8601)"
+                                      },
+                                      "acknowledgedByMembershipId": {
+                                        "type": "string"
+                                      },
+                                      "acknowledgedByName": {
+                                        "description": "İşareti koyan görevli",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "acknowledgedAt",
+                                      "acknowledgedByMembershipId",
+                                      "acknowledgedByName"
+                                    ],
+                                    "additionalProperties": false,
+                                    "description": "\"Uyarı görüldü, alternatif verildi\" işareti"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "classId",
+                              "className",
+                              "severity",
+                              "profileUnreadable",
+                              "conflicts",
+                              "unmatched",
+                              "acknowledgement"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Yalnız uyarısı olan öğrenciler, sınıf ve ada göre"
+                        }
+                      },
+                      "required": [
+                        "serviceDate",
+                        "mealKind",
+                        "classId",
+                        "grade",
+                        "className",
+                        "studentCount",
+                        "studentsWithoutMenu",
+                        "menus",
+                        "students"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-allergy-checks/acknowledgements": {
+      "post": {
+        "operationId": "acknowledgeMealAllergy",
+        "summary": "Alerji uyarısını işaretle",
+        "tags": [
+          "finance-meal-allergy-checks"
+        ],
+        "description": "\"Uyarı görüldü, alternatif verildi\" işareti (K-543): öğrenci, gün ve öğün; kim ve saat sunucuda yazılır. Yalnız bugünün (Europe/Istanbul) öğününde (değilse 422 `meal_allergy_ack_not_today`), kayıtlı (olmayan ya da başka kurumun 422 `meal_allergy_student_not_found`, ayrılmış 422 `meal_allergy_student_inactive`) ve o öğünde uyarısı olan öğrenci için (yoksa 422 `meal_allergy_ack_no_warning`); öğrenci × gün × öğün başına bir kez (409 `meal_allergy_ack_exists`). Kayıt değiştirilmez ve silinmez. Yanıtta sağlık bilgisi yoktur; gerekçe istenmez. Denetim `finance.meal_allergy.acknowledge` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "description": "Öğrenci kaydı"
+                  },
+                  "serviceDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Servis günü (YYYY-MM-DD, Europe/Istanbul)"
+                  },
+                  "mealKind": {
+                    "type": "string",
+                    "enum": [
+                      "breakfast",
+                      "lunch",
+                      "snack"
+                    ],
+                    "description": "Öğün: `breakfast` kahvaltı, `lunch` öğle yemeği, `snack` ikindi ara öğünü"
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "serviceDate",
+                  "mealKind"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "acknowledgedAt": {
+                          "type": "string",
+                          "description": "İşaret anı (ISO 8601)"
+                        },
+                        "acknowledgedByMembershipId": {
+                          "type": "string"
+                        },
+                        "acknowledgedByName": {
+                          "description": "İşareti koyan görevli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "serviceDate": {
+                          "type": "string"
+                        },
+                        "mealKind": {
+                          "type": "string",
+                          "enum": [
+                            "breakfast",
+                            "lunch",
+                            "snack"
+                          ]
+                        },
+                        "menuId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "acknowledgedAt",
+                        "acknowledgedByMembershipId",
+                        "acknowledgedByName",
+                        "studentId",
+                        "serviceDate",
+                        "mealKind",
+                        "menuId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

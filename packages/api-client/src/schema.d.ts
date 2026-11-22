@@ -17184,6 +17184,66 @@ export interface paths {
         patch: operations["updateTripReportPhoto"];
         trace?: never;
     };
+    "/api/v1/finance/meal-allergy-checks/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yemekhane alerji listesi seçenekleri
+         * @description Sınıflar, sınıf düzeyleri, kurumun açık öğünleri ve açılabilen gün aralığı (bugün ile 7 gün sonrası). Sağlık bilgisi dönmez, okuma denetlenmez. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealAllergyOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-allergy-checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yemekhane alerji servis listesi
+         * @description Seçilen gün (boşsa bugün; geçmiş 422 `meal_allergy_date_past`, 7 günden ileri 422 `meal_allergy_date_too_far`), öğün ve sınıf ya da sınıf düzeyinin (tam olarak biri; ikisi ya da hiçbiri 400) kayıtlı öğrencilerinden **yalnız uyarısı olanlar**: ad, sınıf, hangi yemekte hangi alerjen ve şiddet; menüyle karşılaştırılamayan alerji adıyla ayrıca ("elle kontrol"). Öğrencinin menüsü kampüsünün yayımlanmış menüsü, yoksa bütün kampüs menüsüdür; menüsünde o gün ve öğünde yemek olmayan öğrenci `studentsWithoutMenu` sayısına girer. Teşhis, ilaç ve not dönmez. Olmayan ya da başka kurumun sınıfı 404. Erişim gerekçesi zorunlu; listelenen her öğrenci gerekçesiyle `finance.meal_allergy.roster_read` denetimine ve sağlık erişim günlüğüne düşer (DOM-FIN-156). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealAllergyRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-allergy-checks/acknowledgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alerji uyarısını işaretle
+         * @description "Uyarı görüldü, alternatif verildi" işareti (K-543): öğrenci, gün ve öğün; kim ve saat sunucuda yazılır. Yalnız bugünün (Europe/Istanbul) öğününde (değilse 422 `meal_allergy_ack_not_today`), kayıtlı (olmayan ya da başka kurumun 422 `meal_allergy_student_not_found`, ayrılmış 422 `meal_allergy_student_inactive`) ve o öğünde uyarısı olan öğrenci için (yoksa 422 `meal_allergy_ack_no_warning`); öğrenci × gün × öğün başına bir kez (409 `meal_allergy_ack_exists`). Kayıt değiştirilmez ve silinmez. Yanıtta sağlık bilgisi yoktur; gerekçe istenmez. Denetim `finance.meal_allergy.acknowledge` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        post: operations["acknowledgeMealAllergy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -180560,6 +180620,406 @@ export interface operations {
                                     status: "draft" | "finalized";
                                 }[];
                             } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealAllergyOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bugün (Europe/Istanbul) */
+                            today: string;
+                            /** @description Açılabilen son gün */
+                            lastDate: string;
+                            /** @description Kurumun açık öğünleri */
+                            mealKinds: ("breakfast" | "lunch" | "snack")[];
+                            classes: {
+                                classId: string;
+                                className: string;
+                                grade: number | null;
+                            }[];
+                            grades: number[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealAllergyRoster: {
+        parameters: {
+            query: {
+                /** @description Servis günü (YYYY-MM-DD, Europe/Istanbul); boşsa bugün. Bugün ile 7 gün sonrası */
+                serviceDate?: string;
+                /** @description Öğün: `breakfast` kahvaltı, `lunch` öğle yemeği, `snack` ikindi ara öğünü */
+                mealKind: "breakfast" | "lunch" | "snack";
+                /** @description Sınıf (records classes) */
+                classId?: string;
+                /** @description Sınıf düzeyi (ör. 7: bütün 7. sınıflar) */
+                grade?: number;
+            };
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            serviceDate: string;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            classId: string | null;
+                            grade: number | null;
+                            className: string | null;
+                            /** @description Seçimdeki kayıtlı öğrenci sayısı */
+                            studentCount: number;
+                            /** @description Kampüsünde o gün ve öğünde yayımlanmış yemek olmayan öğrenci sayısı */
+                            studentsWithoutMenu: number;
+                            /** @description Karşılaştırılan yayımlanmış menüler */
+                            menus: {
+                                menuId: string;
+                                branchId: string | null;
+                                branchName: string | null;
+                            }[];
+                            /** @description Yalnız uyarısı olan öğrenciler, sınıf ve ada göre */
+                            students: {
+                                studentId: string;
+                                studentName: string;
+                                classId: string | null;
+                                className: string;
+                                /** @description Uyarıların en ağır şiddeti; profil okunamadıysa `null` */
+                                severity: ("mild" | "moderate" | "severe") | null;
+                                /** @description Sağlık bilgisi okunamadı: menüyle karşılaştırılamadı, elle kontrol */
+                                profileUnreadable: boolean;
+                                /** @description Yemek başına alerjen uyarısı */
+                                conflicts: {
+                                    /** @description Yemek */
+                                    itemName: string;
+                                    /** @description Öğündeki sıra (0 tabanlı) */
+                                    position: number;
+                                    /** @description Yemekte olup öğrencinin alerjisine denk gelenler */
+                                    allergens: ("gluten" | "crustaceans" | "eggs" | "fish" | "peanuts" | "soybeans" | "milk" | "nuts" | "celery" | "mustard" | "sesame" | "sulphites" | "lupin" | "molluscs")[];
+                                    /**
+                                     * @description Alerji şiddeti: `mild` hafif, `moderate` orta, `severe` ağır (anafilaksi riski)
+                                     * @enum {string}
+                                     */
+                                    severity: "mild" | "moderate" | "severe";
+                                }[];
+                                /** @description Menüyle karşılaştırılamadı, elle kontrol */
+                                unmatched: {
+                                    /** @description Menüyle karşılaştırılamayan alerjinin profildeki adı (özel nitelikli) */
+                                    allergyName: string;
+                                    /**
+                                     * @description Alerji şiddeti: `mild` hafif, `moderate` orta, `severe` ağır (anafilaksi riski)
+                                     * @enum {string}
+                                     */
+                                    severity: "mild" | "moderate" | "severe";
+                                    /** @description Adın bir kısmı eşlendi; eşlenen kısım çakışmada görünür */
+                                    partial: boolean;
+                                }[];
+                                acknowledgement: {
+                                    id: string;
+                                    /** @description İşaret anı (ISO 8601) */
+                                    acknowledgedAt: string;
+                                    acknowledgedByMembershipId: string;
+                                    /** @description İşareti koyan görevli */
+                                    acknowledgedByName: string | null;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    acknowledgeMealAllergy: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrenci kaydı */
+                    studentId: string;
+                    /** @description Servis günü (YYYY-MM-DD, Europe/Istanbul) */
+                    serviceDate: string;
+                    /**
+                     * @description Öğün: `breakfast` kahvaltı, `lunch` öğle yemeği, `snack` ikindi ara öğünü
+                     * @enum {string}
+                     */
+                    mealKind: "breakfast" | "lunch" | "snack";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description İşaret anı (ISO 8601) */
+                            acknowledgedAt: string;
+                            acknowledgedByMembershipId: string;
+                            /** @description İşareti koyan görevli */
+                            acknowledgedByName: string | null;
+                            studentId: string;
+                            serviceDate: string;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            menuId: string;
                         };
                     };
                 };

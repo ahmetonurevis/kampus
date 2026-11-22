@@ -258,6 +258,9 @@ const FinanceEmergencySummariesSection = lazy(async () => ({
   default: (await import('./FinanceEmergencySummariesSection.tsx'))
     .FinanceEmergencySummariesSection,
 }))
+const FinanceEarlyDismissalsSection = lazy(async () => ({
+  default: (await import('./FinanceEarlyDismissalsSection.tsx')).FinanceEarlyDismissalsSection,
+}))
 const FinanceHealthAccessLogSection = lazy(async () => ({
   default: (await import('./FinanceHealthAccessLogSection.tsx')).FinanceHealthAccessLogSection,
 }))
@@ -349,6 +352,7 @@ const VIEWS = {
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
+  earlyDismissals: { label: 'Erken çıkış', param: 'erken-cikis' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -426,6 +430,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * yazar ve onaylar (K-520, K-521).
  * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
  * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
+ * Erken çıkış (DOM-FIN-161) ikisine açıktır; ön büro onaylar ve teslim eder (K-538, K-539).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -701,6 +706,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         ) : null}
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
+        {tab === 'earlyDismissals' ? <FinanceEarlyDismissalsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

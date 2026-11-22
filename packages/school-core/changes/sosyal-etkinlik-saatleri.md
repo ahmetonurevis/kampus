@@ -1,0 +1,7 @@
+---
+etki: minor
+---
+
+- Lise sosyal etkinlik ve gönüllülük saati kuralı eklendi (`lib/finance-social-activities.ts`, DOM-FIN-160, ON-170; DOM-AKD-021). Etkinlik kulüp/topluluk çalışması ya da gönüllülük faaliyetidir; ad, tür, tarih aralığı (bitişsiz süren), yer, sorumlu öğretmen ya da yönetici, kurum içi/dışı ve kuruluş adı (dışarıda zorunlu), kulüp çalışmasında isteğe bağlı kulüp bağı taşır; öğretmen yalnız kendini sorumlu yazar, kayıtlı günler aralık dışına bırakılamaz, bekleyen beyanı olan etkinlik arşivlenmez (`socialActivityCreateSchema`, `socialActivityUpdateSchema`, `planSocialActivity`, `planSocialActivityUpdate`, `assertSocialActivityArchivable`; K-535).
+- Saat yalnız etkin 9–12. sınıf öğrencisine, bugünü geçmeyen ve etkinlik aralığındaki güne, yarım saat adımıyla 0,5–10 saat yazılır; aynı öğrenci, etkinlik ve günün etkin kaydı yinelenmez. Öğretmen girişi onaylı, öğrenci beyanı onay bekler; karar yalnız bekleyen beyana, ters kayıt yalnız onaylı ve düzeltilmemiş kayda verilir (`socialHourEntrySchema`, `socialHourDeclarationSchema`, `planSocialHourEntries`, `planSocialHourDeclaration`, `assertSocialHourPending`, `assertSocialHourReversible`; K-536).
+- Öğretim yılı Eylül'de başlar; onaylı net dakika ters kayıtları düşer; durum toplam hedef (öneri 40) tamamsa `met`, yıllık hedef (öneri 10) tamamsa `on_track`, aksi `behind`; belge yalnız onaylı ve düzeltilmemiş kayıtları taşır (`socialAcademicYearOf`, `approvedMinutes`, `socialProgress`, `certificateRows`, `DEFAULT_SOCIAL_TARGETS`; K-537).

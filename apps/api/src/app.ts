@@ -137,12 +137,16 @@ import { registerFinanceTransportRosterRoutes } from './routes/finance-transport
 import { registerFinanceTransportTripRoutes } from './routes/finance-transport-trips.ts'
 import { registerFinanceTransportDocumentRoutes } from './routes/finance-transport-documents.ts'
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
+import { registerFinanceMealMenuRoutes } from './routes/finance-meal-menus.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
 import { registerFinanceInfirmaryScheduleRoutes } from './routes/finance-infirmary-schedule.ts'
 import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergency-summaries.ts'
 import { registerFinanceHealthAccessRoutes } from './routes/finance-health-access.ts'
 import { registerFinanceTripDayRoutes } from './routes/finance-trip-day.ts'
 import { registerFinanceHealthScreeningRoutes } from './routes/finance-health-screenings.ts'
+import { registerFinanceTeacherFeedbackRoutes } from './routes/finance-teacher-feedback.ts'
+import { registerFinanceSocialActivityRoutes } from './routes/finance-social-activities.ts'
+import { registerFinanceEarlyDismissalRoutes } from './routes/finance-early-dismissals.ts'
 import { registerFinanceTripReportRoutes } from './routes/finance-trip-reports.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -364,6 +368,9 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi günü yoklamasında eksikle devam gerekçesi (DOM-FIN-154).
   'missingReason',
   '*.missingReason',
+  // kvkk: K — yemek menüsünün geçmiş gün düzeltme gerekçesi (DOM-FIN-157, ON-149).
+  'correctionReason',
+  '*.correctionReason',
   // kvkk: K — gezi raporunun olay notu, fotoğraf açıklaması ve katılımcı değerlendirmesi yorumu
   // (DOM-FIN-158); özet ve kazanım metni gövdede gelir (gövde loglanmaz), iade gerekçesi `reason`.
   'incidentNote',
@@ -383,6 +390,18 @@ export const REDACTED_PATHS = [
   '*.publishedText',
   'profileInstructions',
   '*.profileInstructions',
+  // kvkk: K — erken çıkışta teslim alanın adı, kimliğinin son dört hanesi ve neden açıklaması
+  // (DOM-FIN-161, ON-168); ret ve iptal gerekçesi `reason`, `rejectionReason`, `cancelReason` ile.
+  'pickupName',
+  '*.pickupName',
+  'pickupIdLast4',
+  '*.pickupIdLast4',
+  'idLast4',
+  '*.idLast4',
+  'reasonNote',
+  '*.reasonNote',
+  'releasedToName',
+  '*.releasedToName',
   // kvkk: Ö — öğrencinin sağlık ve acil bilgisi (IST-020, DOM-ILT-035) ve şifreli paketi.
   'allergies',
   '*.allergies',
@@ -711,12 +730,16 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTransportTripRoutes(app)
   registerFinanceTransportDocumentRoutes(app, storage)
   registerFinanceClubSelectionRoutes(app)
+  registerFinanceMealMenuRoutes(app)
   registerFinanceInfirmaryRoutes(app)
   registerFinanceInfirmaryScheduleRoutes(app)
   registerFinanceEmergencySummaryRoutes(app)
   registerFinanceHealthAccessRoutes(app)
   registerFinanceTripDayRoutes(app)
   registerFinanceHealthScreeningRoutes(app)
+  registerFinanceTeacherFeedbackRoutes(app)
+  registerFinanceSocialActivityRoutes(app)
+  registerFinanceEarlyDismissalRoutes(app)
   registerFinanceTripReportRoutes(app, storage)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

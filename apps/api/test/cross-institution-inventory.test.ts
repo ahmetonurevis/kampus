@@ -4867,6 +4867,31 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yemekhane alerji uyarısı (ON-151; DOM-FIN-162).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/meal-allergy-checks/options', 'get(OPTIONS, a.admin)'],
+        [
+          'liste',
+          'GET /api/v1/finance/meal-allergy-checks',
+          "roster('mealKind=lunch&classId=7-A', a.admin)",
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/meal-allergy-checks/acknowledgements',
+          "acknowledge(a, { studentId: 's-b' })",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-meal-allergy-checks.test.ts',
+        'DOM-FIN-162: başka kurumun sınıfı ve öğrencisi 404/422; B değişmez; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

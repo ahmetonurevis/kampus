@@ -264,6 +264,9 @@ const FinanceHealthAccessLogSection = lazy(async () => ({
 const FinanceHealthScreeningsSection = lazy(async () => ({
   default: (await import('./FinanceHealthScreeningsSection.tsx')).FinanceHealthScreeningsSection,
 }))
+const FinanceTripReportsSection = lazy(async () => ({
+  default: (await import('./FinanceTripReportsSection.tsx')).FinanceTripReportsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -349,6 +352,7 @@ const VIEWS = {
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
+  tripReports: { label: 'Gezi raporları', param: 'gezi-raporlari' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -426,6 +430,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * yazar ve onaylar (K-520, K-521).
  * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
  * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
+ * Gezi raporları (DOM-FIN-158) ikisine açıktır; ön büro okur, raporu görevli öğretmen ya da
+ * yönetici yazar, onay yöneticide (K-529).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -701,6 +707,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         ) : null}
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
+        {tab === 'tripReports' ? <FinanceTripReportsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -364302,6 +364302,3646 @@
         }
       }
     },
+    "/api/v1/finance/teacher-feedback-surveys": {
+      "get": {
+        "operationId": "listTeacherFeedbackSurveys",
+        "summary": "Öğretmen geri bildirim anketleri",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Kurumun anketleri (kaldırılmış taslak hariç), en yeni açılış önce: aşama, dönem, tarihler, hedef kitle, eşik, soru sayısı ve yayımlanmışta yanıt ve yanıtlayan sayısı. Aşama, başlık ve dönemle süzülür. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlık ve dönemde arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "scheduled",
+                "open",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "phase",
+            "required": false,
+            "description": "Aşama süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Anket başlığı"
+                          },
+                          "term": {
+                            "type": "string",
+                            "description": "Dönem adı"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "archived"
+                            ],
+                            "description": "`draft` taslak, `published` yayımlandı"
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "scheduled",
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı"
+                          },
+                          "openDate": {
+                            "type": "string",
+                            "description": "Açılış günü (Europe/Istanbul, dahil)"
+                          },
+                          "closeDate": {
+                            "type": "string",
+                            "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                          },
+                          "anonymityThreshold": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Öğretmen başına sonuç için en az yanıt (5–20)"
+                          },
+                          "audience": {
+                            "type": "object",
+                            "properties": {
+                              "respondents": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ogrenci",
+                                    "veli"
+                                  ]
+                                },
+                                "description": "Yanıtlayan roller: `ogrenci`, `veli`"
+                              },
+                              "classIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Sınıf süzgeci; boş = bütün sınıflar"
+                              }
+                            },
+                            "required": [
+                              "respondents",
+                              "classIds"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "questionCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "participation": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "responses": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                                  },
+                                  "respondents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                                  }
+                                },
+                                "required": [
+                                  "responses",
+                                  "respondents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Katılım sayıları; taslakta boş"
+                          },
+                          "publishedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "closedAt": {
+                            "description": "Erken kapatma anı; boşsa kapanış gününde kapanır",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için anket sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "term",
+                          "status",
+                          "phase",
+                          "openDate",
+                          "closeDate",
+                          "anonymityThreshold",
+                          "audience",
+                          "questionCount",
+                          "participation",
+                          "publishedAt",
+                          "closedAt",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTeacherFeedbackSurvey",
+        "summary": "Geri bildirim anketi taslağı aç",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Başlık (3–150), dönem (2–60), açılış ve kapanış günü (uçlar dahil, en çok 90 gün), isteğe bağlı eşik (5–20; verilmezse 5, kurum azaltamaz), hedef kitle (öğrenci, veli ya da ikisi; sınıf süzgeci, bilinmeyen sınıf 422 `teacher_feedback_class_not_found`) ve 1–20 soru (ölçek 1–5 ya da açık uçlu; en az bir ölçek sorusu) (K-532, K-533). `Idempotency-Key` zorunlu. Gövdedeki `institutionId` 400. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 150,
+                    "description": "Anket başlığı"
+                  },
+                  "term": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60,
+                    "description": "Dönem adı (ör. \"2026–2027 1. dönem\"); eğilimde etiket olur"
+                  },
+                  "openDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Açılış günü (Europe/Istanbul, dahil)"
+                  },
+                  "closeDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                  },
+                  "anonymityThreshold": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 20,
+                    "description": "Öğretmen başına sonucun gösterilmesi için gereken en az yanıt (5–20; varsayılan 5)"
+                  },
+                  "audience": {
+                    "type": "object",
+                    "properties": {
+                      "respondents": {
+                        "minItems": 1,
+                        "maxItems": 2,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "ogrenci",
+                            "veli"
+                          ]
+                        },
+                        "description": "Yanıtlayan roller: `ogrenci`, `veli` ya da ikisi (K-533)"
+                      },
+                      "classIds": {
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "description": "Sınıf/grup süzgeci (öğrencinin güncel sınıfı); boş = bütün sınıflar"
+                      }
+                    },
+                    "required": [
+                      "respondents",
+                      "classIds"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Hedef kitle (K-533)"
+                  },
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "likert",
+                            "open"
+                          ],
+                          "description": "`likert` 1–5 ölçek, `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Yanıtta cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla; yayımdan sonra değişmez"
+                  }
+                },
+                "required": [
+                  "title",
+                  "term",
+                  "openDate",
+                  "closeDate",
+                  "audience",
+                  "questions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "term": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretmen başına sonuç için en az yanıt (5–20)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "respondents": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "ogrenci",
+                                  "veli"
+                                ]
+                              },
+                              "description": "Yanıtlayan roller: `ogrenci`, `veli`"
+                            },
+                            "classIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Sınıf süzgeci; boş = bütün sınıflar"
+                            }
+                          },
+                          "required": [
+                            "respondents",
+                            "classIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "responses": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                                },
+                                "respondents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                                }
+                              },
+                              "required": [
+                                "responses",
+                                "respondents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım sayıları; taslakta boş"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "description": "Erken kapatma anı; boşsa kapanış gününde kapanır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "term",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-surveys/assigned": {
+      "get": {
+        "operationId": "listAssignedTeacherFeedbackSurveys",
+        "summary": "Değerlendireceğim öğretmenler",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Oturumdaki öğrenci ya da velinin hedef kitlesinde olduğu, kapanmamış yayımlanmış anketler, kapanışı yakın önce: sorular ve değerlendirilebilecek öğretmenler (sınıf öğretmeni ve derse girenler; velide velayeti olan çocukların sınıfları) ile değerlendirdiniz mi. Öğretmeni olmayan anket dönmez. Rol: `ogrenci` ve `veli`; yalnız hedef kitlesinde olduğu anket ve kendi (velide çocuğunun) sınıfının öğretmenleri (K-533). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "term": {
+                            "type": "string"
+                          },
+                          "openDate": {
+                            "type": "string"
+                          },
+                          "closeDate": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "scheduled",
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`scheduled` açılmadı ya da `open` yanıta açık"
+                          },
+                          "anonymityThreshold": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "questions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "likert",
+                                    "open"
+                                  ],
+                                  "description": "`likert` 1–5, `open` açık uçlu"
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "description": "Soru metni"
+                                },
+                                "required": {
+                                  "type": "boolean",
+                                  "description": "Yanıtta cevap zorunlu mu"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "text",
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "teachers": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "teacherId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "responded": {
+                                  "type": "boolean",
+                                  "description": "Bu öğretmeni değerlendirdiniz mi"
+                                }
+                              },
+                              "required": [
+                                "teacherId",
+                                "name",
+                                "responded"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Değerlendirebileceğiniz öğretmenler"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "term",
+                          "openDate",
+                          "closeDate",
+                          "phase",
+                          "anonymityThreshold",
+                          "questions",
+                          "teachers"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}": {
+      "get": {
+        "operationId": "getTeacherFeedbackSurvey",
+        "summary": "Geri bildirim anketi ayrıntısı",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Sorular, hedef kitle sınıflarının adları ve katılım sayıları. Yanıtlayanların adı dönmez. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "term": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretmen başına sonuç için en az yanıt (5–20)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "respondents": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "ogrenci",
+                                  "veli"
+                                ]
+                              },
+                              "description": "Yanıtlayan roller: `ogrenci`, `veli`"
+                            },
+                            "classIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Sınıf süzgeci; boş = bütün sınıflar"
+                            }
+                          },
+                          "required": [
+                            "respondents",
+                            "classIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "responses": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                                },
+                                "respondents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                                }
+                              },
+                              "required": [
+                                "responses",
+                                "respondents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım sayıları; taslakta boş"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "description": "Erken kapatma anı; boşsa kapanış gününde kapanır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        },
+                        "audienceClasses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sınıf süzgecindeki sınıfların adları"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "term",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions",
+                        "audienceClasses"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateTeacherFeedbackSurvey",
+        "summary": "Geri bildirim taslağını düzelt",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Gönderilen alanlar değişir (en az bir alan). Yalnız taslak (409 `teacher_feedback_not_draft`); birleşen tarihler ters ya da 90 günden uzunsa 422 `teacher_feedback_dates_invalid`; bilinmeyen sınıf 422 `teacher_feedback_class_not_found`. `If-Match` zorunlu; sürüm tutmazsa 409. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 150,
+                    "description": "Anket başlığı"
+                  },
+                  "term": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60,
+                    "description": "Dönem adı (ör. \"2026–2027 1. dönem\"); eğilimde etiket olur"
+                  },
+                  "openDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Açılış günü"
+                  },
+                  "closeDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kapanış günü"
+                  },
+                  "anonymityThreshold": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 20,
+                    "description": "Öğretmen başına sonucun gösterilmesi için gereken en az yanıt (5–20; varsayılan 5)"
+                  },
+                  "audience": {
+                    "type": "object",
+                    "properties": {
+                      "respondents": {
+                        "minItems": 1,
+                        "maxItems": 2,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "ogrenci",
+                            "veli"
+                          ]
+                        },
+                        "description": "Yanıtlayan roller: `ogrenci`, `veli` ya da ikisi (K-533)"
+                      },
+                      "classIds": {
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "description": "Sınıf/grup süzgeci (öğrencinin güncel sınıfı); boş = bütün sınıflar"
+                      }
+                    },
+                    "required": [
+                      "respondents",
+                      "classIds"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Hedef kitle"
+                  },
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "likert",
+                            "open"
+                          ],
+                          "description": "`likert` 1–5 ölçek, `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Yanıtta cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla; yayımdan sonra değişmez"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "term": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretmen başına sonuç için en az yanıt (5–20)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "respondents": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "ogrenci",
+                                  "veli"
+                                ]
+                              },
+                              "description": "Yanıtlayan roller: `ogrenci`, `veli`"
+                            },
+                            "classIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Sınıf süzgeci; boş = bütün sınıflar"
+                            }
+                          },
+                          "required": [
+                            "respondents",
+                            "classIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "responses": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                                },
+                                "respondents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                                }
+                              },
+                              "required": [
+                                "responses",
+                                "respondents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım sayıları; taslakta boş"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "description": "Erken kapatma anı; boşsa kapanış gününde kapanır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "term",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveTeacherFeedbackSurvey",
+        "summary": "Geri bildirim taslağını kaldır",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Taslak arşivlenir; yayımlanmış anket 409 `teacher_feedback_not_draft`. `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/publish": {
+      "post": {
+        "operationId": "publishTeacherFeedbackSurvey",
+        "summary": "Geri bildirim anketini yayımla",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Sorular, tarihler, hedef kitle ve eşik artık değişmez. Yalnız taslak (409 `teacher_feedback_not_draft`); kapanış günü geçtiyse 422 `teacher_feedback_closes_past`; süzgeçteki sınıf kaldırıldıysa 422 `teacher_feedback_class_not_found`. `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "term": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretmen başına sonuç için en az yanıt (5–20)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "respondents": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "ogrenci",
+                                  "veli"
+                                ]
+                              },
+                              "description": "Yanıtlayan roller: `ogrenci`, `veli`"
+                            },
+                            "classIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Sınıf süzgeci; boş = bütün sınıflar"
+                            }
+                          },
+                          "required": [
+                            "respondents",
+                            "classIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "responses": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                                },
+                                "respondents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                                }
+                              },
+                              "required": [
+                                "responses",
+                                "respondents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım sayıları; taslakta boş"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "description": "Erken kapatma anı; boşsa kapanış gününde kapanır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "term",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/close": {
+      "post": {
+        "operationId": "closeTeacherFeedbackSurvey",
+        "summary": "Geri bildirim anketini kapat",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Yayımlanmış anket kapanış gününden önce kapatılır: yanıt alınmaz, sonuç açılır; geri alınmaz. Taslak 409 `teacher_feedback_close_draft`; kapanmış anket 409 `teacher_feedback_already_closed`. `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "term": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğretmen başına sonuç için en az yanıt (5–20)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "respondents": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "ogrenci",
+                                  "veli"
+                                ]
+                              },
+                              "description": "Yanıtlayan roller: `ogrenci`, `veli`"
+                            },
+                            "classIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Sınıf süzgeci; boş = bütün sınıflar"
+                            }
+                          },
+                          "required": [
+                            "respondents",
+                            "classIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "responses": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                                },
+                                "respondents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                                }
+                              },
+                              "required": [
+                                "responses",
+                                "respondents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım sayıları; taslakta boş"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "description": "Erken kapatma anı; boşsa kapanış gününde kapanır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "term",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/results": {
+      "get": {
+        "operationId": "getTeacherFeedbackResults",
+        "summary": "Öğretmen başına sonuç",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Yanıt alan her öğretmen için yanıt sayısı; sonuç yalnız anket kapandıktan sonra (`hiddenReason: not_closed`) ve en az eşik kadar yanıtla (`below_threshold`). Soru başına cevap eşik altındaysa soru gizli; açık uçlu cevaplar eşik altında hiç dönmez, karışık sırada, sınıf, tarih ve yanıtlayan olmadan döner. Sınıf kırılımında eşik altındaki sınıflar \"Diğer sınıflar\" grubunda birleşir (K-532). Okuma aynı transaction'da denetime yazılır (`finance.teacher_feedback_result.read`). Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "responses": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Alınan yanıt sayısı (öğretmen başına bir yanıt)"
+                        },
+                        "respondents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez)"
+                        },
+                        "surveyId": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "term": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ]
+                        },
+                        "closeDate": {
+                          "type": "string"
+                        },
+                        "threshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan anonimlik eşiği"
+                        },
+                        "teachers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "teacherId": {
+                                "type": "string"
+                              },
+                              "responses": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yanıt sayısı"
+                              },
+                              "visible": {
+                                "type": "boolean",
+                                "description": "Sonuç gösteriliyor mu"
+                              },
+                              "hiddenReason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "not_closed",
+                                      "below_threshold"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "`not_closed` anket kapanmadı, `below_threshold` yanıt eşiğin altında"
+                              },
+                              "average": {
+                                "description": "Ölçek sorularının genel ortalaması (iki ondalık)",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "questions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "likert",
+                                        "open"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "answered": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Cevaplayan sayısı; gizliyse boş"
+                                    },
+                                    "hidden": {
+                                      "type": "boolean",
+                                      "description": "Eşik nedeniyle gizli"
+                                    },
+                                    "average": {
+                                      "description": "Ölçek sorusunda ortalama (iki ondalık)",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    },
+                                    "distribution": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "description": "Ölçek sorusunda 1–5 değerlerinin sayısı"
+                                    },
+                                    "texts": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "description": "Açık uçlu cevaplar, karışık sırada; eşik altında boş"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "text",
+                                    "required",
+                                    "answered",
+                                    "hidden",
+                                    "average",
+                                    "distribution",
+                                    "texts"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "groups": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "key": {
+                                      "type": "string",
+                                      "description": "Sınıf kimliği ya da `other` (birleşen küçük sınıflar)"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "Sınıf adı ya da \"Diğer sınıflar\""
+                                    },
+                                    "classIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "description": "Gruptaki sınıflar"
+                                    },
+                                    "responses": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "average": {
+                                      "description": "Ölçek sorularının genel ortalaması",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "key",
+                                    "name",
+                                    "classIds",
+                                    "responses",
+                                    "average"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Sınıf kırılımı; eşik altındaki sınıflar birleşir, tek grupta boş"
+                              },
+                              "teacherName": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "teacherId",
+                              "responses",
+                              "visible",
+                              "hiddenReason",
+                              "average",
+                              "questions",
+                              "groups",
+                              "teacherName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Yanıt alan öğretmenler, ada göre"
+                        }
+                      },
+                      "required": [
+                        "responses",
+                        "respondents",
+                        "surveyId",
+                        "title",
+                        "term",
+                        "phase",
+                        "closeDate",
+                        "threshold",
+                        "teachers"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/responses": {
+      "post": {
+        "operationId": "respondTeacherFeedbackSurvey",
+        "summary": "Öğretmeni değerlendir",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Bir öğretmen için soru sırasıyla cevaplar (ölçek 1–5, açık uçlu metin ≤ 1000). Anket yanıta açık olmalı (açılmadıysa 422 `teacher_feedback_not_open`, kapandıysa 422 `teacher_feedback_closed`); öğretmen yanıtlayanın sınıfının öğretmeni olmalı (422 `teacher_feedback_teacher_not_eligible`); her öğretmen bir kez (409 `teacher_feedback_already_responded`); cevap sayısı, türü ya da ölçeği uymazsa 422 `teacher_feedback_answers_mismatch` / `teacher_feedback_answer_kind` / `teacher_feedback_answer_range`; zorunlu soru boşsa 422 `teacher_feedback_incomplete` (K-533). Yanıt kişiye bağlanmaz, rol ve yanıt anı saklanmaz; denetime yalnız katılım yazılır, cevaplar yanıtta dönmez. `Idempotency-Key` zorunlu; özet cevapsız hesaplanır. Rolü hedef kitlede olmadığı ya da başka kurumun anketi 404. Rol: `ogrenci` ve `veli`; yalnız hedef kitlesinde olduğu anket ve kendi (velide çocuğunun) sınıfının öğretmenleri (K-533). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teacherId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Değerlendirilen öğretmen kaydı (`teachers`)"
+                  },
+                  "answers": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "description": "Ölçek sorusunda 1–5; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "description": "Açık uçlu soru için cevap; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 1000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "description": "Soru sırasıyla cevaplar; dizi soru sayısı kadardır"
+                  }
+                },
+                "required": [
+                  "teacherId",
+                  "answers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "surveyId": {
+                          "type": "string"
+                        },
+                        "teacherId": {
+                          "type": "string"
+                        },
+                        "responded": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "surveyId",
+                        "teacherId",
+                        "responded"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-results/mine": {
+      "get": {
+        "operationId": "listMyTeacherFeedbackResults",
+        "summary": "Geri bildirim sonuçlarım",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Oturumdaki öğretmenin bağlı olduğu öğretmen kaydının kapanan anketlerdeki sonucu (yeniden eskiye, en çok 12): ortalama, dağılım, eşik üstünde açık uçlu yorumlar ve sınıf kırılımı; dönemler arası eğilim (genel ortalama). Eşik altındaki dönem gizli. Bağlantısı olmayan öğretmene boş liste. Okuma denetime yazılır. Rol: `ogretmen`; yalnız bağlı olduğu öğretmen kaydının sonucu (K-532). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "teacherId": {
+                          "description": "Bağlı öğretmen kaydı; yoksa boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "surveys": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "surveyId": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "term": {
+                                "type": "string"
+                              },
+                              "closeDate": {
+                                "type": "string"
+                              },
+                              "threshold": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "teacherId": {
+                                "type": "string"
+                              },
+                              "responses": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yanıt sayısı"
+                              },
+                              "visible": {
+                                "type": "boolean",
+                                "description": "Sonuç gösteriliyor mu"
+                              },
+                              "hiddenReason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "not_closed",
+                                      "below_threshold"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "`not_closed` anket kapanmadı, `below_threshold` yanıt eşiğin altında"
+                              },
+                              "average": {
+                                "description": "Ölçek sorularının genel ortalaması (iki ondalık)",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "questions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "likert",
+                                        "open"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "answered": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Cevaplayan sayısı; gizliyse boş"
+                                    },
+                                    "hidden": {
+                                      "type": "boolean",
+                                      "description": "Eşik nedeniyle gizli"
+                                    },
+                                    "average": {
+                                      "description": "Ölçek sorusunda ortalama (iki ondalık)",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    },
+                                    "distribution": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "description": "Ölçek sorusunda 1–5 değerlerinin sayısı"
+                                    },
+                                    "texts": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "description": "Açık uçlu cevaplar, karışık sırada; eşik altında boş"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "text",
+                                    "required",
+                                    "answered",
+                                    "hidden",
+                                    "average",
+                                    "distribution",
+                                    "texts"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "groups": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "key": {
+                                      "type": "string",
+                                      "description": "Sınıf kimliği ya da `other` (birleşen küçük sınıflar)"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "Sınıf adı ya da \"Diğer sınıflar\""
+                                    },
+                                    "classIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "description": "Gruptaki sınıflar"
+                                    },
+                                    "responses": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "average": {
+                                      "description": "Ölçek sorularının genel ortalaması",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "key",
+                                    "name",
+                                    "classIds",
+                                    "responses",
+                                    "average"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Sınıf kırılımı; eşik altındaki sınıflar birleşir, tek grupta boş"
+                              }
+                            },
+                            "required": [
+                              "surveyId",
+                              "title",
+                              "term",
+                              "closeDate",
+                              "threshold",
+                              "teacherId",
+                              "responses",
+                              "visible",
+                              "hiddenReason",
+                              "average",
+                              "questions",
+                              "groups"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kapanan anketlerdeki kendi sonucunuz, yeniden eskiye"
+                        },
+                        "trend": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "surveyId": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "term": {
+                                "type": "string"
+                              },
+                              "closeDate": {
+                                "type": "string"
+                              },
+                              "responses": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "visible": {
+                                "type": "boolean"
+                              },
+                              "average": {
+                                "description": "Genel ortalama; eşik altında boş",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "surveyId",
+                              "title",
+                              "term",
+                              "closeDate",
+                              "responses",
+                              "visible",
+                              "average"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "teacherId",
+                        "surveys",
+                        "trend"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-feedback-results/trend": {
+      "get": {
+        "operationId": "getTeacherFeedbackTrend",
+        "summary": "Öğretmenin dönemler arası eğilimi",
+        "tags": [
+          "finance-teacher-feedback"
+        ],
+        "description": "Öğretmenin kapanan anketlerdeki genel ortalaması, eskiden yeniye, en çok 12 dönem; eşik altındaki dönem ortalama taşımaz (K-532). Bilinmeyen öğretmen 404. Okuma denetime yazılır. Rol: yalnız `yonetici` (K-532). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "teacherId",
+            "required": true,
+            "description": "Öğretmen kaydı (`teachers`)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "teacherId": {
+                          "type": "string"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "trend": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "surveyId": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "term": {
+                                "type": "string"
+                              },
+                              "closeDate": {
+                                "type": "string"
+                              },
+                              "responses": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "visible": {
+                                "type": "boolean"
+                              },
+                              "average": {
+                                "description": "Genel ortalama; eşik altında boş",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "surveyId",
+                              "title",
+                              "term",
+                              "closeDate",
+                              "responses",
+                              "visible",
+                              "average"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kapanan anketler, eskiden yeniye, en çok 12"
+                        }
+                      },
+                      "required": [
+                        "teacherId",
+                        "teacherName",
+                        "trend"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

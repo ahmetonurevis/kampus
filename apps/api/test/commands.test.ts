@@ -329,6 +329,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Acil durum özeti; çift tıklama aynı öğrenciye ikinci özeti açmaz
   // (routes/finance-emergency-summaries.ts; DOM-FIN-155, ON-165).
   'POST /api/v1/finance/emergency-summaries',
+  // Öğretmen geri bildirim anketi taslağı ve öğrenci/velinin öğretmen değerlendirmesi; çift
+  // tıklama ikinci taslağı ya da ikinci yanıtı yazmaz, yanıtın özeti cevapsızdır
+  // (routes/finance-teacher-feedback.ts; DOM-FIN-159, ON-213).
+  'POST /api/v1/finance/teacher-feedback-surveys',
+  'POST /api/v1/finance/teacher-feedback-surveys/{surveyId}/responses',
 ]
 // Onur: kayıt ve finans sonu
 

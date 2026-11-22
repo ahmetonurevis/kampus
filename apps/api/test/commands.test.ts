@@ -345,6 +345,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Erken çıkış talebi; çift gönderim aynı öğrenciye ikinci talep açmaz
   // (routes/finance-early-dismissals.ts; DOM-FIN-161, ON-168).
   'POST /api/v1/finance/early-dismissals',
+  // Gezi raporu, rapor fotoğrafı ve katılımcı değerlendirmesi; çift tıklama ikinci raporu,
+  // fotoğrafı ya da değerlendirmeyi yazmaz (routes/finance-trip-reports.ts; DOM-FIN-158, ON-158).
+  'POST /api/v1/finance/trip-plans/{planId}/report',
+  'POST /api/v1/finance/trip-plans/{planId}/report/photos',
+  'POST /api/v1/finance/trip-evaluations',
 ]
 // Onur: kayıt ve finans sonu
 

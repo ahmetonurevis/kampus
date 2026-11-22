@@ -47,6 +47,7 @@ import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
 import { FinanceTripDayView } from './FinanceTripDaySection.tsx'
+import { FinanceTripReportView } from './FinanceTripReportSection.tsx'
 import { TripPlanFormModal } from './FinanceTripPlanForm.tsx'
 import {
   noticeBody,
@@ -59,14 +60,20 @@ import {
 
 /** Ayrıntı paneli adres parametresi (`?gezi=`). */
 export const TRIP_PLAN_PANEL = 'gezi'
-/** Panel sekmesi (`?gezi_sekme=gun`; DOM-FIN-154): plan bilgisi ya da "Gezi günü". */
+/**
+ * Panel sekmesi (`?gezi_sekme=gun|rapor`): plan bilgisi, "Gezi günü" (DOM-FIN-154) ya da "Gezi
+ * raporu" (DOM-FIN-158).
+ */
 const PANEL_TAB = 'gezi_sekme'
 const PANEL_CLEARS = [PANEL_TAB] as const
-type PanelTab = 'plan' | 'gun'
+type PanelTab = 'plan' | 'gun' | 'rapor'
 const PANEL_TABS = [
   { value: 'plan', label: 'Plan' },
   { value: 'gun', label: 'Gezi günü' },
+  { value: 'rapor', label: 'Gezi raporu' },
 ] as const satisfies readonly { value: PanelTab; label: string }[]
+const panelTabOf = (value: string | null): PanelTab =>
+  value === 'gun' || value === 'rapor' ? value : 'plan'
 
 const NO_SORT: readonly string[] = []
 const MOBILE = ['number', 'name', 'status']
@@ -245,13 +252,14 @@ export function FinanceTripPlansSection() {
 }
 
 /**
- * Plan paneli iki sekmedir: plan ayrıntısı ve "Gezi günü" (grup, dağıtım, yoklama ve acil kart;
- * DOM-FIN-154, ON-157). Sekme adreste tutulur; geri/ileri ve yenileme sekmeyi korur.
+ * Plan paneli üç sekmedir: plan ayrıntısı, "Gezi günü" (grup, dağıtım, yoklama ve acil kart;
+ * DOM-FIN-154, ON-157) ve "Gezi raporu" (rapor, rızalı fotoğraf, değerlendirme özeti;
+ * DOM-FIN-158, ON-158). Sekme adreste tutulur; geri/ileri ve yenileme sekmeyi korur.
  */
 function TripPlanPanel({ planId }: { planId: string }) {
   const [params, setParams] = useSearchParams()
   const location = useLocation()
-  const tab: PanelTab = params.get(PANEL_TAB) === 'gun' ? 'gun' : 'plan'
+  const tab = panelTabOf(params.get(PANEL_TAB))
   const select = (next: PanelTab) =>
     setParams(
       (current) => {
@@ -266,11 +274,9 @@ function TripPlanPanel({ planId }: { planId: string }) {
   return (
     <div className="grid gap-5">
       <LineTabs label="Plan görünümü" value={tab} options={PANEL_TABS} onChange={select} />
-      {tab === 'plan' ? (
-        <TripPlanDetailView planId={planId} />
-      ) : (
-        <FinanceTripDayView planId={planId} />
-      )}
+      {tab === 'plan' ? <TripPlanDetailView planId={planId} /> : null}
+      {tab === 'gun' ? <FinanceTripDayView planId={planId} /> : null}
+      {tab === 'rapor' ? <FinanceTripReportView planId={planId} /> : null}
     </div>
   )
 }

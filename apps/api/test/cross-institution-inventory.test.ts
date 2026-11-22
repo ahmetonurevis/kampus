@@ -4825,6 +4825,48 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gezi sonrası rapor, rızalı fotoğraf ve değerlendirme (ON-158; DOM-FIN-158).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/trip-reports', 'get(LIST, a.admin)'],
+        ['liste', 'GET /api/v1/finance/trip-reports/my', 'get(MY, a.mother)'],
+        ['gövde', 'POST /api/v1/finance/trip-evaluations', 'post(EVALUATIONS, a.mother'],
+        ['kayıt', 'GET /api/v1/finance/trip-plans/:planId/report', 'get(bUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/report', 'post(bUrl, a.admin'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/trip-plans/:planId/report',
+          "versioned('PATCH', bUrl, a.admin",
+        ],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/report/submit', '`${bUrl}/${verb}`'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/report/approve', '`${bUrl}/${verb}`'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/report/return', '`${bUrl}/return`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/report/photos',
+          'post(photosUrl(bPlan), a.admin',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/trip-plans/:planId/report/photos/:photoId',
+          "versioned('PATCH', photoUrl(bPlan",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/trip-plans/:planId/report/photos/:photoId',
+          "versioned('DELETE', photoUrl(bPlan",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-trip-reports.test.ts',
+        'DOM-FIN-158: başka kurumun raporu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

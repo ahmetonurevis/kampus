@@ -276,6 +276,9 @@ const FinanceSocialActivitiesSection = lazy(async () => ({
 const FinanceEarlyDismissalsSection = lazy(async () => ({
   default: (await import('./FinanceEarlyDismissalsSection.tsx')).FinanceEarlyDismissalsSection,
 }))
+const FinanceTripReportsSection = lazy(async () => ({
+  default: (await import('./FinanceTripReportsSection.tsx')).FinanceTripReportsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -365,6 +368,7 @@ const VIEWS = {
   teacherFeedback: { label: 'Öğretmen geri bildirimi', param: 'ogretmen-geri-bildirimi' },
   socialActivities: { label: 'Sosyal etkinlik saatleri', param: 'sosyal-etkinlik' },
   earlyDismissals: { label: 'Erken çıkış', param: 'erken-cikis' },
+  tripReports: { label: 'Gezi raporları', param: 'gezi-raporlari' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -449,6 +453,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sosyal etkinlik saatleri (DOM-FIN-160) yalnız yöneticide ve yalnız okulda; öğretmen ekranı
  * platform kabuğundadır (K-535).
  * Erken çıkış (DOM-FIN-161) ikisine açıktır; ön büro onaylar ve teslim eder (K-538, K-539).
+ * Gezi raporları (DOM-FIN-158) ikisine açıktır; ön büro okur, raporu görevli öğretmen ya da
+ * yönetici yazar, onay yöneticide (K-529).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -730,6 +736,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'teacherFeedback' ? <FinanceTeacherFeedbackSection /> : null}
         {tab === 'socialActivities' ? <FinanceSocialActivitiesSection /> : null}
         {tab === 'earlyDismissals' ? <FinanceEarlyDismissalsSection /> : null}
+        {tab === 'tripReports' ? <FinanceTripReportsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -264,6 +264,9 @@ const FinanceHealthAccessLogSection = lazy(async () => ({
 const FinanceHealthScreeningsSection = lazy(async () => ({
   default: (await import('./FinanceHealthScreeningsSection.tsx')).FinanceHealthScreeningsSection,
 }))
+const FinanceTeacherFeedbackSection = lazy(async () => ({
+  default: (await import('./FinanceTeacherFeedbackSection.tsx')).FinanceTeacherFeedbackSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -349,6 +352,7 @@ const VIEWS = {
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
+  teacherFeedback: { label: 'Öğretmen geri bildirimi', param: 'ogretmen-geri-bildirimi' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -426,6 +430,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * yazar ve onaylar (K-520, K-521).
  * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
  * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
+ * Öğretmen geri bildirimi (DOM-FIN-159) yalnız yöneticidedir; öğretmen kendi sonucunu rol
+ * kabuğundaki görünümde, öğrenci ve veli yanıtını kendi ekranında görür (K-532).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -467,7 +473,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices' ||
-      value === 'healthAccessLog'
+      value === 'healthAccessLog' ||
+      value === 'teacherFeedback'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -701,6 +708,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         ) : null}
         {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
+        {tab === 'teacherFeedback' ? <FinanceTeacherFeedbackSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

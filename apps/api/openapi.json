@@ -5623,7 +5623,9 @@
               "package_hours_low",
               "package_expiring",
               "package_expired",
-              "scholarship_ended"
+              "scholarship_ended",
+              "early_dismissal_decided",
+              "early_dismissal_released"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -26769,7 +26771,9 @@
               "package_hours_low",
               "package_expiring",
               "package_expired",
-              "scholarship_ended"
+              "scholarship_ended",
+              "early_dismissal_decided",
+              "early_dismissal_released"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -376715,6 +376719,4169 @@
                         ],
                         "additionalProperties": false
                       }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissals": {
+      "get": {
+        "operationId": "listEarlyDismissals",
+        "summary": "Erken çıkışlar",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Gün süzgecinde planlanan saat sırasıyla, gün yoksa en yeni gün önce. Süzgeç gün, durum ve sınıf. Satır neden açıklaması ve kimlik son dört hanesi taşımaz (ayrıntıda). Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Çıkış günü (YYYY-MM-DD)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "cancelled",
+                "released"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "classId": {
+                            "description": "Talep açıldığındaki sınıf",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "dismissalOn": {
+                            "type": "string",
+                            "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                          },
+                          "plannedAt": {
+                            "type": "string",
+                            "description": "Planlanan çıkış anı (ISO 8601)"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "health",
+                              "appointment",
+                              "family",
+                              "other"
+                            ],
+                            "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                          },
+                          "pickupKind": {
+                            "type": "string",
+                            "enum": [
+                              "guardian",
+                              "other"
+                            ],
+                            "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                          },
+                          "pickupGuardianLinkId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pickupName": {
+                            "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pickupRelationship": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "grandparent",
+                                  "sibling",
+                                  "relative",
+                                  "family_friend",
+                                  "other"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Yalnız `other` türünde"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "cancelled",
+                              "released"
+                            ],
+                            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "guardian",
+                              "school"
+                            ],
+                            "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "releasedAt": {
+                            "description": "Gerçek çıkış anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "releasedToName": {
+                            "description": "Teslim alanın teslim anındaki adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "classId",
+                          "className",
+                          "dismissalOn",
+                          "plannedAt",
+                          "reason",
+                          "pickupKind",
+                          "pickupGuardianLinkId",
+                          "pickupName",
+                          "pickupRelationship",
+                          "status",
+                          "source",
+                          "decidedAt",
+                          "releasedAt",
+                          "releasedToName",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createEarlyDismissal",
+        "summary": "Erken çıkış talebi",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Öğrenci, gün (bugün ya da 30 gün içinde), saat (SS:DD), neden (`other` açıklama ister, 400) ve teslim alacak kişi: `self` (yalnız veli), `guardian` (öğrencinin teslim yetkilisi bağı) ya da `other` (kayıtlı olmayan kişi: ad, kimliğin yalnız son dört hanesi, yakınlık; tam numara 400). Velinin talebi onay bekler (`pending`), okulun açtığı acil kayıt onaylı doğar (`approved`). Öğrenci yok ya da velinin kapsamı dışında 404; velayetsiz ya da iletişim kısıtlı veli 403 `early_dismissal_custody_required`; kaydı kapalı öğrenci 422 `early_dismissal_student_inactive`; geçmiş gün 422 `early_dismissal_date_past`, 30 günden ileri `early_dismissal_date_too_far`, bugün 30 dakikadan eski saat `early_dismissal_time_past`; yetkisiz bağ 422 `early_dismissal_pickup_not_authorized`; okulun `self` seçmesi 422 `early_dismissal_pickup_self_school`; aynı gün açık talep 409 `early_dismissal_exists` (K-538). Denetim `finance.early_dismissal.create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` ve `veli` (yalnız velayetli ve iletişim kısıtı olmayan çocuğu). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Öğrenci (veli yalnız velayetli olduğu çocuğu)"
+                  },
+                  "date": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Çıkış günü (YYYY-MM-DD, Europe/Istanbul); bugün ya da 30 gün içinde"
+                  },
+                  "time": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Planlanan çıkış saati (SS:DD, Europe/Istanbul)"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "health",
+                      "appointment",
+                      "family",
+                      "other"
+                    ],
+                    "description": "`health` sağlık, `appointment` randevu (doktor, resmî işlem), `family` aile işi, `other` diğer"
+                  },
+                  "reasonNote": {
+                    "description": "Açıklama (≤ 300); `other` nedeninde zorunlu; denetime ve loga yazılmaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pickup": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "description": "Talebi açan veli kendisi (yalnız veli)",
+                            "enum": [
+                              "self"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "description": "Öğrencinin kayıtlı teslim yetkilisi",
+                            "enum": [
+                              "guardian"
+                            ]
+                          },
+                          "guardianLinkId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "description": "Veli–öğrenci bağı (`pickup-options` listesinden)"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "guardianLinkId"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "description": "Kayıtlı olmayan kişi; okul onayı şart",
+                            "enum": [
+                              "other"
+                            ]
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 120,
+                            "description": "Ad soyad (2–120)"
+                          },
+                          "idLast4": {
+                            "description": "Kimliğin yalnız son dört hanesi (rakam ya da harf); tamamı gönderilmez ve saklanmaz",
+                            "type": "string"
+                          },
+                          "relationship": {
+                            "type": "string",
+                            "enum": [
+                              "grandparent",
+                              "sibling",
+                              "relative",
+                              "family_friend",
+                              "other"
+                            ],
+                            "description": "`grandparent` büyükanne/büyükbaba, `sibling` reşit kardeş, `relative` akraba, `family_friend` aile dostu, `other` diğer"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "name",
+                          "idLast4",
+                          "relationship"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ],
+                    "description": "Teslim alacak kişi"
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "date",
+                  "time",
+                  "reason",
+                  "pickup"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "classId": {
+                          "description": "Talep açıldığındaki sınıf",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dismissalOn": {
+                          "type": "string",
+                          "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                        },
+                        "plannedAt": {
+                          "type": "string",
+                          "description": "Planlanan çıkış anı (ISO 8601)"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "health",
+                            "appointment",
+                            "family",
+                            "other"
+                          ],
+                          "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                        },
+                        "pickupKind": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "other"
+                          ],
+                          "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                        },
+                        "pickupGuardianLinkId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupName": {
+                          "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupRelationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "grandparent",
+                                "sibling",
+                                "relative",
+                                "family_friend",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yalnız `other` türünde"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "school"
+                          ],
+                          "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedAt": {
+                          "description": "Gerçek çıkış anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToName": {
+                          "description": "Teslim alanın teslim anındaki adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "reasonNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdLast4": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "dismissalOn",
+                        "plannedAt",
+                        "reason",
+                        "pickupKind",
+                        "pickupGuardianLinkId",
+                        "pickupName",
+                        "pickupRelationship",
+                        "status",
+                        "source",
+                        "decidedAt",
+                        "releasedAt",
+                        "releasedToName",
+                        "version",
+                        "reasonNote",
+                        "maskedIdLast4",
+                        "rejectionReason",
+                        "cancelledAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissal-summary": {
+      "get": {
+        "operationId": "getEarlyDismissalSummary",
+        "summary": "Erken çıkış gün özeti",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Günün (varsayılan bugün) durum sayıları. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (varsayılan bugün)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "approved": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "rejected": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "cancelled": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "released": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Günün durum sayıları"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "counts"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissal-pickup-options": {
+      "get": {
+        "operationId": "listEarlyDismissalPickupOptions",
+        "summary": "Teslim alabilecek kişiler",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Öğrencinin teslim yetkilileri: velayetli ve iletişim kısıtı olmayan veliler ile teslim alma yetkisi işaretli bağlar (K-538). Velide yalnız velayetli olduğu çocuk ve kendi bağı `isSelf`; kapsam dışı, kaydı kapalı ya da başka kurumun öğrencisi 404. Rol: `yonetici`, `onburo` ve `veli` (yalnız velayetli ve iletişim kısıtı olmayan çocuğu). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "guardianLinkId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "relationship": {
+                            "type": "string",
+                            "enum": [
+                              "mother",
+                              "father",
+                              "legal_guardian",
+                              "other"
+                            ]
+                          },
+                          "custody": {
+                            "type": "string",
+                            "enum": [
+                              "full",
+                              "joint",
+                              "none"
+                            ]
+                          },
+                          "canPickUp": {
+                            "type": "boolean",
+                            "description": "Teslim alma yetkisi işaretli (velayetsiz yetkili)"
+                          },
+                          "isSelf": {
+                            "type": "boolean",
+                            "description": "İsteyen velinin kendi bağı"
+                          }
+                        },
+                        "required": [
+                          "guardianLinkId",
+                          "name",
+                          "relationship",
+                          "custody",
+                          "canPickUp",
+                          "isSelf"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissal-attendance-effects": {
+      "get": {
+        "operationId": "listEarlyDismissalAttendanceEffects",
+        "summary": "Erken çıkışın yoklamaya yansıması",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Günün (varsayılan bugün) teslim edilmiş (gerçek çıkış anı, `basis=released`) ve onaylı (planlanan saat, `basis=planned`) erken çıkışları ve etkilenen ders saatleri: `fromPeriod` ilk etkilenen dersin sırası, ders sırasında çıkışta ders `partial`. Yoklama kaydı değişmez; yoklama modülü bunu mazeretli devamsızlık olarak okur (K-540). Öğretmen yalnız sınıf öğretmeni olduğu ve derse girdiği sınıfları görür. Rol: `yonetici`, `onburo`, `ogretmen`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (varsayılan bugün)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "basis": {
+                                "type": "string",
+                                "enum": [
+                                  "released",
+                                  "planned"
+                                ],
+                                "description": "`released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati"
+                              },
+                              "departureAt": {
+                                "type": "string"
+                              },
+                              "fromPeriod": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "İlk etkilenen dersin sırası (\"4. dersten itibaren\"); yoksa `null`"
+                              },
+                              "lessons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "lessonId": {
+                                      "type": "string"
+                                    },
+                                    "period": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Günün kaçıncı dersi (1’den)"
+                                    },
+                                    "startsAt": {
+                                      "type": "string"
+                                    },
+                                    "endsAt": {
+                                      "type": "string"
+                                    },
+                                    "subjectId": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "partial": {
+                                      "type": "boolean",
+                                      "description": "Ders sürerken çıktı"
+                                    }
+                                  },
+                                  "required": [
+                                    "lessonId",
+                                    "period",
+                                    "startsAt",
+                                    "endsAt",
+                                    "subjectId",
+                                    "title",
+                                    "partial"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "dismissalId": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "classId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "approved",
+                                  "released"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "basis",
+                              "departureAt",
+                              "fromPeriod",
+                              "lessons",
+                              "dismissalId",
+                              "studentId",
+                              "studentName",
+                              "classId",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-early-dismissals": {
+      "get": {
+        "operationId": "listMyEarlyDismissals",
+        "summary": "Velinin erken çıkış talepleri",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Velinin velayetli ve iletişim kısıtı olmayan çocuklarının son 30 günden bu yana ve ilerideki talepleri; karar, ret gerekçesi ve teslim (teslim alanın adı, gerçek çıkış). İletişim kısıtlı veli boş liste alır. Rol: `veli`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Çocuk (velayetli olduğu)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "classId": {
+                            "description": "Talep açıldığındaki sınıf",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "dismissalOn": {
+                            "type": "string",
+                            "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                          },
+                          "plannedAt": {
+                            "type": "string",
+                            "description": "Planlanan çıkış anı (ISO 8601)"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "health",
+                              "appointment",
+                              "family",
+                              "other"
+                            ],
+                            "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                          },
+                          "pickupKind": {
+                            "type": "string",
+                            "enum": [
+                              "guardian",
+                              "other"
+                            ],
+                            "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                          },
+                          "pickupGuardianLinkId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pickupName": {
+                            "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pickupRelationship": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "grandparent",
+                                  "sibling",
+                                  "relative",
+                                  "family_friend",
+                                  "other"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Yalnız `other` türünde"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "cancelled",
+                              "released"
+                            ],
+                            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "guardian",
+                              "school"
+                            ],
+                            "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "releasedAt": {
+                            "description": "Gerçek çıkış anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "releasedToName": {
+                            "description": "Teslim alanın teslim anındaki adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          },
+                          "reasonNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "maskedIdLast4": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "description": "Ret gerekçesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "classId",
+                          "className",
+                          "dismissalOn",
+                          "plannedAt",
+                          "reason",
+                          "pickupKind",
+                          "pickupGuardianLinkId",
+                          "pickupName",
+                          "pickupRelationship",
+                          "status",
+                          "source",
+                          "decidedAt",
+                          "releasedAt",
+                          "releasedToName",
+                          "version",
+                          "reasonNote",
+                          "maskedIdLast4",
+                          "rejectionReason",
+                          "cancelledAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissals/{dismissalId}": {
+      "get": {
+        "operationId": "getEarlyDismissal",
+        "summary": "Erken çıkış ayrıntısı",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Neden açıklaması, kayıtlı olmayan kişinin kimlik son dört hanesi, öğrencinin şu anki teslim yetkilileri ve etkilenen dersler. Okuma aynı transaction'da `finance.early_dismissal.read` denetimine düşer. Başka kurumun kaydı 404. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "dismissalId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "classId": {
+                          "description": "Talep açıldığındaki sınıf",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dismissalOn": {
+                          "type": "string",
+                          "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                        },
+                        "plannedAt": {
+                          "type": "string",
+                          "description": "Planlanan çıkış anı (ISO 8601)"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "health",
+                            "appointment",
+                            "family",
+                            "other"
+                          ],
+                          "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                        },
+                        "pickupKind": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "other"
+                          ],
+                          "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                        },
+                        "pickupGuardianLinkId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupName": {
+                          "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupRelationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "grandparent",
+                                "sibling",
+                                "relative",
+                                "family_friend",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yalnız `other` türünde"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "school"
+                          ],
+                          "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedAt": {
+                          "description": "Gerçek çıkış anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToName": {
+                          "description": "Teslim alanın teslim anındaki adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "reasonNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupIdLast4": {
+                          "description": "Kayıtlı olmayan kişinin kimlik son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdLast4": {
+                          "description": "`•••• 1234`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "guardian",
+                                "other"
+                              ],
+                              "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "authorizedPickups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "guardianLinkId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "relationship": {
+                                "type": "string",
+                                "enum": [
+                                  "mother",
+                                  "father",
+                                  "legal_guardian",
+                                  "other"
+                                ]
+                              },
+                              "custody": {
+                                "type": "string",
+                                "enum": [
+                                  "full",
+                                  "joint",
+                                  "none"
+                                ]
+                              },
+                              "canPickUp": {
+                                "type": "boolean",
+                                "description": "Teslim alma yetkisi işaretli (velayetsiz yetkili)"
+                              },
+                              "isSelf": {
+                                "type": "boolean",
+                                "description": "İsteyen velinin kendi bağı"
+                              }
+                            },
+                            "required": [
+                              "guardianLinkId",
+                              "name",
+                              "relationship",
+                              "custody",
+                              "canPickUp",
+                              "isSelf"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste)"
+                        },
+                        "effect": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "type": "string",
+                                  "enum": [
+                                    "released",
+                                    "planned"
+                                  ],
+                                  "description": "`released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati"
+                                },
+                                "departureAt": {
+                                  "type": "string"
+                                },
+                                "fromPeriod": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "İlk etkilenen dersin sırası (\"4. dersten itibaren\"); yoksa `null`"
+                                },
+                                "lessons": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessonId": {
+                                        "type": "string"
+                                      },
+                                      "period": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Günün kaçıncı dersi (1’den)"
+                                      },
+                                      "startsAt": {
+                                        "type": "string"
+                                      },
+                                      "endsAt": {
+                                        "type": "string"
+                                      },
+                                      "subjectId": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "partial": {
+                                        "type": "boolean",
+                                        "description": "Ders sürerken çıktı"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessonId",
+                                      "period",
+                                      "startsAt",
+                                      "endsAt",
+                                      "subjectId",
+                                      "title",
+                                      "partial"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "departureAt",
+                                "fromPeriod",
+                                "lessons"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Etkilenen dersler; onaylı ya da teslim edilmişte dolu"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "dismissalOn",
+                        "plannedAt",
+                        "reason",
+                        "pickupKind",
+                        "pickupGuardianLinkId",
+                        "pickupName",
+                        "pickupRelationship",
+                        "status",
+                        "source",
+                        "decidedAt",
+                        "releasedAt",
+                        "releasedToName",
+                        "version",
+                        "reasonNote",
+                        "pickupIdLast4",
+                        "maskedIdLast4",
+                        "rejectionReason",
+                        "cancelledAt",
+                        "cancelReason",
+                        "releasedToKind",
+                        "authorizedPickups",
+                        "effect",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissals/{dismissalId}/approve": {
+      "post": {
+        "operationId": "approveEarlyDismissal",
+        "summary": "Erken çıkışı onayla",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Bekleyen talebi onaylar; kayıtlı olmayan teslim alan da böylece onaylanır. Onaylı talep 422 `early_dismissal_not_pending`, günü geçmiş 422 `early_dismissal_expired`, kapanmış 422 `early_dismissal_closed`, teslim edilmiş 422 `early_dismissal_already_released` (K-538). Veli talebinde veliye `early_dismissal_decided` bildirimi. `If-Match` zorunlu. Denetim `finance.early_dismissal.approve`. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "dismissalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "classId": {
+                          "description": "Talep açıldığındaki sınıf",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dismissalOn": {
+                          "type": "string",
+                          "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                        },
+                        "plannedAt": {
+                          "type": "string",
+                          "description": "Planlanan çıkış anı (ISO 8601)"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "health",
+                            "appointment",
+                            "family",
+                            "other"
+                          ],
+                          "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                        },
+                        "pickupKind": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "other"
+                          ],
+                          "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                        },
+                        "pickupGuardianLinkId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupName": {
+                          "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupRelationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "grandparent",
+                                "sibling",
+                                "relative",
+                                "family_friend",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yalnız `other` türünde"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "school"
+                          ],
+                          "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedAt": {
+                          "description": "Gerçek çıkış anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToName": {
+                          "description": "Teslim alanın teslim anındaki adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "reasonNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupIdLast4": {
+                          "description": "Kayıtlı olmayan kişinin kimlik son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdLast4": {
+                          "description": "`•••• 1234`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "guardian",
+                                "other"
+                              ],
+                              "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "authorizedPickups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "guardianLinkId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "relationship": {
+                                "type": "string",
+                                "enum": [
+                                  "mother",
+                                  "father",
+                                  "legal_guardian",
+                                  "other"
+                                ]
+                              },
+                              "custody": {
+                                "type": "string",
+                                "enum": [
+                                  "full",
+                                  "joint",
+                                  "none"
+                                ]
+                              },
+                              "canPickUp": {
+                                "type": "boolean",
+                                "description": "Teslim alma yetkisi işaretli (velayetsiz yetkili)"
+                              },
+                              "isSelf": {
+                                "type": "boolean",
+                                "description": "İsteyen velinin kendi bağı"
+                              }
+                            },
+                            "required": [
+                              "guardianLinkId",
+                              "name",
+                              "relationship",
+                              "custody",
+                              "canPickUp",
+                              "isSelf"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste)"
+                        },
+                        "effect": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "type": "string",
+                                  "enum": [
+                                    "released",
+                                    "planned"
+                                  ],
+                                  "description": "`released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati"
+                                },
+                                "departureAt": {
+                                  "type": "string"
+                                },
+                                "fromPeriod": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "İlk etkilenen dersin sırası (\"4. dersten itibaren\"); yoksa `null`"
+                                },
+                                "lessons": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessonId": {
+                                        "type": "string"
+                                      },
+                                      "period": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Günün kaçıncı dersi (1’den)"
+                                      },
+                                      "startsAt": {
+                                        "type": "string"
+                                      },
+                                      "endsAt": {
+                                        "type": "string"
+                                      },
+                                      "subjectId": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "partial": {
+                                        "type": "boolean",
+                                        "description": "Ders sürerken çıktı"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessonId",
+                                      "period",
+                                      "startsAt",
+                                      "endsAt",
+                                      "subjectId",
+                                      "title",
+                                      "partial"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "departureAt",
+                                "fromPeriod",
+                                "lessons"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Etkilenen dersler; onaylı ya da teslim edilmişte dolu"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "dismissalOn",
+                        "plannedAt",
+                        "reason",
+                        "pickupKind",
+                        "pickupGuardianLinkId",
+                        "pickupName",
+                        "pickupRelationship",
+                        "status",
+                        "source",
+                        "decidedAt",
+                        "releasedAt",
+                        "releasedToName",
+                        "version",
+                        "reasonNote",
+                        "pickupIdLast4",
+                        "maskedIdLast4",
+                        "rejectionReason",
+                        "cancelledAt",
+                        "cancelReason",
+                        "releasedToKind",
+                        "authorizedPickups",
+                        "effect",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissals/{dismissalId}/reject": {
+      "post": {
+        "operationId": "rejectEarlyDismissal",
+        "summary": "Erken çıkışı reddet",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Bekleyen talebi gerekçeyle (5–300, veliye görünür) reddeder. Onaylı talep 422 `early_dismissal_not_pending` (iptal edilir), kapanmış 422 `early_dismissal_closed` (K-538). Veli talebinde veliye `early_dismissal_decided` bildirimi. `If-Match` zorunlu. Denetim `finance.early_dismissal.reject` (gerekçe yazılmaz). Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300,
+                    "description": "Ret gerekçesi (5–300); veliye görünür, denetime ve loga yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "dismissalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "classId": {
+                          "description": "Talep açıldığındaki sınıf",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dismissalOn": {
+                          "type": "string",
+                          "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                        },
+                        "plannedAt": {
+                          "type": "string",
+                          "description": "Planlanan çıkış anı (ISO 8601)"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "health",
+                            "appointment",
+                            "family",
+                            "other"
+                          ],
+                          "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                        },
+                        "pickupKind": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "other"
+                          ],
+                          "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                        },
+                        "pickupGuardianLinkId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupName": {
+                          "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupRelationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "grandparent",
+                                "sibling",
+                                "relative",
+                                "family_friend",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yalnız `other` türünde"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "school"
+                          ],
+                          "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedAt": {
+                          "description": "Gerçek çıkış anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToName": {
+                          "description": "Teslim alanın teslim anındaki adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "reasonNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupIdLast4": {
+                          "description": "Kayıtlı olmayan kişinin kimlik son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdLast4": {
+                          "description": "`•••• 1234`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "guardian",
+                                "other"
+                              ],
+                              "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "authorizedPickups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "guardianLinkId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "relationship": {
+                                "type": "string",
+                                "enum": [
+                                  "mother",
+                                  "father",
+                                  "legal_guardian",
+                                  "other"
+                                ]
+                              },
+                              "custody": {
+                                "type": "string",
+                                "enum": [
+                                  "full",
+                                  "joint",
+                                  "none"
+                                ]
+                              },
+                              "canPickUp": {
+                                "type": "boolean",
+                                "description": "Teslim alma yetkisi işaretli (velayetsiz yetkili)"
+                              },
+                              "isSelf": {
+                                "type": "boolean",
+                                "description": "İsteyen velinin kendi bağı"
+                              }
+                            },
+                            "required": [
+                              "guardianLinkId",
+                              "name",
+                              "relationship",
+                              "custody",
+                              "canPickUp",
+                              "isSelf"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste)"
+                        },
+                        "effect": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "type": "string",
+                                  "enum": [
+                                    "released",
+                                    "planned"
+                                  ],
+                                  "description": "`released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati"
+                                },
+                                "departureAt": {
+                                  "type": "string"
+                                },
+                                "fromPeriod": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "İlk etkilenen dersin sırası (\"4. dersten itibaren\"); yoksa `null`"
+                                },
+                                "lessons": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessonId": {
+                                        "type": "string"
+                                      },
+                                      "period": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Günün kaçıncı dersi (1’den)"
+                                      },
+                                      "startsAt": {
+                                        "type": "string"
+                                      },
+                                      "endsAt": {
+                                        "type": "string"
+                                      },
+                                      "subjectId": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "partial": {
+                                        "type": "boolean",
+                                        "description": "Ders sürerken çıktı"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessonId",
+                                      "period",
+                                      "startsAt",
+                                      "endsAt",
+                                      "subjectId",
+                                      "title",
+                                      "partial"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "departureAt",
+                                "fromPeriod",
+                                "lessons"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Etkilenen dersler; onaylı ya da teslim edilmişte dolu"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "dismissalOn",
+                        "plannedAt",
+                        "reason",
+                        "pickupKind",
+                        "pickupGuardianLinkId",
+                        "pickupName",
+                        "pickupRelationship",
+                        "status",
+                        "source",
+                        "decidedAt",
+                        "releasedAt",
+                        "releasedToName",
+                        "version",
+                        "reasonNote",
+                        "pickupIdLast4",
+                        "maskedIdLast4",
+                        "rejectionReason",
+                        "cancelledAt",
+                        "cancelReason",
+                        "releasedToKind",
+                        "authorizedPickups",
+                        "effect",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissals/{dismissalId}/cancel": {
+      "post": {
+        "operationId": "cancelEarlyDismissal",
+        "summary": "Erken çıkışı iptal et",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Bekleyen ya da onaylı, teslim edilmemiş talebi isteğe bağlı gerekçeyle iptal eder. Veli yalnız velayetli olduğu çocuğun talebini (başkası 404). Teslim edilmiş 422 `early_dismissal_already_released`, kapanmış 422 `early_dismissal_closed`. `If-Match` zorunlu. Denetim `finance.early_dismissal.cancel`. Rol: `yonetici`, `onburo` ve `veli` (yalnız velayetli ve iletişim kısıtı olmayan çocuğu). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "description": "İptal gerekçesi (isteğe bağlı, ≤ 300)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "dismissalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "classId": {
+                          "description": "Talep açıldığındaki sınıf",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dismissalOn": {
+                          "type": "string",
+                          "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                        },
+                        "plannedAt": {
+                          "type": "string",
+                          "description": "Planlanan çıkış anı (ISO 8601)"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "health",
+                            "appointment",
+                            "family",
+                            "other"
+                          ],
+                          "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                        },
+                        "pickupKind": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "other"
+                          ],
+                          "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                        },
+                        "pickupGuardianLinkId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupName": {
+                          "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupRelationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "grandparent",
+                                "sibling",
+                                "relative",
+                                "family_friend",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yalnız `other` türünde"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "school"
+                          ],
+                          "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedAt": {
+                          "description": "Gerçek çıkış anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToName": {
+                          "description": "Teslim alanın teslim anındaki adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "reasonNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdLast4": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "dismissalOn",
+                        "plannedAt",
+                        "reason",
+                        "pickupKind",
+                        "pickupGuardianLinkId",
+                        "pickupName",
+                        "pickupRelationship",
+                        "status",
+                        "source",
+                        "decidedAt",
+                        "releasedAt",
+                        "releasedToName",
+                        "version",
+                        "reasonNote",
+                        "maskedIdLast4",
+                        "rejectionReason",
+                        "cancelledAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/early-dismissals/{dismissalId}/release": {
+      "post": {
+        "operationId": "releaseEarlyDismissal",
+        "summary": "Öğrenciyi teslim et",
+        "tags": [
+          "finance-early-dismissals"
+        ],
+        "description": "Teslim alan kişi listeden seçilir: `guardian` (öğrencinin şu anki teslim yetkilisi bağı) ya da `other` (talepte onaylanan kayıtlı olmayan kişi; görülen kimliğin son dört hanesi). Kimlik görüldü (`identityVerified: true`) zorunlu, değilse 400; gerçek çıkış anı boşsa şimdi. Yetkisiz kişi 422 `early_dismissal_pickup_not_authorized`, son dört hane eşleşmiyor 422 `early_dismissal_pickup_mismatch`, onaysız 422 `early_dismissal_not_approved`, çıkış günü değil 422 `early_dismissal_not_today`, gelecek 422 `early_dismissal_release_future`, başka gün 422 `early_dismissal_release_other_day`, ikinci teslim 422 `early_dismissal_already_released` (K-539). Veliye `early_dismissal_released` bildirimi. `If-Match` zorunlu. Denetim `finance.early_dismissal.release`. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pickup": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "description": "Öğrencinin teslim yetkilisi",
+                            "enum": [
+                              "guardian"
+                            ]
+                          },
+                          "guardianLinkId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "description": "Teslim alan veli–öğrenci bağı (ayrıntıdaki `authorizedPickups`)"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "guardianLinkId"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "description": "Talepte onaylanan kayıtlı olmayan kişi",
+                            "enum": [
+                              "other"
+                            ]
+                          },
+                          "idLast4": {
+                            "description": "Görülen kimliğin son dört hanesi; talepte onaylananla eşleşmeli",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "idLast4"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ],
+                    "description": "Öğrenciyi teslim alan kişi"
+                  },
+                  "identityVerified": {
+                    "type": "boolean",
+                    "description": "Teslim alanın kimliği görüldü (zorunlu `true`; numara yazılmaz)",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "releasedAt": {
+                    "default": null,
+                    "description": "Gerçek çıkış anı (ISO 8601); boşsa şimdi. Gelecekte ve başka günde olamaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "pickup",
+                  "identityVerified"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "dismissalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "classId": {
+                          "description": "Talep açıldığındaki sınıf",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "dismissalOn": {
+                          "type": "string",
+                          "description": "Çıkış günü (Europe/Istanbul, YYYY-MM-DD)"
+                        },
+                        "plannedAt": {
+                          "type": "string",
+                          "description": "Planlanan çıkış anı (ISO 8601)"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "health",
+                            "appointment",
+                            "family",
+                            "other"
+                          ],
+                          "description": "`health` sağlık, `appointment` randevu, `family` aile işi, `other` diğer"
+                        },
+                        "pickupKind": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "other"
+                          ],
+                          "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                        },
+                        "pickupGuardianLinkId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupName": {
+                          "description": "Teslim alacak kişinin adı; bağ kaldırıldıysa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupRelationship": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "grandparent",
+                                "sibling",
+                                "relative",
+                                "family_friend",
+                                "other"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yalnız `other` türünde"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled",
+                            "released"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal edildi, `released` teslim edildi"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "guardian",
+                            "school"
+                          ],
+                          "description": "`guardian` veli talebi, `school` okulun açtığı (acil) kayıt"
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedAt": {
+                          "description": "Gerçek çıkış anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToName": {
+                          "description": "Teslim alanın teslim anındaki adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "reasonNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pickupIdLast4": {
+                          "description": "Kayıtlı olmayan kişinin kimlik son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdLast4": {
+                          "description": "`•••• 1234`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "releasedToKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "guardian",
+                                "other"
+                              ],
+                              "description": "`guardian` kayıtlı teslim yetkilisi, `other` kayıtlı olmayan, okulca onaylanan kişi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "authorizedPickups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "guardianLinkId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "relationship": {
+                                "type": "string",
+                                "enum": [
+                                  "mother",
+                                  "father",
+                                  "legal_guardian",
+                                  "other"
+                                ]
+                              },
+                              "custody": {
+                                "type": "string",
+                                "enum": [
+                                  "full",
+                                  "joint",
+                                  "none"
+                                ]
+                              },
+                              "canPickUp": {
+                                "type": "boolean",
+                                "description": "Teslim alma yetkisi işaretli (velayetsiz yetkili)"
+                              },
+                              "isSelf": {
+                                "type": "boolean",
+                                "description": "İsteyen velinin kendi bağı"
+                              }
+                            },
+                            "required": [
+                              "guardianLinkId",
+                              "name",
+                              "relationship",
+                              "custody",
+                              "canPickUp",
+                              "isSelf"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrencinin şu anki teslim yetkilileri (teslim formundaki liste)"
+                        },
+                        "effect": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "type": "string",
+                                  "enum": [
+                                    "released",
+                                    "planned"
+                                  ],
+                                  "description": "`released` gerçek çıkış anı, `planned` onaylı talebin planlanan saati"
+                                },
+                                "departureAt": {
+                                  "type": "string"
+                                },
+                                "fromPeriod": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "İlk etkilenen dersin sırası (\"4. dersten itibaren\"); yoksa `null`"
+                                },
+                                "lessons": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessonId": {
+                                        "type": "string"
+                                      },
+                                      "period": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Günün kaçıncı dersi (1’den)"
+                                      },
+                                      "startsAt": {
+                                        "type": "string"
+                                      },
+                                      "endsAt": {
+                                        "type": "string"
+                                      },
+                                      "subjectId": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "partial": {
+                                        "type": "boolean",
+                                        "description": "Ders sürerken çıktı"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessonId",
+                                      "period",
+                                      "startsAt",
+                                      "endsAt",
+                                      "subjectId",
+                                      "title",
+                                      "partial"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "departureAt",
+                                "fromPeriod",
+                                "lessons"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Etkilenen dersler; onaylı ya da teslim edilmişte dolu"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "classId",
+                        "className",
+                        "dismissalOn",
+                        "plannedAt",
+                        "reason",
+                        "pickupKind",
+                        "pickupGuardianLinkId",
+                        "pickupName",
+                        "pickupRelationship",
+                        "status",
+                        "source",
+                        "decidedAt",
+                        "releasedAt",
+                        "releasedToName",
+                        "version",
+                        "reasonNote",
+                        "pickupIdLast4",
+                        "maskedIdLast4",
+                        "rejectionReason",
+                        "cancelledAt",
+                        "cancelReason",
+                        "releasedToKind",
+                        "authorizedPickups",
+                        "effect",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [

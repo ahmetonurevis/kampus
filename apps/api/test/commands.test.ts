@@ -342,6 +342,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/social-activities',
   'POST /api/v1/finance/social-activities/{activityId}/hours',
   'POST /api/v1/finance/social-activities/my/hours',
+  // Erken çıkış talebi; çift gönderim aynı öğrenciye ikinci talep açmaz
+  // (routes/finance-early-dismissals.ts; DOM-FIN-161, ON-168).
+  'POST /api/v1/finance/early-dismissals',
 ]
 // Onur: kayıt ve finans sonu
 

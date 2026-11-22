@@ -273,6 +273,9 @@ const FinanceTeacherFeedbackSection = lazy(async () => ({
 const FinanceSocialActivitiesSection = lazy(async () => ({
   default: (await import('./FinanceSocialActivitiesSection.tsx')).FinanceSocialActivitiesSection,
 }))
+const FinanceEarlyDismissalsSection = lazy(async () => ({
+  default: (await import('./FinanceEarlyDismissalsSection.tsx')).FinanceEarlyDismissalsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -361,6 +364,7 @@ const VIEWS = {
   healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
   teacherFeedback: { label: 'Öğretmen geri bildirimi', param: 'ogretmen-geri-bildirimi' },
   socialActivities: { label: 'Sosyal etkinlik saatleri', param: 'sosyal-etkinlik' },
+  earlyDismissals: { label: 'Erken çıkış', param: 'erken-cikis' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -444,6 +448,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * kabuğundaki görünümde, öğrenci ve veli yanıtını kendi ekranında görür (K-532).
  * Sosyal etkinlik saatleri (DOM-FIN-160) yalnız yöneticide ve yalnız okulda; öğretmen ekranı
  * platform kabuğundadır (K-535).
+ * Erken çıkış (DOM-FIN-161) ikisine açıktır; ön büro onaylar ve teslim eder (K-538, K-539).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -724,6 +729,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
         {tab === 'teacherFeedback' ? <FinanceTeacherFeedbackSection /> : null}
         {tab === 'socialActivities' ? <FinanceSocialActivitiesSection /> : null}
+        {tab === 'earlyDismissals' ? <FinanceEarlyDismissalsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

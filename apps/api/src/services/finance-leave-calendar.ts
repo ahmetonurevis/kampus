@@ -22,6 +22,7 @@ import {
 } from '../db/finance-leave-calendar.ts'
 import { ConflictError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { institutionHolidaysFor } from './finance-school-calendar.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -87,17 +88,22 @@ export interface LeaveCalendarQuery extends LeavePeriod {
 }
 
 /**
- * Takvim (K-420): aralığa değen izinler, sınav haftaları, branş seçenekleri ve (yalnız yönetici)
- * branşta eşiğe ulaşan günler. Ön büro yalnız onaylı izinleri türsüz görür; durum süzgeci onda
+ * Takvim (K-420): aralığa değen izinler, sınav haftaları, kurum tatilleri, branş seçenekleri ve
+ * (yalnız yönetici) branşta eşiğe ulaşan günler. Tatilin tek kaynağı okul takvimidir (DOM-FIN-163,
+ * K-545): yayımlanmış, tüm kurum hedefli tatil etkinlikleri; izin takvimi tatil ayarı tutmaz. Ön büro yalnız onaylı izinleri türsüz görür; durum süzgeci onda
  * etkisizdir. Branş ve rol süzgeci kayıtları süzer; eşik günleri branş süzgecine uyar.
  */
 export async function leaveCalendarFor(ctx: ServiceContext, query: LeaveCalendarQuery) {
   const audience = leaveCalendarAudience(ctx.actor.role)
   const period = { startDate: query.startDate, endDate: query.endDate }
-  const [absences, branch, settings] = await Promise.all([
+  const [absences, branch, settings, holidays] = await Promise.all([
     loadLeaveAbsences(ctx.db, ctx.institutionId, period),
     loadBranchData(ctx.db, ctx.institutionId),
     loadLeaveCalendarSettings(ctx.db, ctx.institutionId),
+    institutionHolidaysFor(ctx.db, ctx.institutionId, {
+      from: period.startDate,
+      to: period.endDate,
+    }),
   ])
   const all = calendarAbsences(absences)
   const status = audience === 'front_desk' ? 'approved' : query.status
@@ -126,6 +132,7 @@ export async function leaveCalendarFor(ctx: ServiceContext, query: LeaveCalendar
     examWeeks: settings.examWeeks.filter(
       (week) => week.startDate <= period.endDate && period.startDate <= week.endDate,
     ),
+    holidays,
     busyDays,
     subjects,
     concurrentThreshold: audience === 'front_desk' ? null : settings.concurrentThreshold,

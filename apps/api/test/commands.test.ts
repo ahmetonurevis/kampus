@@ -353,6 +353,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Yemekhane alerji uyarısının görevli onayı; çift tıklama ikinci işareti yazmaz
   // (routes/finance-meal-allergy-checks.ts; DOM-FIN-162, ON-151).
   'POST /api/v1/finance/meal-allergy-checks/acknowledgements',
+  // Okul takvimi etkinliği; çift tıklama ikinci taslağı açmaz
+  // (routes/finance-school-calendar.ts; DOM-FIN-163, ON-090).
+  'POST /api/v1/finance/school-calendar/events',
 ]
 // Onur: kayıt ve finans sonu
 

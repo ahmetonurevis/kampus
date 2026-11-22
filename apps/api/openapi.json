@@ -206718,6 +206718,30 @@
                           },
                           "description": "Aralığa değen sınav haftaları"
                         },
+                        "holidays": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aralığa değen kurum tatilleri: okul takviminin yayımlanmış, tüm kurum hedefli tatil etkinlikleri (DOM-FIN-163, K-545); takvim modülü kapalı olsa da okunur"
+                        },
                         "busyDays": {
                           "type": "array",
                           "items": {
@@ -206783,6 +206807,7 @@
                         "endDate",
                         "entries",
                         "examWeeks",
+                        "holidays",
                         "busyDays",
                         "subjects",
                         "concurrentThreshold"
@@ -388706,6 +388731,2960 @@
                         "serviceDate",
                         "mealKind",
                         "menuId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar": {
+      "get": {
+        "operationId": "getSchoolCalendar",
+        "summary": "Okul takvimi (ay ve hafta görünümü)",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Aralığa değen bütün etkinlikler (taslak, yayımlanmış, iptal edilmiş; başlangıç günü, tüm gün önce, saat sırasıyla) ve bağlantılar: aralıkta süren onaylı ya da tamamlanmış gezi planları ve aralıkta başlayan biletli etkinlikler (kopya değil, K-546). Aralık en çok 62 gün (ay görünümü 6 hafta); sayfasızdır. Süzgeç tür (gezi seçilince yalnız gezi bağlantıları, diğer türlerde bağlantı yok), durum, hedef kitle türü ve başlık araması. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "description": "İlk gün (YYYY-MM-DD, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "description": "Son gün (YYYY-MM-DD, dahil); aralık en çok 62 gün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ceremony",
+                "parent_meeting",
+                "exam_week",
+                "holiday",
+                "trip",
+                "performance",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Tür süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "institution",
+                "grade",
+                "class",
+                "group"
+              ]
+            },
+            "in": "query",
+            "name": "audienceKind",
+            "required": false,
+            "description": "Hedef kitle türü süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlıkta arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "ceremony",
+                                  "parent_meeting",
+                                  "exam_week",
+                                  "holiday",
+                                  "trip",
+                                  "performance",
+                                  "other"
+                                ]
+                              },
+                              "allDay": {
+                                "type": "boolean"
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                              },
+                              "startTime": {
+                                "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "endTime": {
+                                "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "startsAt": {
+                                "type": "string",
+                                "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                              },
+                              "endsAt": {
+                                "type": "string",
+                                "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                              },
+                              "location": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "audienceKind": {
+                                "type": "string",
+                                "enum": [
+                                  "institution",
+                                  "grade",
+                                  "class",
+                                  "group"
+                                ],
+                                "description": "Hedef kitle türü"
+                              },
+                              "cancelReason": {
+                                "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "audienceIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                              },
+                              "audienceLabels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "published",
+                                  "cancelled"
+                                ],
+                                "description": "`draft` taslak, `published`, `cancelled`"
+                              },
+                              "publishedAt": {
+                                "description": "Yayım anı (ISO 8601)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledAt": {
+                                "description": "İptal anı (ISO 8601)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "description": "Son değişiklik anı (ISO 8601)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "kind",
+                              "allDay",
+                              "startDate",
+                              "endDate",
+                              "startTime",
+                              "endTime",
+                              "startsAt",
+                              "endsAt",
+                              "location",
+                              "description",
+                              "audienceKind",
+                              "cancelReason",
+                              "audienceIds",
+                              "audienceLabels",
+                              "status",
+                              "publishedAt",
+                              "cancelledAt",
+                              "updatedAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aralığa değen etkinlikler, başlangıç sırasıyla"
+                        },
+                        "links": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "trip_plan",
+                                  "ticketed_event"
+                                ],
+                                "description": "`trip_plan` gezi planı (DOM-FIN-111), `ticketed_event` biletli etkinlik"
+                              },
+                              "sourceId": {
+                                "type": "string",
+                                "description": "Bağlı kaydın kimliği (gezi planı ya da biletli etkinlik)"
+                              },
+                              "reference": {
+                                "description": "Gezi plan numarası (`GZ-3`); bilette `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "startsAt": {
+                                "type": "string",
+                                "description": "Çıkış ya da başlangıç anı (ISO 8601)"
+                              },
+                              "endsAt": {
+                                "description": "Dönüş anı (ISO 8601); biletli etkinlikte `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "location": {
+                                "description": "Salon (biletli etkinlik); gezide `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "source",
+                              "sourceId",
+                              "reference",
+                              "title",
+                              "startsAt",
+                              "endsAt",
+                              "location"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Takvime bağlantı olarak eklenen kayıt; kopya değildir, kendi ekranında yönetilir"
+                          },
+                          "description": "Aralıktaki gezi planları ve biletli etkinlikler"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "events",
+                        "links"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar/my": {
+      "get": {
+        "operationId": "getMySchoolCalendar",
+        "summary": "Kendi okul takvimim (öğretmen, veli, öğrenci)",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Aralığa değen **yayımlanmış** etkinlikler (yayımdan sonra iptal edilenler `cancelled` ve gerekçesiyle); taslak görünmez. Hedef kitle kapsamı sunucuda (K-544): tüm kurum herkese; kademe, sınıf ve grup yalnız velinin bağlı çocuklarının, öğrencinin kendisinin, öğretmenin ders verdiği ve rehberi olduğu sınıfların (ve o sınıfların kademelerinin) ve öğretmeni olduğu grupların. Bağlantılar (K-546): veli ve öğrencide öğrencinin gezi günü grubunda olduğu onaylı gezi planları ve adına etkin bileti olan biletli etkinlikler, öğretmende görevli olduğu gezi planları. Aralık en çok 62 gün. Rol: `ogretmen`, `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `calendar`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "description": "İlk gün (YYYY-MM-DD, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "description": "Son gün (YYYY-MM-DD, dahil); aralık en çok 62 gün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "events": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "ceremony",
+                                  "parent_meeting",
+                                  "exam_week",
+                                  "holiday",
+                                  "trip",
+                                  "performance",
+                                  "other"
+                                ]
+                              },
+                              "allDay": {
+                                "type": "boolean"
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                              },
+                              "startTime": {
+                                "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "endTime": {
+                                "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "startsAt": {
+                                "type": "string",
+                                "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                              },
+                              "endsAt": {
+                                "type": "string",
+                                "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                              },
+                              "location": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "audienceKind": {
+                                "type": "string",
+                                "enum": [
+                                  "institution",
+                                  "grade",
+                                  "class",
+                                  "group"
+                                ],
+                                "description": "Hedef kitle türü"
+                              },
+                              "cancelReason": {
+                                "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "published",
+                                  "cancelled"
+                                ],
+                                "description": "Yayımlanmış ya da yayımlandıktan sonra iptal edilmiş"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "kind",
+                              "allDay",
+                              "startDate",
+                              "endDate",
+                              "startTime",
+                              "endTime",
+                              "startsAt",
+                              "endsAt",
+                              "location",
+                              "description",
+                              "audienceKind",
+                              "cancelReason",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kapsamdaki yayımlanmış etkinlikler; taslak görünmez"
+                        },
+                        "links": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "trip_plan",
+                                  "ticketed_event"
+                                ],
+                                "description": "`trip_plan` gezi planı (DOM-FIN-111), `ticketed_event` biletli etkinlik"
+                              },
+                              "sourceId": {
+                                "type": "string",
+                                "description": "Bağlı kaydın kimliği (gezi planı ya da biletli etkinlik)"
+                              },
+                              "reference": {
+                                "description": "Gezi plan numarası (`GZ-3`); bilette `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "startsAt": {
+                                "type": "string",
+                                "description": "Çıkış ya da başlangıç anı (ISO 8601)"
+                              },
+                              "endsAt": {
+                                "description": "Dönüş anı (ISO 8601); biletli etkinlikte `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "location": {
+                                "description": "Salon (biletli etkinlik); gezide `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "source",
+                              "sourceId",
+                              "reference",
+                              "title",
+                              "startsAt",
+                              "endsAt",
+                              "location"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Takvime bağlantı olarak eklenen kayıt; kopya değildir, kendi ekranında yönetilir"
+                          },
+                          "description": "Öğrencinin gezi günü grubunda olduğu ya da bileti olan kayıtlar"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "events",
+                        "links"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar/ical": {
+      "get": {
+        "operationId": "exportSchoolCalendarIcal",
+        "summary": "Okul takvimini iCal (.ics) olarak indir",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "RFC 5545 takvim dosyası (`text/calendar; charset=utf-8`, ek olarak): yönetici ve ön büroda kurumun yayımlanmış etkinlikleri, öğretmen, veli ve öğrencide `GET …/my` ile aynı kapsam; ikisinde de bağlantılar (gezi planı, biletli etkinlik). Taslak dosyaya girmez; yayımdan sonra iptal edilen `STATUS:CANCELLED` ile gider. Tüm gün etkinlik `VALUE=DATE`, saatli etkinlik UTC anıdır. Aralık en çok 366 gün. Dosya oturumla indirilir; kişisel abonelik bağlantısı (belirteçli adres) yoktur. Kullanıcı başına 10/dk. Rol: beş rol. Modüller `finance` ve `calendar`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "description": "İlk gün (YYYY-MM-DD, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "description": "Son gün (YYYY-MM-DD, dahil); aralık en çok 366 gün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "iCal dosyası (RFC 5545)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "description": "iCal dosyası (RFC 5545)"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar/events": {
+      "get": {
+        "operationId": "listSchoolEvents",
+        "summary": "Okul takvimi (liste görünümü)",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Aralığa değen etkinlikler sayfalı (başlangıç sırasıyla); aralık en çok 366 gün. Süzgeç tür, durum, hedef kitle türü ve başlık araması. Bağlantılar bu listede yoktur (ay/hafta görünümündedir). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "description": "İlk gün (YYYY-MM-DD, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "description": "Son gün (YYYY-MM-DD, dahil); aralık en çok 366 gün"
+          },
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ceremony",
+                "parent_meeting",
+                "exam_week",
+                "holiday",
+                "trip",
+                "performance",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Tür süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "institution",
+                "grade",
+                "class",
+                "group"
+              ]
+            },
+            "in": "query",
+            "name": "audienceKind",
+            "required": false,
+            "description": "Hedef kitle türü süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlıkta arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "ceremony",
+                              "parent_meeting",
+                              "exam_week",
+                              "holiday",
+                              "trip",
+                              "performance",
+                              "other"
+                            ]
+                          },
+                          "allDay": {
+                            "type": "boolean"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                          },
+                          "startTime": {
+                            "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "endTime": {
+                            "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "startsAt": {
+                            "type": "string",
+                            "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                          },
+                          "endsAt": {
+                            "type": "string",
+                            "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                          },
+                          "location": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "audienceKind": {
+                            "type": "string",
+                            "enum": [
+                              "institution",
+                              "grade",
+                              "class",
+                              "group"
+                            ],
+                            "description": "Hedef kitle türü"
+                          },
+                          "cancelReason": {
+                            "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "audienceIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                          },
+                          "audienceLabels": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "cancelled"
+                            ],
+                            "description": "`draft` taslak, `published`, `cancelled`"
+                          },
+                          "publishedAt": {
+                            "description": "Yayım anı (ISO 8601)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "description": "İptal anı (ISO 8601)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "description": "Son değişiklik anı (ISO 8601)"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "kind",
+                          "allDay",
+                          "startDate",
+                          "endDate",
+                          "startTime",
+                          "endTime",
+                          "startsAt",
+                          "endsAt",
+                          "location",
+                          "description",
+                          "audienceKind",
+                          "cancelReason",
+                          "audienceIds",
+                          "audienceLabels",
+                          "status",
+                          "publishedAt",
+                          "cancelledAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSchoolEvent",
+        "summary": "Etkinlik ekle (taslak)",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Taslak etkinlik açar (K-544): başlık, tür, tüm gün ya da saatli (iki saat de SS:DD, tek günlükte bitiş başlangıçtan sonra), başlangıç ve bitiş günü (en çok 120 gün), yer, açıklama ve hedef kitle (tüm kurum, kademe 1–12, sınıf ya da dil okulu grubu). Tatil ve sınav haftası tüm gündür (400). Kurumda olmayan sınıf ya da iptal edilmiş/olmayan grup 422 `school_event_audience_not_found`. Taslak yalnız yönetici ve ön büroda görünür. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Etkinlik başlığı (2–120)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "ceremony",
+                      "parent_meeting",
+                      "exam_week",
+                      "holiday",
+                      "trip",
+                      "performance",
+                      "other"
+                    ],
+                    "description": "Etkinlik türü"
+                  },
+                  "allDay": {
+                    "type": "boolean",
+                    "description": "Tüm gün; tatil ve sınav haftası her zaman tüm gündür"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Bitiş günü (YYYY-MM-DD, dahil); tek günlükte başlangıçla aynı"
+                  },
+                  "startTime": {
+                    "description": "Başlangıç saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                        "description": "Başlangıç saati (SS:DD, Europe/Istanbul)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endTime": {
+                    "description": "Bitiş saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                        "description": "Bitiş saati (SS:DD, Europe/Istanbul)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "description": "Yer (en çok 160); boş yok",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 160
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "description": "Açıklama (en çok 2000); boş yok",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "audienceKind": {
+                    "type": "string",
+                    "enum": [
+                      "institution",
+                      "grade",
+                      "class",
+                      "group"
+                    ],
+                    "description": "Hedef kitle: tüm kurum, kademe (sınıf düzeyi), sınıf ya da grup"
+                  },
+                  "audienceIds": {
+                    "default": [],
+                    "maxItems": 40,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "description": "Kademe için sınıf düzeyleri (\"7\"), sınıf için sınıf kimlikleri, grup için dil okulu grubu kimlikleri; tüm kurumda boş"
+                  }
+                },
+                "required": [
+                  "title",
+                  "kind",
+                  "allDay",
+                  "startDate",
+                  "endDate",
+                  "audienceKind"
+                ],
+                "additionalProperties": false,
+                "description": "Yeni etkinlik (taslak açılır)"
+              }
+            }
+          },
+          "description": "Yeni etkinlik (taslak açılır)"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ceremony",
+                            "parent_meeting",
+                            "exam_week",
+                            "holiday",
+                            "trip",
+                            "performance",
+                            "other"
+                          ]
+                        },
+                        "allDay": {
+                          "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                        },
+                        "startTime": {
+                          "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endTime": {
+                          "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                        },
+                        "endsAt": {
+                          "type": "string",
+                          "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceKind": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "grade",
+                            "class",
+                            "group"
+                          ],
+                          "description": "Hedef kitle türü"
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                        },
+                        "audienceLabels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `published`, `cancelled`"
+                        },
+                        "publishedAt": {
+                          "description": "Yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Son değişiklik anı (ISO 8601)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "kind",
+                        "allDay",
+                        "startDate",
+                        "endDate",
+                        "startTime",
+                        "endTime",
+                        "startsAt",
+                        "endsAt",
+                        "location",
+                        "description",
+                        "audienceKind",
+                        "cancelReason",
+                        "audienceIds",
+                        "audienceLabels",
+                        "status",
+                        "publishedAt",
+                        "cancelledAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar/events/{eventId}": {
+      "get": {
+        "operationId": "getSchoolEvent",
+        "summary": "Etkinlik ayrıntısı",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Etkinlik, hedeflerin adları, durum anları ve sürüm. Başka kurumun etkinliği 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ceremony",
+                            "parent_meeting",
+                            "exam_week",
+                            "holiday",
+                            "trip",
+                            "performance",
+                            "other"
+                          ]
+                        },
+                        "allDay": {
+                          "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                        },
+                        "startTime": {
+                          "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endTime": {
+                          "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                        },
+                        "endsAt": {
+                          "type": "string",
+                          "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceKind": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "grade",
+                            "class",
+                            "group"
+                          ],
+                          "description": "Hedef kitle türü"
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                        },
+                        "audienceLabels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `published`, `cancelled`"
+                        },
+                        "publishedAt": {
+                          "description": "Yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Son değişiklik anı (ISO 8601)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "kind",
+                        "allDay",
+                        "startDate",
+                        "endDate",
+                        "startTime",
+                        "endTime",
+                        "startsAt",
+                        "endsAt",
+                        "location",
+                        "description",
+                        "audienceKind",
+                        "cancelReason",
+                        "audienceIds",
+                        "audienceLabels",
+                        "status",
+                        "publishedAt",
+                        "cancelledAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSchoolEvent",
+        "summary": "Etkinliği düzenle",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Gönderilen alanlar mevcutla birleşir ve sonuç bütün olarak doğrulanır (ihlal 422 `school_event_invalid`, `issues` yolu alan adı); hedef değiştiyse sınıf ve grup kurumda olmalı (422 `school_event_audience_not_found`). Değişiklik yoksa 422 `school_event_unchanged`; iptal edilmiş etkinlik 422 `school_event_cancelled`. Yayımlanmış etkinlikte değişiklik hedef kitleye hemen görünür (K-544). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Etkinlik başlığı (2–120)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "ceremony",
+                      "parent_meeting",
+                      "exam_week",
+                      "holiday",
+                      "trip",
+                      "performance",
+                      "other"
+                    ],
+                    "description": "Etkinlik türü"
+                  },
+                  "allDay": {
+                    "type": "boolean",
+                    "description": "Tüm gün; tatil ve sınav haftası her zaman tüm gündür"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Bitiş günü (YYYY-MM-DD, dahil); tek günlükte başlangıçla aynı"
+                  },
+                  "startTime": {
+                    "description": "Başlangıç saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                        "description": "Başlangıç saati (SS:DD, Europe/Istanbul)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endTime": {
+                    "description": "Bitiş saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                        "description": "Bitiş saati (SS:DD, Europe/Istanbul)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "description": "Yer (en çok 160); boş yok",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 160
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "description": "Açıklama (en çok 2000); boş yok",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "audienceKind": {
+                    "type": "string",
+                    "enum": [
+                      "institution",
+                      "grade",
+                      "class",
+                      "group"
+                    ],
+                    "description": "Hedef kitle: tüm kurum, kademe (sınıf düzeyi), sınıf ya da grup"
+                  },
+                  "audienceIds": {
+                    "maxItems": 40,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "description": "Kademe için sınıf düzeyleri (\"7\"), sınıf için sınıf kimlikleri, grup için dil okulu grubu kimlikleri; tüm kurumda boş"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Değişen alanlar; gönderilmeyen alan değişmez, sonuç bütün olarak doğrulanır"
+              }
+            }
+          },
+          "description": "Değişen alanlar; gönderilmeyen alan değişmez, sonuç bütün olarak doğrulanır"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ceremony",
+                            "parent_meeting",
+                            "exam_week",
+                            "holiday",
+                            "trip",
+                            "performance",
+                            "other"
+                          ]
+                        },
+                        "allDay": {
+                          "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                        },
+                        "startTime": {
+                          "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endTime": {
+                          "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                        },
+                        "endsAt": {
+                          "type": "string",
+                          "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceKind": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "grade",
+                            "class",
+                            "group"
+                          ],
+                          "description": "Hedef kitle türü"
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                        },
+                        "audienceLabels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `published`, `cancelled`"
+                        },
+                        "publishedAt": {
+                          "description": "Yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Son değişiklik anı (ISO 8601)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "kind",
+                        "allDay",
+                        "startDate",
+                        "endDate",
+                        "startTime",
+                        "endTime",
+                        "startsAt",
+                        "endsAt",
+                        "location",
+                        "description",
+                        "audienceKind",
+                        "cancelReason",
+                        "audienceIds",
+                        "audienceLabels",
+                        "status",
+                        "publishedAt",
+                        "cancelledAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar/events/{eventId}/publish": {
+      "post": {
+        "operationId": "publishSchoolEvent",
+        "summary": "Etkinliği yayımla",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Taslak etkinlik hedef kitleye açılır. Yayımlanmış 422 `school_event_not_draft`, iptal edilmiş 422 `school_event_cancelled` (K-544). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ceremony",
+                            "parent_meeting",
+                            "exam_week",
+                            "holiday",
+                            "trip",
+                            "performance",
+                            "other"
+                          ]
+                        },
+                        "allDay": {
+                          "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                        },
+                        "startTime": {
+                          "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endTime": {
+                          "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                        },
+                        "endsAt": {
+                          "type": "string",
+                          "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceKind": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "grade",
+                            "class",
+                            "group"
+                          ],
+                          "description": "Hedef kitle türü"
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                        },
+                        "audienceLabels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `published`, `cancelled`"
+                        },
+                        "publishedAt": {
+                          "description": "Yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Son değişiklik anı (ISO 8601)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "kind",
+                        "allDay",
+                        "startDate",
+                        "endDate",
+                        "startTime",
+                        "endTime",
+                        "startsAt",
+                        "endsAt",
+                        "location",
+                        "description",
+                        "audienceKind",
+                        "cancelReason",
+                        "audienceIds",
+                        "audienceLabels",
+                        "status",
+                        "publishedAt",
+                        "cancelledAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/school-calendar/events/{eventId}/cancel": {
+      "post": {
+        "operationId": "cancelSchoolEvent",
+        "summary": "Etkinliği iptal et",
+        "tags": [
+          "finance-school-calendar"
+        ],
+        "description": "Gerekçeli iptal (10–500 karakter); etkinlik silinmez. Yayımlanmışken iptal edilen etkinlik hedef kitleye \"İptal edildi\" ve gerekçesiyle görünür, taslakken iptal edilen görünmez. İptal edilmiş 422 `school_event_cancelled`, bitiş günü geçmiş 422 `school_event_ended` (K-544). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi (10–500); hedef kitle de görür"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "description": "Etkinlik iptali"
+              }
+            }
+          },
+          "description": "Etkinlik iptali"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "ceremony",
+                            "parent_meeting",
+                            "exam_week",
+                            "holiday",
+                            "trip",
+                            "performance",
+                            "other"
+                          ]
+                        },
+                        "allDay": {
+                          "type": "boolean"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD, dahil)"
+                        },
+                        "startTime": {
+                          "description": "Başlangıç saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endTime": {
+                          "description": "Bitiş saati (SS:DD); tüm günde `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı)"
+                        },
+                        "endsAt": {
+                          "type": "string",
+                          "description": "Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç)"
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceKind": {
+                          "type": "string",
+                          "enum": [
+                            "institution",
+                            "grade",
+                            "class",
+                            "group"
+                          ],
+                          "description": "Hedef kitle türü"
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi; iptal edilmediyse `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef kimlikleri (kademe, sınıf ya da grup)"
+                        },
+                        "audienceLabels": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedeflerin adları (\"7. sınıf\", \"7-A\", grup adı), `audienceIds` sırasıyla"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `published`, `cancelled`"
+                        },
+                        "publishedAt": {
+                          "description": "Yayım anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı (ISO 8601)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Son değişiklik anı (ISO 8601)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "kind",
+                        "allDay",
+                        "startDate",
+                        "endDate",
+                        "startTime",
+                        "endTime",
+                        "startsAt",
+                        "endsAt",
+                        "location",
+                        "description",
+                        "audienceKind",
+                        "cancelReason",
+                        "audienceIds",
+                        "audienceLabels",
+                        "status",
+                        "publishedAt",
+                        "cancelledAt",
+                        "updatedAt",
+                        "version"
                       ],
                       "additionalProperties": false
                     }

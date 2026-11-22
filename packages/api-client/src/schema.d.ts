@@ -17244,6 +17244,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/school-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Okul takvimi (ay ve hafta görünümü)
+         * @description Aralığa değen bütün etkinlikler (taslak, yayımlanmış, iptal edilmiş; başlangıç günü, tüm gün önce, saat sırasıyla) ve bağlantılar: aralıkta süren onaylı ya da tamamlanmış gezi planları ve aralıkta başlayan biletli etkinlikler (kopya değil, K-546). Aralık en çok 62 gün (ay görünümü 6 hafta); sayfasızdır. Süzgeç tür (gezi seçilince yalnız gezi bağlantıları, diğer türlerde bağlantı yok), durum, hedef kitle türü ve başlık araması. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        get: operations["getSchoolCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/school-calendar/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kendi okul takvimim (öğretmen, veli, öğrenci)
+         * @description Aralığa değen **yayımlanmış** etkinlikler (yayımdan sonra iptal edilenler `cancelled` ve gerekçesiyle); taslak görünmez. Hedef kitle kapsamı sunucuda (K-544): tüm kurum herkese; kademe, sınıf ve grup yalnız velinin bağlı çocuklarının, öğrencinin kendisinin, öğretmenin ders verdiği ve rehberi olduğu sınıfların (ve o sınıfların kademelerinin) ve öğretmeni olduğu grupların. Bağlantılar (K-546): veli ve öğrencide öğrencinin gezi günü grubunda olduğu onaylı gezi planları ve adına etkin bileti olan biletli etkinlikler, öğretmende görevli olduğu gezi planları. Aralık en çok 62 gün. Rol: `ogretmen`, `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `calendar`.
+         */
+        get: operations["getMySchoolCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/school-calendar/ical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Okul takvimini iCal (.ics) olarak indir
+         * @description RFC 5545 takvim dosyası (`text/calendar; charset=utf-8`, ek olarak): yönetici ve ön büroda kurumun yayımlanmış etkinlikleri, öğretmen, veli ve öğrencide `GET …/my` ile aynı kapsam; ikisinde de bağlantılar (gezi planı, biletli etkinlik). Taslak dosyaya girmez; yayımdan sonra iptal edilen `STATUS:CANCELLED` ile gider. Tüm gün etkinlik `VALUE=DATE`, saatli etkinlik UTC anıdır. Aralık en çok 366 gün. Dosya oturumla indirilir; kişisel abonelik bağlantısı (belirteçli adres) yoktur. Kullanıcı başına 10/dk. Rol: beş rol. Modüller `finance` ve `calendar`.
+         */
+        get: operations["exportSchoolCalendarIcal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/school-calendar/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Okul takvimi (liste görünümü)
+         * @description Aralığa değen etkinlikler sayfalı (başlangıç sırasıyla); aralık en çok 366 gün. Süzgeç tür, durum, hedef kitle türü ve başlık araması. Bağlantılar bu listede yoktur (ay/hafta görünümündedir). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        get: operations["listSchoolEvents"];
+        put?: never;
+        /**
+         * Etkinlik ekle (taslak)
+         * @description Taslak etkinlik açar (K-544): başlık, tür, tüm gün ya da saatli (iki saat de SS:DD, tek günlükte bitiş başlangıçtan sonra), başlangıç ve bitiş günü (en çok 120 gün), yer, açıklama ve hedef kitle (tüm kurum, kademe 1–12, sınıf ya da dil okulu grubu). Tatil ve sınav haftası tüm gündür (400). Kurumda olmayan sınıf ya da iptal edilmiş/olmayan grup 422 `school_event_audience_not_found`. Taslak yalnız yönetici ve ön büroda görünür. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        post: operations["createSchoolEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/school-calendar/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Etkinlik ayrıntısı
+         * @description Etkinlik, hedeflerin adları, durum anları ve sürüm. Başka kurumun etkinliği 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        get: operations["getSchoolEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Etkinliği düzenle
+         * @description Gönderilen alanlar mevcutla birleşir ve sonuç bütün olarak doğrulanır (ihlal 422 `school_event_invalid`, `issues` yolu alan adı); hedef değiştiyse sınıf ve grup kurumda olmalı (422 `school_event_audience_not_found`). Değişiklik yoksa 422 `school_event_unchanged`; iptal edilmiş etkinlik 422 `school_event_cancelled`. Yayımlanmış etkinlikte değişiklik hedef kitleye hemen görünür (K-544). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        patch: operations["updateSchoolEvent"];
+        trace?: never;
+    };
+    "/api/v1/finance/school-calendar/events/{eventId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etkinliği yayımla
+         * @description Taslak etkinlik hedef kitleye açılır. Yayımlanmış 422 `school_event_not_draft`, iptal edilmiş 422 `school_event_cancelled` (K-544). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        post: operations["publishSchoolEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/school-calendar/events/{eventId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etkinliği iptal et
+         * @description Gerekçeli iptal (10–500 karakter); etkinlik silinmez. Yayımlanmışken iptal edilen etkinlik hedef kitleye "İptal edildi" ve gerekçesiyle görünür, taslakken iptal edilen görünmez. İptal edilmiş 422 `school_event_cancelled`, bitiş günü geçmiş 422 `school_event_ended` (K-544). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `calendar` (kapalıysa 403).
+         */
+        post: operations["cancelSchoolEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -101700,6 +101848,12 @@ export interface operations {
                                 startDate: string;
                                 endDate: string;
                             }[];
+                            /** @description Aralığa değen kurum tatilleri: okul takviminin yayımlanmış, tüm kurum hedefli tatil etkinlikleri (DOM-FIN-163, K-545); takvim modülü kapalı olsa da okunur */
+                            holidays: {
+                                title: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
                             /** @description Aynı branşta izinli sayısının eşiğe ulaştığı günler (ön büroda boş) */
                             busyDays: {
                                 day: string;
@@ -181020,6 +181174,1384 @@ export interface operations {
                             /** @enum {string} */
                             mealKind: "breakfast" | "lunch" | "snack";
                             menuId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSchoolCalendar: {
+        parameters: {
+            query: {
+                /** @description İlk gün (YYYY-MM-DD, dahil) */
+                from: string;
+                /** @description Son gün (YYYY-MM-DD, dahil); aralık en çok 62 gün */
+                to: string;
+                /** @description Tür süzgeci */
+                kind?: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                /** @description Durum süzgeci */
+                status?: "draft" | "published" | "cancelled";
+                /** @description Hedef kitle türü süzgeci */
+                audienceKind?: "institution" | "grade" | "class" | "group";
+                /** @description Başlıkta arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            /** @description Aralığa değen etkinlikler, başlangıç sırasıyla */
+                            events: {
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                                allDay: boolean;
+                                /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                                startDate: string;
+                                /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                                endDate: string;
+                                /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                                startTime: string | null;
+                                /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                                endTime: string | null;
+                                /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                                startsAt: string;
+                                /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                                endsAt: string;
+                                location: string | null;
+                                description: string | null;
+                                /**
+                                 * @description Hedef kitle türü
+                                 * @enum {string}
+                                 */
+                                audienceKind: "institution" | "grade" | "class" | "group";
+                                /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                                cancelReason: string | null;
+                                /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                                audienceIds: string[];
+                                /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                                audienceLabels: string[];
+                                /**
+                                 * @description `draft` taslak, `published`, `cancelled`
+                                 * @enum {string}
+                                 */
+                                status: "draft" | "published" | "cancelled";
+                                /** @description Yayım anı (ISO 8601) */
+                                publishedAt: string | null;
+                                /** @description İptal anı (ISO 8601) */
+                                cancelledAt: string | null;
+                                /** @description Son değişiklik anı (ISO 8601) */
+                                updatedAt: string;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            /** @description Aralıktaki gezi planları ve biletli etkinlikler */
+                            links: {
+                                /**
+                                 * @description `trip_plan` gezi planı (DOM-FIN-111), `ticketed_event` biletli etkinlik
+                                 * @enum {string}
+                                 */
+                                source: "trip_plan" | "ticketed_event";
+                                /** @description Bağlı kaydın kimliği (gezi planı ya da biletli etkinlik) */
+                                sourceId: string;
+                                /** @description Gezi plan numarası (`GZ-3`); bilette `null` */
+                                reference: string | null;
+                                title: string;
+                                /** @description Çıkış ya da başlangıç anı (ISO 8601) */
+                                startsAt: string;
+                                /** @description Dönüş anı (ISO 8601); biletli etkinlikte `null` */
+                                endsAt: string | null;
+                                /** @description Salon (biletli etkinlik); gezide `null` */
+                                location: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMySchoolCalendar: {
+        parameters: {
+            query: {
+                /** @description İlk gün (YYYY-MM-DD, dahil) */
+                from: string;
+                /** @description Son gün (YYYY-MM-DD, dahil); aralık en çok 62 gün */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            /** @description Kapsamdaki yayımlanmış etkinlikler; taslak görünmez */
+                            events: {
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                                allDay: boolean;
+                                /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                                startDate: string;
+                                /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                                endDate: string;
+                                /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                                startTime: string | null;
+                                /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                                endTime: string | null;
+                                /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                                startsAt: string;
+                                /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                                endsAt: string;
+                                location: string | null;
+                                description: string | null;
+                                /**
+                                 * @description Hedef kitle türü
+                                 * @enum {string}
+                                 */
+                                audienceKind: "institution" | "grade" | "class" | "group";
+                                /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                                cancelReason: string | null;
+                                /**
+                                 * @description Yayımlanmış ya da yayımlandıktan sonra iptal edilmiş
+                                 * @enum {string}
+                                 */
+                                status: "published" | "cancelled";
+                            }[];
+                            /** @description Öğrencinin gezi günü grubunda olduğu ya da bileti olan kayıtlar */
+                            links: {
+                                /**
+                                 * @description `trip_plan` gezi planı (DOM-FIN-111), `ticketed_event` biletli etkinlik
+                                 * @enum {string}
+                                 */
+                                source: "trip_plan" | "ticketed_event";
+                                /** @description Bağlı kaydın kimliği (gezi planı ya da biletli etkinlik) */
+                                sourceId: string;
+                                /** @description Gezi plan numarası (`GZ-3`); bilette `null` */
+                                reference: string | null;
+                                title: string;
+                                /** @description Çıkış ya da başlangıç anı (ISO 8601) */
+                                startsAt: string;
+                                /** @description Dönüş anı (ISO 8601); biletli etkinlikte `null` */
+                                endsAt: string | null;
+                                /** @description Salon (biletli etkinlik); gezide `null` */
+                                location: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportSchoolCalendarIcal: {
+        parameters: {
+            query: {
+                /** @description İlk gün (YYYY-MM-DD, dahil) */
+                from: string;
+                /** @description Son gün (YYYY-MM-DD, dahil); aralık en çok 366 gün */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description iCal dosyası (RFC 5545) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSchoolEvents: {
+        parameters: {
+            query: {
+                /** @description İlk gün (YYYY-MM-DD, dahil) */
+                from: string;
+                /** @description Son gün (YYYY-MM-DD, dahil); aralık en çok 366 gün */
+                to: string;
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Tür süzgeci */
+                kind?: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                /** @description Durum süzgeci */
+                status?: "draft" | "published" | "cancelled";
+                /** @description Hedef kitle türü süzgeci */
+                audienceKind?: "institution" | "grade" | "class" | "group";
+                /** @description Başlıkta arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                            allDay: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                            startDate: string;
+                            /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                            startTime: string | null;
+                            /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                            endTime: string | null;
+                            /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                            startsAt: string;
+                            /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                            endsAt: string;
+                            location: string | null;
+                            description: string | null;
+                            /**
+                             * @description Hedef kitle türü
+                             * @enum {string}
+                             */
+                            audienceKind: "institution" | "grade" | "class" | "group";
+                            /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                            cancelReason: string | null;
+                            /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                            audienceIds: string[];
+                            /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                            audienceLabels: string[];
+                            /**
+                             * @description `draft` taslak, `published`, `cancelled`
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "cancelled";
+                            /** @description Yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description İptal anı (ISO 8601) */
+                            cancelledAt: string | null;
+                            /** @description Son değişiklik anı (ISO 8601) */
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSchoolEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Yeni etkinlik (taslak açılır) */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Etkinlik başlığı (2–120) */
+                    title: string;
+                    /**
+                     * @description Etkinlik türü
+                     * @enum {string}
+                     */
+                    kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                    /** @description Tüm gün; tatil ve sınav haftası her zaman tüm gündür */
+                    allDay: boolean;
+                    /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                    startDate: string;
+                    /** @description Bitiş günü (YYYY-MM-DD, dahil); tek günlükte başlangıçla aynı */
+                    endDate: string;
+                    /** @description Başlangıç saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır */
+                    startTime?: string | null;
+                    /** @description Bitiş saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır */
+                    endTime?: string | null;
+                    /** @description Yer (en çok 160); boş yok */
+                    location?: string | null;
+                    /** @description Açıklama (en çok 2000); boş yok */
+                    description?: string | null;
+                    /**
+                     * @description Hedef kitle: tüm kurum, kademe (sınıf düzeyi), sınıf ya da grup
+                     * @enum {string}
+                     */
+                    audienceKind: "institution" | "grade" | "class" | "group";
+                    /**
+                     * @description Kademe için sınıf düzeyleri ("7"), sınıf için sınıf kimlikleri, grup için dil okulu grubu kimlikleri; tüm kurumda boş
+                     * @default []
+                     */
+                    audienceIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                            allDay: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                            startDate: string;
+                            /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                            startTime: string | null;
+                            /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                            endTime: string | null;
+                            /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                            startsAt: string;
+                            /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                            endsAt: string;
+                            location: string | null;
+                            description: string | null;
+                            /**
+                             * @description Hedef kitle türü
+                             * @enum {string}
+                             */
+                            audienceKind: "institution" | "grade" | "class" | "group";
+                            /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                            cancelReason: string | null;
+                            /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                            audienceIds: string[];
+                            /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                            audienceLabels: string[];
+                            /**
+                             * @description `draft` taslak, `published`, `cancelled`
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "cancelled";
+                            /** @description Yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description İptal anı (ISO 8601) */
+                            cancelledAt: string | null;
+                            /** @description Son değişiklik anı (ISO 8601) */
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSchoolEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                            allDay: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                            startDate: string;
+                            /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                            startTime: string | null;
+                            /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                            endTime: string | null;
+                            /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                            startsAt: string;
+                            /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                            endsAt: string;
+                            location: string | null;
+                            description: string | null;
+                            /**
+                             * @description Hedef kitle türü
+                             * @enum {string}
+                             */
+                            audienceKind: "institution" | "grade" | "class" | "group";
+                            /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                            cancelReason: string | null;
+                            /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                            audienceIds: string[];
+                            /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                            audienceLabels: string[];
+                            /**
+                             * @description `draft` taslak, `published`, `cancelled`
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "cancelled";
+                            /** @description Yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description İptal anı (ISO 8601) */
+                            cancelledAt: string | null;
+                            /** @description Son değişiklik anı (ISO 8601) */
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSchoolEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Değişen alanlar; gönderilmeyen alan değişmez, sonuç bütün olarak doğrulanır */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Etkinlik başlığı (2–120) */
+                    title?: string;
+                    /**
+                     * @description Etkinlik türü
+                     * @enum {string}
+                     */
+                    kind?: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                    /** @description Tüm gün; tatil ve sınav haftası her zaman tüm gündür */
+                    allDay?: boolean;
+                    /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                    startDate?: string;
+                    /** @description Bitiş günü (YYYY-MM-DD, dahil); tek günlükte başlangıçla aynı */
+                    endDate?: string;
+                    /** @description Başlangıç saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır */
+                    startTime?: string | null;
+                    /** @description Bitiş saati (SS:DD); tüm gün değilse zorunlu, tüm günde yok sayılır */
+                    endTime?: string | null;
+                    /** @description Yer (en çok 160); boş yok */
+                    location?: string | null;
+                    /** @description Açıklama (en çok 2000); boş yok */
+                    description?: string | null;
+                    /**
+                     * @description Hedef kitle: tüm kurum, kademe (sınıf düzeyi), sınıf ya da grup
+                     * @enum {string}
+                     */
+                    audienceKind?: "institution" | "grade" | "class" | "group";
+                    /** @description Kademe için sınıf düzeyleri ("7"), sınıf için sınıf kimlikleri, grup için dil okulu grubu kimlikleri; tüm kurumda boş */
+                    audienceIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                            allDay: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                            startDate: string;
+                            /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                            startTime: string | null;
+                            /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                            endTime: string | null;
+                            /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                            startsAt: string;
+                            /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                            endsAt: string;
+                            location: string | null;
+                            description: string | null;
+                            /**
+                             * @description Hedef kitle türü
+                             * @enum {string}
+                             */
+                            audienceKind: "institution" | "grade" | "class" | "group";
+                            /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                            cancelReason: string | null;
+                            /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                            audienceIds: string[];
+                            /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                            audienceLabels: string[];
+                            /**
+                             * @description `draft` taslak, `published`, `cancelled`
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "cancelled";
+                            /** @description Yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description İptal anı (ISO 8601) */
+                            cancelledAt: string | null;
+                            /** @description Son değişiklik anı (ISO 8601) */
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishSchoolEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                            allDay: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                            startDate: string;
+                            /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                            startTime: string | null;
+                            /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                            endTime: string | null;
+                            /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                            startsAt: string;
+                            /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                            endsAt: string;
+                            location: string | null;
+                            description: string | null;
+                            /**
+                             * @description Hedef kitle türü
+                             * @enum {string}
+                             */
+                            audienceKind: "institution" | "grade" | "class" | "group";
+                            /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                            cancelReason: string | null;
+                            /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                            audienceIds: string[];
+                            /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                            audienceLabels: string[];
+                            /**
+                             * @description `draft` taslak, `published`, `cancelled`
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "cancelled";
+                            /** @description Yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description İptal anı (ISO 8601) */
+                            cancelledAt: string | null;
+                            /** @description Son değişiklik anı (ISO 8601) */
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelSchoolEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Etkinlik iptali */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi (10–500); hedef kitle de görür */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @enum {string} */
+                            kind: "ceremony" | "parent_meeting" | "exam_week" | "holiday" | "trip" | "performance" | "other";
+                            allDay: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD, Europe/Istanbul) */
+                            startDate: string;
+                            /** @description Bitiş günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Başlangıç saati (SS:DD); tüm günde `null` */
+                            startTime: string | null;
+                            /** @description Bitiş saati (SS:DD); tüm günde `null` */
+                            endTime: string | null;
+                            /** @description Başlangıç anı (ISO 8601 UTC; tüm günde ilk günün gece yarısı) */
+                            startsAt: string;
+                            /** @description Bitiş anı (ISO 8601 UTC; tüm günde son günden sonraki günün gece yarısı, hariç) */
+                            endsAt: string;
+                            location: string | null;
+                            description: string | null;
+                            /**
+                             * @description Hedef kitle türü
+                             * @enum {string}
+                             */
+                            audienceKind: "institution" | "grade" | "class" | "group";
+                            /** @description İptal gerekçesi; iptal edilmediyse `null` */
+                            cancelReason: string | null;
+                            /** @description Hedef kimlikleri (kademe, sınıf ya da grup) */
+                            audienceIds: string[];
+                            /** @description Hedeflerin adları ("7. sınıf", "7-A", grup adı), `audienceIds` sırasıyla */
+                            audienceLabels: string[];
+                            /**
+                             * @description `draft` taslak, `published`, `cancelled`
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "cancelled";
+                            /** @description Yayım anı (ISO 8601) */
+                            publishedAt: string | null;
+                            /** @description İptal anı (ISO 8601) */
+                            cancelledAt: string | null;
+                            /** @description Son değişiklik anı (ISO 8601) */
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

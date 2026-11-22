@@ -4641,6 +4641,64 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: öğretmen geri bildirim anketi (ON-213; DOM-FIN-159, K-532…K-534).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/teacher-feedback-surveys', 'list(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/teacher-feedback-surveys', 'institutionId: b.id'],
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-feedback-surveys/assigned',
+          'assigned(aStudent.cookie)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/teacher-feedback-surveys/:surveyId',
+          'detail(a.admin, bDraft)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/teacher-feedback-surveys/:surveyId',
+          'patch(a.admin, bDraft',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/teacher-feedback-surveys/:surveyId',
+          'archive(a.admin, bDraft)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-feedback-surveys/:surveyId/publish',
+          'publish(a.admin, bDraft)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-feedback-surveys/:surveyId/close',
+          'closeSurvey(a.admin, bLive)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/teacher-feedback-surveys/:surveyId/results',
+          'results(a.admin, bLive)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-feedback-surveys/:surveyId/responses',
+          'respond(aStudent.cookie, bLive',
+        ],
+        ['liste', 'GET /api/v1/finance/teacher-feedback-results/mine', 'mine(aTeacher.cookie)'],
+        ['liste', 'GET /api/v1/finance/teacher-feedback-results/trend', "trend(a.admin, 't-1')"],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-teacher-feedback.test.ts',
+        'DOM-FIN-159: başka kurumun anketi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

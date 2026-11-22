@@ -332,6 +332,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Haftalık yemek menüsü ve kopyası; çift tıklama aynı haftaya ikinci menüyü açmaz
   // (routes/finance-meal-menus.ts; DOM-FIN-157, ON-149).
   'POST /api/v1/finance/meal-menus',
+  // Öğretmen geri bildirim anketi taslağı ve öğrenci/velinin öğretmen değerlendirmesi; çift
+  // tıklama ikinci taslağı ya da ikinci yanıtı yazmaz, yanıtın özeti cevapsızdır
+  // (routes/finance-teacher-feedback.ts; DOM-FIN-159, ON-213).
+  'POST /api/v1/finance/teacher-feedback-surveys',
+  'POST /api/v1/finance/teacher-feedback-surveys/{surveyId}/responses',
 ]
 // Onur: kayıt ve finans sonu
 

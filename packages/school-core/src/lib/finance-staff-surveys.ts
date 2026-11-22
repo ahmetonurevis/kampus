@@ -393,14 +393,17 @@ const isAnswered = (question: StaffSurveyQuestion, answer: StaffSurveyAnswer | u
  * `staff_survey_answers_mismatch`), puanlı soruya metin, açık uçluya puan yazılmaz (422
  * `staff_survey_answer_kind`), puan ölçeğin içinde olmalı (422 `staff_survey_answer_range`),
  * zorunlu sorular cevaplı olmalı (422 `staff_survey_incomplete`). Boş metin cevaplanmamıştır.
+ * Öğretmen geri bildirim anketi (DOM-FIN-159) aynı denetimi kendi kod önekiyle kullanır
+ * (`teacher_feedback_answers_mismatch` …).
  */
 export function normalizeStaffSurveyAnswers(
   questions: readonly StaffSurveyQuestion[],
   answers: StaffSurveyResponseFields['answers'],
+  codePrefix: 'staff_survey' | 'teacher_feedback' = 'staff_survey',
 ): StaffSurveyAnswer[] {
   if (answers.length !== questions.length)
     throw ruleError(
-      'staff_survey_answers_mismatch',
+      `${codePrefix}_answers_mismatch`,
       'Her soru için bir cevap satırı gönderin.',
       'answers',
     )
@@ -412,7 +415,7 @@ export function normalizeStaffSurveyAnswers(
     const number = String(index + 1)
     if ((question.kind === 'open' && value !== null) || (question.kind !== 'open' && text !== null))
       throw ruleError(
-        'staff_survey_answer_kind',
+        `${codePrefix}_answer_kind`,
         `${number}. soru ${question.kind === 'open' ? 'açık uçludur; puan verilmez' : 'puanlıdır; metin yazılmaz'}.`,
         'answers',
       )
@@ -420,7 +423,7 @@ export function normalizeStaffSurveyAnswers(
       const scale = STAFF_SURVEY_SCALES[question.kind]
       if (value < scale.min || value > scale.max)
         throw ruleError(
-          'staff_survey_answer_range',
+          `${codePrefix}_answer_range`,
           `${number}. sorunun cevabı ${String(scale.min)}–${String(scale.max)} arasında olmalı.`,
           'answers',
         )
@@ -432,7 +435,7 @@ export function normalizeStaffSurveyAnswers(
   ).length
   if (missing > 0)
     throw ruleError(
-      'staff_survey_incomplete',
+      `${codePrefix}_incomplete`,
       `Zorunlu ${String(missing)} soru cevaplanmadı.`,
       'answers',
     )
@@ -554,8 +557,8 @@ export interface StaffSurveyStoredResponse {
 
 const unitKey = (unitId: string | null) => unitId ?? STAFF_SURVEY_NO_UNIT
 
-/** Fisher–Yates; `random` [0, 1) verir. */
-function shuffled<T>(values: readonly T[], random: () => number): T[] {
+/** Fisher–Yates; `random` [0, 1) verir. Öğretmen geri bildirimi (DOM-FIN-159) de kullanır. */
+export function shuffled<T>(values: readonly T[], random: () => number): T[] {
   const copy = [...values]
   for (let index = copy.length - 1; index > 0; index -= 1) {
     const swap = Math.floor(random() * (index + 1))

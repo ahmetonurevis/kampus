@@ -16280,6 +16280,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/teacher-feedback-surveys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmen geri bildirim anketleri
+         * @description Kurumun anketleri (kaldırılmış taslak hariç), en yeni açılış önce: aşama, dönem, tarihler, hedef kitle, eşik, soru sayısı ve yayımlanmışta yanıt ve yanıtlayan sayısı. Aşama, başlık ve dönemle süzülür. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        get: operations["listTeacherFeedbackSurveys"];
+        put?: never;
+        /**
+         * Geri bildirim anketi taslağı aç
+         * @description Başlık (3–150), dönem (2–60), açılış ve kapanış günü (uçlar dahil, en çok 90 gün), isteğe bağlı eşik (5–20; verilmezse 5, kurum azaltamaz), hedef kitle (öğrenci, veli ya da ikisi; sınıf süzgeci, bilinmeyen sınıf 422 `teacher_feedback_class_not_found`) ve 1–20 soru (ölçek 1–5 ya da açık uçlu; en az bir ölçek sorusu) (K-532, K-533). `Idempotency-Key` zorunlu. Gövdedeki `institutionId` 400. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        post: operations["createTeacherFeedbackSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-surveys/assigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Değerlendireceğim öğretmenler
+         * @description Oturumdaki öğrenci ya da velinin hedef kitlesinde olduğu, kapanmamış yayımlanmış anketler, kapanışı yakın önce: sorular ve değerlendirilebilecek öğretmenler (sınıf öğretmeni ve derse girenler; velide velayeti olan çocukların sınıfları) ile değerlendirdiniz mi. Öğretmeni olmayan anket dönmez. Rol: `ogrenci` ve `veli`; yalnız hedef kitlesinde olduğu anket ve kendi (velide çocuğunun) sınıfının öğretmenleri (K-533). Modül `finance`.
+         */
+        get: operations["listAssignedTeacherFeedbackSurveys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Geri bildirim anketi ayrıntısı
+         * @description Sorular, hedef kitle sınıflarının adları ve katılım sayıları. Yanıtlayanların adı dönmez. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        get: operations["getTeacherFeedbackSurvey"];
+        put?: never;
+        post?: never;
+        /**
+         * Geri bildirim taslağını kaldır
+         * @description Taslak arşivlenir; yayımlanmış anket 409 `teacher_feedback_not_draft`. `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        delete: operations["archiveTeacherFeedbackSurvey"];
+        options?: never;
+        head?: never;
+        /**
+         * Geri bildirim taslağını düzelt
+         * @description Gönderilen alanlar değişir (en az bir alan). Yalnız taslak (409 `teacher_feedback_not_draft`); birleşen tarihler ters ya da 90 günden uzunsa 422 `teacher_feedback_dates_invalid`; bilinmeyen sınıf 422 `teacher_feedback_class_not_found`. `If-Match` zorunlu; sürüm tutmazsa 409. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        patch: operations["updateTeacherFeedbackSurvey"];
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Geri bildirim anketini yayımla
+         * @description Sorular, tarihler, hedef kitle ve eşik artık değişmez. Yalnız taslak (409 `teacher_feedback_not_draft`); kapanış günü geçtiyse 422 `teacher_feedback_closes_past`; süzgeçteki sınıf kaldırıldıysa 422 `teacher_feedback_class_not_found`. `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        post: operations["publishTeacherFeedbackSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Geri bildirim anketini kapat
+         * @description Yayımlanmış anket kapanış gününden önce kapatılır: yanıt alınmaz, sonuç açılır; geri alınmaz. Taslak 409 `teacher_feedback_close_draft`; kapanmış anket 409 `teacher_feedback_already_closed`. `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        post: operations["closeTeacherFeedbackSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmen başına sonuç
+         * @description Yanıt alan her öğretmen için yanıt sayısı; sonuç yalnız anket kapandıktan sonra (`hiddenReason: not_closed`) ve en az eşik kadar yanıtla (`below_threshold`). Soru başına cevap eşik altındaysa soru gizli; açık uçlu cevaplar eşik altında hiç dönmez, karışık sırada, sınıf, tarih ve yanıtlayan olmadan döner. Sınıf kırılımında eşik altındaki sınıflar "Diğer sınıflar" grubunda birleşir (K-532). Okuma aynı transaction'da denetime yazılır (`finance.teacher_feedback_result.read`). Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        get: operations["getTeacherFeedbackResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-surveys/{surveyId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğretmeni değerlendir
+         * @description Bir öğretmen için soru sırasıyla cevaplar (ölçek 1–5, açık uçlu metin ≤ 1000). Anket yanıta açık olmalı (açılmadıysa 422 `teacher_feedback_not_open`, kapandıysa 422 `teacher_feedback_closed`); öğretmen yanıtlayanın sınıfının öğretmeni olmalı (422 `teacher_feedback_teacher_not_eligible`); her öğretmen bir kez (409 `teacher_feedback_already_responded`); cevap sayısı, türü ya da ölçeği uymazsa 422 `teacher_feedback_answers_mismatch` / `teacher_feedback_answer_kind` / `teacher_feedback_answer_range`; zorunlu soru boşsa 422 `teacher_feedback_incomplete` (K-533). Yanıt kişiye bağlanmaz, rol ve yanıt anı saklanmaz; denetime yalnız katılım yazılır, cevaplar yanıtta dönmez. `Idempotency-Key` zorunlu; özet cevapsız hesaplanır. Rolü hedef kitlede olmadığı ya da başka kurumun anketi 404. Rol: `ogrenci` ve `veli`; yalnız hedef kitlesinde olduğu anket ve kendi (velide çocuğunun) sınıfının öğretmenleri (K-533). Modül `finance`.
+         */
+        post: operations["respondTeacherFeedbackSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-results/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Geri bildirim sonuçlarım
+         * @description Oturumdaki öğretmenin bağlı olduğu öğretmen kaydının kapanan anketlerdeki sonucu (yeniden eskiye, en çok 12): ortalama, dağılım, eşik üstünde açık uçlu yorumlar ve sınıf kırılımı; dönemler arası eğilim (genel ortalama). Eşik altındaki dönem gizli. Bağlantısı olmayan öğretmene boş liste. Okuma denetime yazılır. Rol: `ogretmen`; yalnız bağlı olduğu öğretmen kaydının sonucu (K-532). Modül `finance`.
+         */
+        get: operations["listMyTeacherFeedbackResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-feedback-results/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmenin dönemler arası eğilimi
+         * @description Öğretmenin kapanan anketlerdeki genel ortalaması, eskiden yeniye, en çok 12 dönem; eşik altındaki dönem ortalama taşımaz (K-532). Bilinmeyen öğretmen 404. Okuma denetime yazılır. Rol: yalnız `yonetici` (K-532). Modül `finance`.
+         */
+        get: operations["getTeacherFeedbackTrend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -171228,6 +171420,1755 @@ export interface operations {
                             publishedAt: string;
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTeacherFeedbackSurveys: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Başlık ve dönemde arama */
+                q?: string;
+                /** @description Aşama süzgeci */
+                phase?: "draft" | "scheduled" | "open" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Dönem adı */
+                            term: string;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Öğretmen başına sonuç için en az yanıt (5–20) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Yanıtlayan roller: `ogrenci`, `veli` */
+                                respondents: ("ogrenci" | "veli")[];
+                                /** @description Sınıf süzgeci; boş = bütün sınıflar */
+                                classIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım sayıları; taslakta boş */
+                            participation: {
+                                /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                                responses: number;
+                                /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                                respondents: number;
+                            } | null;
+                            publishedAt: string | null;
+                            /** @description Erken kapatma anı; boşsa kapanış gününde kapanır */
+                            closedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Anket başlığı */
+                    title: string;
+                    /** @description Dönem adı (ör. "2026–2027 1. dönem"); eğilimde etiket olur */
+                    term: string;
+                    /** @description Açılış günü (Europe/Istanbul, dahil) */
+                    openDate: string;
+                    /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                    closeDate: string;
+                    /** @description Öğretmen başına sonucun gösterilmesi için gereken en az yanıt (5–20; varsayılan 5) */
+                    anonymityThreshold?: number;
+                    /** @description Hedef kitle (K-533) */
+                    audience: {
+                        /** @description Yanıtlayan roller: `ogrenci`, `veli` ya da ikisi (K-533) */
+                        respondents: ("ogrenci" | "veli")[];
+                        /** @description Sınıf/grup süzgeci (öğrencinin güncel sınıfı); boş = bütün sınıflar */
+                        classIds: string[];
+                    };
+                    /** @description Sorular, sırasıyla; yayımdan sonra değişmez */
+                    questions: {
+                        /**
+                         * @description `likert` 1–5 ölçek, `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "likert" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Yanıtta cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Dönem adı */
+                            term: string;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Öğretmen başına sonuç için en az yanıt (5–20) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Yanıtlayan roller: `ogrenci`, `veli` */
+                                respondents: ("ogrenci" | "veli")[];
+                                /** @description Sınıf süzgeci; boş = bütün sınıflar */
+                                classIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım sayıları; taslakta boş */
+                            participation: {
+                                /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                                responses: number;
+                                /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                                respondents: number;
+                            } | null;
+                            publishedAt: string | null;
+                            /** @description Erken kapatma anı; boşsa kapanış gününde kapanır */
+                            closedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAssignedTeacherFeedbackSurveys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            term: string;
+                            openDate: string;
+                            closeDate: string;
+                            /**
+                             * @description `scheduled` açılmadı ya da `open` yanıta açık
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            anonymityThreshold: number;
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Değerlendirebileceğiniz öğretmenler */
+                            teachers: {
+                                teacherId: string;
+                                name: string;
+                                /** @description Bu öğretmeni değerlendirdiniz mi */
+                                responded: boolean;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Dönem adı */
+                            term: string;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Öğretmen başına sonuç için en az yanıt (5–20) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Yanıtlayan roller: `ogrenci`, `veli` */
+                                respondents: ("ogrenci" | "veli")[];
+                                /** @description Sınıf süzgeci; boş = bütün sınıflar */
+                                classIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım sayıları; taslakta boş */
+                            participation: {
+                                /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                                responses: number;
+                                /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                                respondents: number;
+                            } | null;
+                            publishedAt: string | null;
+                            /** @description Erken kapatma anı; boşsa kapanış gününde kapanır */
+                            closedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Sınıf süzgecindeki sınıfların adları */
+                            audienceClasses: {
+                                id: string;
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Anket başlığı */
+                    title?: string;
+                    /** @description Dönem adı (ör. "2026–2027 1. dönem"); eğilimde etiket olur */
+                    term?: string;
+                    /** @description Açılış günü */
+                    openDate?: string;
+                    /** @description Kapanış günü */
+                    closeDate?: string;
+                    /** @description Öğretmen başına sonucun gösterilmesi için gereken en az yanıt (5–20; varsayılan 5) */
+                    anonymityThreshold?: number;
+                    /** @description Hedef kitle */
+                    audience?: {
+                        /** @description Yanıtlayan roller: `ogrenci`, `veli` ya da ikisi (K-533) */
+                        respondents: ("ogrenci" | "veli")[];
+                        /** @description Sınıf/grup süzgeci (öğrencinin güncel sınıfı); boş = bütün sınıflar */
+                        classIds: string[];
+                    };
+                    /** @description Sorular, sırasıyla; yayımdan sonra değişmez */
+                    questions?: {
+                        /**
+                         * @description `likert` 1–5 ölçek, `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "likert" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Yanıtta cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Dönem adı */
+                            term: string;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Öğretmen başına sonuç için en az yanıt (5–20) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Yanıtlayan roller: `ogrenci`, `veli` */
+                                respondents: ("ogrenci" | "veli")[];
+                                /** @description Sınıf süzgeci; boş = bütün sınıflar */
+                                classIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım sayıları; taslakta boş */
+                            participation: {
+                                /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                                responses: number;
+                                /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                                respondents: number;
+                            } | null;
+                            publishedAt: string | null;
+                            /** @description Erken kapatma anı; boşsa kapanış gününde kapanır */
+                            closedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Dönem adı */
+                            term: string;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Öğretmen başına sonuç için en az yanıt (5–20) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Yanıtlayan roller: `ogrenci`, `veli` */
+                                respondents: ("ogrenci" | "veli")[];
+                                /** @description Sınıf süzgeci; boş = bütün sınıflar */
+                                classIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım sayıları; taslakta boş */
+                            participation: {
+                                /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                                responses: number;
+                                /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                                respondents: number;
+                            } | null;
+                            publishedAt: string | null;
+                            /** @description Erken kapatma anı; boşsa kapanış gününde kapanır */
+                            closedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Dönem adı */
+                            term: string;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Öğretmen başına sonuç için en az yanıt (5–20) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Yanıtlayan roller: `ogrenci`, `veli` */
+                                respondents: ("ogrenci" | "veli")[];
+                                /** @description Sınıf süzgeci; boş = bütün sınıflar */
+                                classIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım sayıları; taslakta boş */
+                            participation: {
+                                /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                                responses: number;
+                                /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                                respondents: number;
+                            } | null;
+                            publishedAt: string | null;
+                            /** @description Erken kapatma anı; boşsa kapanış gününde kapanır */
+                            closedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTeacherFeedbackResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Alınan yanıt sayısı (öğretmen başına bir yanıt) */
+                            responses: number;
+                            /** @description Yanıtlayan kişi sayısı (kimin yanıtladığı dönmez) */
+                            respondents: number;
+                            surveyId: string;
+                            title: string;
+                            term: string;
+                            /** @enum {string} */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            closeDate: string;
+                            /** @description Uygulanan anonimlik eşiği */
+                            threshold: number;
+                            /** @description Yanıt alan öğretmenler, ada göre */
+                            teachers: {
+                                teacherId: string;
+                                /** @description Yanıt sayısı */
+                                responses: number;
+                                /** @description Sonuç gösteriliyor mu */
+                                visible: boolean;
+                                /** @description `not_closed` anket kapanmadı, `below_threshold` yanıt eşiğin altında */
+                                hiddenReason: ("not_closed" | "below_threshold") | null;
+                                /** @description Ölçek sorularının genel ortalaması (iki ondalık) */
+                                average: number | null;
+                                questions: {
+                                    /** @enum {string} */
+                                    kind: "likert" | "open";
+                                    text: string;
+                                    required: boolean;
+                                    /** @description Cevaplayan sayısı; gizliyse boş */
+                                    answered: number | null;
+                                    /** @description Eşik nedeniyle gizli */
+                                    hidden: boolean;
+                                    /** @description Ölçek sorusunda ortalama (iki ondalık) */
+                                    average: number | null;
+                                    /** @description Ölçek sorusunda 1–5 değerlerinin sayısı */
+                                    distribution: number[];
+                                    /** @description Açık uçlu cevaplar, karışık sırada; eşik altında boş */
+                                    texts: string[];
+                                }[];
+                                /** @description Sınıf kırılımı; eşik altındaki sınıflar birleşir, tek grupta boş */
+                                groups: {
+                                    /** @description Sınıf kimliği ya da `other` (birleşen küçük sınıflar) */
+                                    key: string;
+                                    /** @description Sınıf adı ya da "Diğer sınıflar" */
+                                    name: string;
+                                    /** @description Gruptaki sınıflar */
+                                    classIds: string[];
+                                    responses: number;
+                                    /** @description Ölçek sorularının genel ortalaması */
+                                    average: number | null;
+                                }[];
+                                teacherName: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    respondTeacherFeedbackSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Değerlendirilen öğretmen kaydı (`teachers`) */
+                    teacherId: string;
+                    /** @description Soru sırasıyla cevaplar; dizi soru sayısı kadardır */
+                    answers: {
+                        /** @description Ölçek sorusunda 1–5; boş = cevaplanmadı */
+                        value?: number | null;
+                        /** @description Açık uçlu soru için cevap; boş = cevaplanmadı */
+                        text?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            surveyId: string;
+                            teacherId: string;
+                            /** @enum {boolean} */
+                            responded: true;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyTeacherFeedbackResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bağlı öğretmen kaydı; yoksa boş */
+                            teacherId: string | null;
+                            /** @description Kapanan anketlerdeki kendi sonucunuz, yeniden eskiye */
+                            surveys: {
+                                surveyId: string;
+                                title: string;
+                                term: string;
+                                closeDate: string;
+                                threshold: number;
+                                teacherId: string;
+                                /** @description Yanıt sayısı */
+                                responses: number;
+                                /** @description Sonuç gösteriliyor mu */
+                                visible: boolean;
+                                /** @description `not_closed` anket kapanmadı, `below_threshold` yanıt eşiğin altında */
+                                hiddenReason: ("not_closed" | "below_threshold") | null;
+                                /** @description Ölçek sorularının genel ortalaması (iki ondalık) */
+                                average: number | null;
+                                questions: {
+                                    /** @enum {string} */
+                                    kind: "likert" | "open";
+                                    text: string;
+                                    required: boolean;
+                                    /** @description Cevaplayan sayısı; gizliyse boş */
+                                    answered: number | null;
+                                    /** @description Eşik nedeniyle gizli */
+                                    hidden: boolean;
+                                    /** @description Ölçek sorusunda ortalama (iki ondalık) */
+                                    average: number | null;
+                                    /** @description Ölçek sorusunda 1–5 değerlerinin sayısı */
+                                    distribution: number[];
+                                    /** @description Açık uçlu cevaplar, karışık sırada; eşik altında boş */
+                                    texts: string[];
+                                }[];
+                                /** @description Sınıf kırılımı; eşik altındaki sınıflar birleşir, tek grupta boş */
+                                groups: {
+                                    /** @description Sınıf kimliği ya da `other` (birleşen küçük sınıflar) */
+                                    key: string;
+                                    /** @description Sınıf adı ya da "Diğer sınıflar" */
+                                    name: string;
+                                    /** @description Gruptaki sınıflar */
+                                    classIds: string[];
+                                    responses: number;
+                                    /** @description Ölçek sorularının genel ortalaması */
+                                    average: number | null;
+                                }[];
+                            }[];
+                            trend: {
+                                surveyId: string;
+                                title: string;
+                                term: string;
+                                closeDate: string;
+                                responses: number;
+                                visible: boolean;
+                                /** @description Genel ortalama; eşik altında boş */
+                                average: number | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTeacherFeedbackTrend: {
+        parameters: {
+            query: {
+                /** @description Öğretmen kaydı (`teachers`) */
+                teacherId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            teacherId: string;
+                            teacherName: string;
+                            /** @description Kapanan anketler, eskiden yeniye, en çok 12 */
+                            trend: {
+                                surveyId: string;
+                                title: string;
+                                term: string;
+                                closeDate: string;
+                                responses: number;
+                                visible: boolean;
+                                /** @description Genel ortalama; eşik altında boş */
+                                average: number | null;
+                            }[];
+                        };
                     };
                 };
             };

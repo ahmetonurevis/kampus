@@ -4997,6 +4997,35 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: programdan ek ders önerisi ve aktarımı (ON-195; DOM-FIN-165).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/lesson-hour-suggestions/:month',
+          "ok(await call('GET', SUGGESTION, a.admin))",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/lesson-hour-suggestions/:month/teachers/:membershipId',
+          '`${BASE}/${MONTH}/teachers/${b.selin}${PARAMS}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-suggestions/:month/transfers',
+          'transfer(a, transferBody(b.selin))',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-lesson-hour-suggestions.test.ts',
+        'DOM-FIN-165: başka kurumun öğretmeni 404 ve aktarılamaz, B değişmez; listede B yok',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

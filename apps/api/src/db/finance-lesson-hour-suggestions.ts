@@ -82,6 +82,20 @@ export async function loadAttendanceClassDays(
   return days
 }
 
+/** Sınıf adları (döküm gösterimi; `classes` yalnız okunur). */
+export async function loadClassNames(
+  db: Database,
+  institutionId: string,
+): Promise<Map<string, string>> {
+  const rows = await loadRecords(db, institutionId, ['classes'])
+  return new Map(
+    rows.flatMap((row) => {
+      const name = text(row.data.name)
+      return name === null ? [] : [[row.id, name] as const]
+    }),
+  )
+}
+
 export interface StoredLessonHourSuggestion {
   id: string
   monthStart: string

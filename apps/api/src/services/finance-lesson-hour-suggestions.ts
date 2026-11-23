@@ -34,6 +34,7 @@ import { findLessonSheet } from '../db/finance-lesson-hour-approvals.ts'
 import {
   insertLessonHourSuggestion,
   listLessonHourSuggestions,
+  loadClassNames,
   loadAttendanceClassDays,
   loadSuggestionLessons,
   type StoredLessonHourSuggestion,
@@ -251,12 +252,19 @@ export async function lessonHourSuggestionDetailFor(
   const item = sources.suggestion.teachers.find((entry) => entry.membershipId === membershipId)
   if (item === undefined) throw new NotFoundError()
   const transfers = await listLessonHourSuggestions(ctx.db, ctx.institutionId, monthStartOf(month))
+  const classNames = await loadClassNames(ctx.db, ctx.institutionId)
   return {
     ...teacherSummary(item, sources, transfers),
     month,
     weeklyLoad: params.weeklyLoad,
     weeklyCap: params.weeklyCap,
-    days: item.days,
+    days: item.days.map((day) => ({
+      ...day,
+      items: day.items.map((entry) => ({
+        ...entry,
+        className: classNames.get(entry.classId) ?? null,
+      })),
+    })),
     transfers: transfers
       .filter((transfer) => transfer.membershipId === membershipId)
       .map(transferView),

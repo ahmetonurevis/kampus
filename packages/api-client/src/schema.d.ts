@@ -184925,6 +184925,8 @@ export interface operations {
                                     attendanceMissing: boolean | null;
                                     makeupForLessonId: string | null;
                                     holidayTitle: string | null;
+                                    /** @description Sınıf adı; sınıf kaydı yoksa boş */
+                                    className: string | null;
                                 }[];
                             }[];
                             /** @description Bu ayın aktarımları, yeniden eskiye */

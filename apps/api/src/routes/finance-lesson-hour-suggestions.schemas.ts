@@ -164,6 +164,7 @@ const itemSchema = z.object({
     ),
   makeupForLessonId: z.string().nullable(),
   holidayTitle: z.string().nullable(),
+  className: z.string().nullable().describe('Sınıf adı; sınıf kaydı yoksa boş'),
 })
 
 export const lessonSuggestionDetailResponse = dataResponse(

@@ -350,6 +350,7 @@ describe('DOM-FIN-165: programdan ek ders önerisi uçları', () => {
       ],
     )
     assert.equal(items[0]?.attendanceMissing, false)
+    assert.equal(items[0]?.className, '9-A')
     assert.equal(items[2]?.attendanceMissing, true)
     assert.equal(items[4]?.holidayTitle, 'Okul kuruluş günü')
     assert.deepEqual(detail.transfers, [])

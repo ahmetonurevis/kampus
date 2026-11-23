@@ -396292,6 +396292,13 @@
                                         "string",
                                         "null"
                                       ]
+                                    },
+                                    "className": {
+                                      "description": "Sınıf adı; sınıf kaydı yoksa boş",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
                                     }
                                   },
                                   "required": [
@@ -396309,7 +396316,8 @@
                                     "overCapHours",
                                     "attendanceMissing",
                                     "makeupForLessonId",
-                                    "holidayTitle"
+                                    "holidayTitle",
+                                    "className"
                                   ],
                                   "additionalProperties": false
                                 }

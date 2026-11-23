@@ -1233,6 +1233,13 @@
       "when": 1795462273714,
       "tag": "0175_create_meal_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1795465694756,
+      "tag": "0176_lesson_hour_suggestions",
+      "breakpoints": true
     }
   ]
 }

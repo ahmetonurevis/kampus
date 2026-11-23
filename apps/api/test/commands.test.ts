@@ -360,6 +360,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-meal-subscriptions.ts; DOM-FIN-164, ON-150).
   'POST /api/v1/finance/meal-subscriptions',
   'POST /api/v1/finance/meal-subscriptions/{subscriptionId}/cancellations',
+  // Programdan ek ders önerisinin aktarımı; çift tıklama ikinci aktarım satırı yazmaz
+  // (routes/finance-lesson-hour-suggestions.ts; DOM-FIN-165, ON-195).
+  'POST /api/v1/finance/lesson-hour-suggestions/{month}/transfers',
 ]
 // Onur: kayıt ve finans sonu
 

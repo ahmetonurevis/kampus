@@ -17568,6 +17568,66 @@ export interface paths {
         patch: operations["setMealSubscriptionSettings"];
         trace?: never;
     };
+    "/api/v1/finance/lesson-hour-suggestions/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayın programdan ek ders önerisi
+         * @description Ayın ek ders saati önerisi (DOM-FIN-165): ayda dersi olan, personel üyeliğine bağlı her öğretmen için önerilen ek ders saati, sayım özeti, haftalar, ayın elle girilen ek ders saatiyle fark ve son aktarım. Ders programındaki her ders 40 dakikalık ders saati sayısı kadar (en az 1) sayılır; iptal, kurum tatili (okul takvimi), öğretmenin izinli ya da raporlu olduğu gün ve henüz bitmemiş ders sayılmaz; yedek atanan ders yedeğe sayılır; telafi kendi kaydıyla sayılır (K-550). Hafta hafta (pazartesi–pazar) ilk `weeklyLoad` saat maaş karşılığı, `weeklyCap` saate kadarı ek derstir, üstü sayılmaz; ay sonunu kesen haftada ek ders dersin gününün ayına yazılır; saat ya da ders saati ücretli öğretmene öneri verilmez (K-551). Öneri saklanmaz. Dersi olup üyeliğe bağlı olmayan öğretmen kaydı `unlinked`'tedir. `transferable` aktarımın yapılabildiğini gösterir. Tutar dönmez; okuma denetime düşmez. Rol: yalnız `yonetici` (K-552). Modül `finance`; yalnız okul türünde kurum.
+         */
+        get: operations["getLessonHourSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-suggestions/{month}/teachers/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmenin gün gün ek ders dökümü
+         * @description Öğretmenin ay dökümü (K-550): gün gün hangi ders, hangi sınıf, kaç ders saati, sayıldı mı ve neden (`counted`, `cancelled`, `holiday`, `leave`, `substituted_out`, `upcoming`), yedek ve telafi, maaş karşılığı/ek ders/üst sınır üstü dağılımı, yoklama işareti; ayın aktarımları. İzin ve rapor ayrılmaz. Ayda dersi olmayan, üyeliğe bağlı olmayan ya da başka kurumun üyeliği 404. Rol: yalnız `yonetici` (K-552). Modül `finance`; yalnız okul türünde kurum.
+         */
+        get: operations["getLessonHourSuggestionDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-suggestions/{month}/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öneriyi elle ek ders girişine aktar
+         * @description Öğretmen başına öneri (ya da düzeltilmiş saat) ayın elle girilen ek ders (`extra`) saatine yazılır; kayıt yoksa açılır, varsa saati düzeltilir (notu korunur). Tek ya da toplu (en çok 200) aktarım tek işlemdir: biri reddedilirse hiçbiri yazılmaz (K-552). `suggestedHours` ekrandaki öneridir; sunucunun öneriyle aynı değilse 409 `lesson_suggestion_changed`. Öneriden farklı saat gerekçe ister (5–500; yoksa 422 `lesson_suggestion_reason_required`); elle giriş zaten bu saatteyse 422 `lesson_suggestion_unchanged`; öneri yoksa (dersi yok, saat ücretli, başka kurumun üyeliği) 422 `lesson_suggestion_not_found`; gelecek ay 422 `payroll_lesson_hours_future_month`. Müdür onaylı ayda 409 `lesson_hours_locked`, bordro dönemi kilitli ayda 409 `payroll_period_locked` (K-410). Her satır değişmez aktarım kaydı (önerilen, önceki ve yazılan saat, gerekçe, parametreler) ve denetim kaydı yazar; denetime saat ve gerekçe yazılmaz. Teyit alınmış personelin teyidi saat değişince yeniden istenir (DOM-FIN-120). Yanıt güncel öneridir. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-552). Modül `finance`; yalnız okul türünde kurum.
+         */
+        post: operations["transferLessonHourSuggestions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -184420,6 +184480,710 @@ export interface operations {
                             cutoffTime: string;
                             /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLessonHourSuggestions: {
+        parameters: {
+            query?: {
+                /** @description Maaş karşılığı haftalık ders saati (0–40, varsayılan 15) */
+                weeklyLoad?: number;
+                /** @description Maaş karşılığı dahil haftalık toplam ders üst sınırı (1–60, varsayılan 30) */
+                weeklyCap?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Öneri ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            weeklyLoad: number;
+                            weeklyCap: number;
+                            /** @description Okunan aralığın ilk günü (ayın ilk haftasının pazartesisi) */
+                            rangeFrom: string;
+                            /** @description Okunan aralığın son günü (ayın son haftasının pazarı) */
+                            rangeTo: string;
+                            /** @description Ay bitti mi; bitmediyse gelecek dersler sayılmaz */
+                            monthComplete: boolean;
+                            /** @description Yoklama okunabildi mi (`academic` modülü açık) */
+                            attendanceKnown: boolean;
+                            /**
+                             * @description Ayın ek ders çizelgesi durumu
+                             * @enum {string}
+                             */
+                            sheetStatus: "draft" | "teacher_review" | "approved";
+                            payrollLocked: boolean;
+                            /** @description Aktarım yapılabilir mi (çizelge onaylı ve dönem kilitli değil, ay gelecekte değil) */
+                            transferable: boolean;
+                            /** @description Ayda dersi olan öğretmenler, ada göre */
+                            teachers: {
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `monthly` aylık ücretli, `hourly` saat ya da ders saati ücretli (öneri yok), `unknown` ana ücret tanımı yok (aylık sayıldı)
+                                 * @enum {string}
+                                 */
+                                payBasis: "monthly" | "hourly" | "unknown";
+                                /** @description Öneri verilir mi */
+                                applicable: boolean;
+                                /** @description Önerilen ek ders saati; öneri yoksa boş */
+                                suggestedHours: number | null;
+                                /** @description Ayın elle girilen ek ders (`extra`) saati; kayıt yoksa boş */
+                                currentHours: number | null;
+                                currentEntryId: string | null;
+                                /** @description Elle giriş eksi öneri (kayıt yoksa 0 sayılır); öneri yoksa boş */
+                                difference: number | null;
+                                totals: {
+                                    /** @description Ayda sayılan ders saati (kendi, yedek ve telafi) */
+                                    countedHours: number;
+                                    /** @description Kendi dersi */
+                                    ownHours: number;
+                                    /** @description Yedek girdiği ders */
+                                    substituteHours: number;
+                                    /** @description Telafi dersi */
+                                    makeupHours: number;
+                                    /** @description Maaş karşılığına sayılan saat */
+                                    loadHours: number;
+                                    /** @description Ek ders sayılan saat (öneri) */
+                                    extraHours: number;
+                                    /** @description Haftalık üst sınırı aşan, sayılmayan saat */
+                                    overCapHours: number;
+                                    /** @description İptal edilen ders */
+                                    cancelledHours: number;
+                                    /** @description Tatile denk gelen ders */
+                                    holidayHours: number;
+                                    /** @description Öğretmenin izinli ya da raporlu olduğu gündeki dersi */
+                                    leaveHours: number;
+                                    /** @description Yedeğe devredilen ders */
+                                    substitutedOutHours: number;
+                                    /** @description Henüz yapılmamış ders */
+                                    upcomingHours: number;
+                                    /** @description Sınıfın o günü yoklaması alınmamış sayılan ders sayısı */
+                                    attendanceMissingLessons: number;
+                                };
+                                /** @description Ayla kesişen haftalar (sayılan dersi olanlar) */
+                                weeks: {
+                                    /** @description Hafta pazartesisi */
+                                    startDate: string;
+                                    /** @description Hafta pazarı */
+                                    endDate: string;
+                                    /** @description Haftanın bu aya düşen ilk günü */
+                                    monthFrom: string;
+                                    /** @description Haftanın bu aya düşen son günü */
+                                    monthTo: string;
+                                    /** @description Haftanın sayılan saati (ay dışı günler dahil) */
+                                    countedHours: number;
+                                    /** @description Maaş karşılığı */
+                                    loadHours: number;
+                                    /** @description Ek ders */
+                                    extraHours: number;
+                                    /** @description Üst sınır üstü */
+                                    overCapHours: number;
+                                    /** @description Ek dersin bu aya düşen kısmı */
+                                    extraInMonth: number;
+                                }[];
+                                /** @description `no_pay_rate` ücret tanımı yok, `over_cap` üst sınır aşıldı, `attendance_missing` yoklaması alınmamış ders günü */
+                                warnings: ("no_pay_rate" | "over_cap" | "attendance_missing")[];
+                                /** @description Bu ayın son aktarımı */
+                                lastTransfer: {
+                                    id: string;
+                                    /** @description Aktarım anındaki öneri */
+                                    suggestedHours: number;
+                                    /** @description Aktarımdan önceki elle giriş; yoksa boş */
+                                    previousHours: number | null;
+                                    /** @description Yazılan saat */
+                                    hours: number;
+                                    /** @description Öneriden farkın gerekçesi */
+                                    reason: string | null;
+                                    weeklyLoad: number;
+                                    weeklyCap: number;
+                                    createdByName: string | null;
+                                    createdAt: string;
+                                } | null;
+                            }[];
+                            /** @description Dersi olup personel üyeliğine bağlı olmayan öğretmen kayıtları (aktarılamaz) */
+                            unlinked: {
+                                teacherId: string;
+                                teacherName: string | null;
+                                countedHours: number;
+                            }[];
+                            totals: {
+                                teacherCount: number;
+                                suggestedHours: number;
+                                currentHours: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLessonHourSuggestionDetail: {
+        parameters: {
+            query?: {
+                /** @description Maaş karşılığı haftalık ders saati (0–40, varsayılan 15) */
+                weeklyLoad?: number;
+                /** @description Maaş karşılığı dahil haftalık toplam ders üst sınırı (1–60, varsayılan 30) */
+                weeklyCap?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Öneri ayı (YYYY-AA) */
+                month: string;
+                /** @description Öğretmenin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            staffActive: boolean;
+                            /**
+                             * @description `monthly` aylık ücretli, `hourly` saat ya da ders saati ücretli (öneri yok), `unknown` ana ücret tanımı yok (aylık sayıldı)
+                             * @enum {string}
+                             */
+                            payBasis: "monthly" | "hourly" | "unknown";
+                            /** @description Öneri verilir mi */
+                            applicable: boolean;
+                            /** @description Önerilen ek ders saati; öneri yoksa boş */
+                            suggestedHours: number | null;
+                            /** @description Ayın elle girilen ek ders (`extra`) saati; kayıt yoksa boş */
+                            currentHours: number | null;
+                            currentEntryId: string | null;
+                            /** @description Elle giriş eksi öneri (kayıt yoksa 0 sayılır); öneri yoksa boş */
+                            difference: number | null;
+                            totals: {
+                                /** @description Ayda sayılan ders saati (kendi, yedek ve telafi) */
+                                countedHours: number;
+                                /** @description Kendi dersi */
+                                ownHours: number;
+                                /** @description Yedek girdiği ders */
+                                substituteHours: number;
+                                /** @description Telafi dersi */
+                                makeupHours: number;
+                                /** @description Maaş karşılığına sayılan saat */
+                                loadHours: number;
+                                /** @description Ek ders sayılan saat (öneri) */
+                                extraHours: number;
+                                /** @description Haftalık üst sınırı aşan, sayılmayan saat */
+                                overCapHours: number;
+                                /** @description İptal edilen ders */
+                                cancelledHours: number;
+                                /** @description Tatile denk gelen ders */
+                                holidayHours: number;
+                                /** @description Öğretmenin izinli ya da raporlu olduğu gündeki dersi */
+                                leaveHours: number;
+                                /** @description Yedeğe devredilen ders */
+                                substitutedOutHours: number;
+                                /** @description Henüz yapılmamış ders */
+                                upcomingHours: number;
+                                /** @description Sınıfın o günü yoklaması alınmamış sayılan ders sayısı */
+                                attendanceMissingLessons: number;
+                            };
+                            /** @description Ayla kesişen haftalar (sayılan dersi olanlar) */
+                            weeks: {
+                                /** @description Hafta pazartesisi */
+                                startDate: string;
+                                /** @description Hafta pazarı */
+                                endDate: string;
+                                /** @description Haftanın bu aya düşen ilk günü */
+                                monthFrom: string;
+                                /** @description Haftanın bu aya düşen son günü */
+                                monthTo: string;
+                                /** @description Haftanın sayılan saati (ay dışı günler dahil) */
+                                countedHours: number;
+                                /** @description Maaş karşılığı */
+                                loadHours: number;
+                                /** @description Ek ders */
+                                extraHours: number;
+                                /** @description Üst sınır üstü */
+                                overCapHours: number;
+                                /** @description Ek dersin bu aya düşen kısmı */
+                                extraInMonth: number;
+                            }[];
+                            /** @description `no_pay_rate` ücret tanımı yok, `over_cap` üst sınır aşıldı, `attendance_missing` yoklaması alınmamış ders günü */
+                            warnings: ("no_pay_rate" | "over_cap" | "attendance_missing")[];
+                            /** @description Bu ayın son aktarımı */
+                            lastTransfer: {
+                                id: string;
+                                /** @description Aktarım anındaki öneri */
+                                suggestedHours: number;
+                                /** @description Aktarımdan önceki elle giriş; yoksa boş */
+                                previousHours: number | null;
+                                /** @description Yazılan saat */
+                                hours: number;
+                                /** @description Öneriden farkın gerekçesi */
+                                reason: string | null;
+                                weeklyLoad: number;
+                                weeklyCap: number;
+                                createdByName: string | null;
+                                createdAt: string;
+                            } | null;
+                            month: string;
+                            weeklyLoad: number;
+                            weeklyCap: number;
+                            /** @description Ayın dersi olan günleri ve dersleri */
+                            days: {
+                                day: string;
+                                items: {
+                                    lessonId: string;
+                                    day: string;
+                                    startsAt: string;
+                                    classId: string;
+                                    subjectId: string;
+                                    title: string | null;
+                                    /** @description Dersin ders saati sayısı (40 dakika, en az 1) */
+                                    hours: number;
+                                    /**
+                                     * @description `counted` sayıldı, `cancelled` iptal, `holiday` tatil, `leave` öğretmen izinli, `substituted_out` yedeğe devredildi, `upcoming` henüz yapılmadı
+                                     * @enum {string}
+                                     */
+                                    status: "counted" | "cancelled" | "holiday" | "leave" | "substituted_out" | "upcoming";
+                                    /**
+                                     * @description `own` kendi dersi, `substitute` yedek, `makeup` telafi
+                                     * @enum {string}
+                                     */
+                                    kind: "own" | "substitute" | "makeup";
+                                    loadHours: number;
+                                    extraHours: number;
+                                    overCapHours: number;
+                                    /** @description Sınıfın o günü yoklaması alınmadı; yoklama okunamadıysa ya da ders sayılmadıysa boş */
+                                    attendanceMissing: boolean | null;
+                                    makeupForLessonId: string | null;
+                                    holidayTitle: string | null;
+                                    /** @description Sınıf adı; sınıf kaydı yoksa boş */
+                                    className: string | null;
+                                }[];
+                            }[];
+                            /** @description Bu ayın aktarımları, yeniden eskiye */
+                            transfers: {
+                                id: string;
+                                /** @description Aktarım anındaki öneri */
+                                suggestedHours: number;
+                                /** @description Aktarımdan önceki elle giriş; yoksa boş */
+                                previousHours: number | null;
+                                /** @description Yazılan saat */
+                                hours: number;
+                                /** @description Öneriden farkın gerekçesi */
+                                reason: string | null;
+                                weeklyLoad: number;
+                                weeklyCap: number;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    transferLessonHourSuggestions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Öneri ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Maaş karşılığı haftalık ders saati (0–40, varsayılan 15) */
+                    weeklyLoad: number;
+                    /** @description Maaş karşılığı dahil haftalık toplam ders üst sınırı (1–60, varsayılan 30) */
+                    weeklyCap: number;
+                    items: {
+                        /** @description Öğretmenin kurum üyeliği */
+                        membershipId: string;
+                        /** @description Ekranda görülen öneri; sunucudaki öneriyle aynı olmalıdır */
+                        suggestedHours: number;
+                        /** @description Elle girişe yazılacak saat (öneri ya da düzeltilmiş saat) */
+                        hours: number;
+                        /** @description Öneriden farklı saatte zorunlu gerekçe (5–500) */
+                        reason?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            weeklyLoad: number;
+                            weeklyCap: number;
+                            /** @description Okunan aralığın ilk günü (ayın ilk haftasının pazartesisi) */
+                            rangeFrom: string;
+                            /** @description Okunan aralığın son günü (ayın son haftasının pazarı) */
+                            rangeTo: string;
+                            /** @description Ay bitti mi; bitmediyse gelecek dersler sayılmaz */
+                            monthComplete: boolean;
+                            /** @description Yoklama okunabildi mi (`academic` modülü açık) */
+                            attendanceKnown: boolean;
+                            /**
+                             * @description Ayın ek ders çizelgesi durumu
+                             * @enum {string}
+                             */
+                            sheetStatus: "draft" | "teacher_review" | "approved";
+                            payrollLocked: boolean;
+                            /** @description Aktarım yapılabilir mi (çizelge onaylı ve dönem kilitli değil, ay gelecekte değil) */
+                            transferable: boolean;
+                            /** @description Ayda dersi olan öğretmenler, ada göre */
+                            teachers: {
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `monthly` aylık ücretli, `hourly` saat ya da ders saati ücretli (öneri yok), `unknown` ana ücret tanımı yok (aylık sayıldı)
+                                 * @enum {string}
+                                 */
+                                payBasis: "monthly" | "hourly" | "unknown";
+                                /** @description Öneri verilir mi */
+                                applicable: boolean;
+                                /** @description Önerilen ek ders saati; öneri yoksa boş */
+                                suggestedHours: number | null;
+                                /** @description Ayın elle girilen ek ders (`extra`) saati; kayıt yoksa boş */
+                                currentHours: number | null;
+                                currentEntryId: string | null;
+                                /** @description Elle giriş eksi öneri (kayıt yoksa 0 sayılır); öneri yoksa boş */
+                                difference: number | null;
+                                totals: {
+                                    /** @description Ayda sayılan ders saati (kendi, yedek ve telafi) */
+                                    countedHours: number;
+                                    /** @description Kendi dersi */
+                                    ownHours: number;
+                                    /** @description Yedek girdiği ders */
+                                    substituteHours: number;
+                                    /** @description Telafi dersi */
+                                    makeupHours: number;
+                                    /** @description Maaş karşılığına sayılan saat */
+                                    loadHours: number;
+                                    /** @description Ek ders sayılan saat (öneri) */
+                                    extraHours: number;
+                                    /** @description Haftalık üst sınırı aşan, sayılmayan saat */
+                                    overCapHours: number;
+                                    /** @description İptal edilen ders */
+                                    cancelledHours: number;
+                                    /** @description Tatile denk gelen ders */
+                                    holidayHours: number;
+                                    /** @description Öğretmenin izinli ya da raporlu olduğu gündeki dersi */
+                                    leaveHours: number;
+                                    /** @description Yedeğe devredilen ders */
+                                    substitutedOutHours: number;
+                                    /** @description Henüz yapılmamış ders */
+                                    upcomingHours: number;
+                                    /** @description Sınıfın o günü yoklaması alınmamış sayılan ders sayısı */
+                                    attendanceMissingLessons: number;
+                                };
+                                /** @description Ayla kesişen haftalar (sayılan dersi olanlar) */
+                                weeks: {
+                                    /** @description Hafta pazartesisi */
+                                    startDate: string;
+                                    /** @description Hafta pazarı */
+                                    endDate: string;
+                                    /** @description Haftanın bu aya düşen ilk günü */
+                                    monthFrom: string;
+                                    /** @description Haftanın bu aya düşen son günü */
+                                    monthTo: string;
+                                    /** @description Haftanın sayılan saati (ay dışı günler dahil) */
+                                    countedHours: number;
+                                    /** @description Maaş karşılığı */
+                                    loadHours: number;
+                                    /** @description Ek ders */
+                                    extraHours: number;
+                                    /** @description Üst sınır üstü */
+                                    overCapHours: number;
+                                    /** @description Ek dersin bu aya düşen kısmı */
+                                    extraInMonth: number;
+                                }[];
+                                /** @description `no_pay_rate` ücret tanımı yok, `over_cap` üst sınır aşıldı, `attendance_missing` yoklaması alınmamış ders günü */
+                                warnings: ("no_pay_rate" | "over_cap" | "attendance_missing")[];
+                                /** @description Bu ayın son aktarımı */
+                                lastTransfer: {
+                                    id: string;
+                                    /** @description Aktarım anındaki öneri */
+                                    suggestedHours: number;
+                                    /** @description Aktarımdan önceki elle giriş; yoksa boş */
+                                    previousHours: number | null;
+                                    /** @description Yazılan saat */
+                                    hours: number;
+                                    /** @description Öneriden farkın gerekçesi */
+                                    reason: string | null;
+                                    weeklyLoad: number;
+                                    weeklyCap: number;
+                                    createdByName: string | null;
+                                    createdAt: string;
+                                } | null;
+                            }[];
+                            /** @description Dersi olup personel üyeliğine bağlı olmayan öğretmen kayıtları (aktarılamaz) */
+                            unlinked: {
+                                teacherId: string;
+                                teacherName: string | null;
+                                countedHours: number;
+                            }[];
+                            totals: {
+                                teacherCount: number;
+                                suggestedHours: number;
+                                currentHours: number;
+                            };
                         };
                     };
                 };

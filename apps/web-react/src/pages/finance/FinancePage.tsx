@@ -291,6 +291,10 @@ const FinanceSchoolCalendarSection = lazy(async () => ({
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
+const FinanceHourlyLessonPayoutsSection = lazy(async () => ({
+  default: (await import('./FinanceHourlyLessonPayoutsSection.tsx'))
+    .FinanceHourlyLessonPayoutsSection,
+}))
 const StaffSelfServiceView = lazy(async () => ({
   default: (await import('./FinanceStaffSelfServiceSection.tsx')).StaffSelfServiceView,
 }))
@@ -390,6 +394,7 @@ const VIEWS = {
   schoolCalendar: { label: 'Okul takvimi', param: 'okul-takvimi' },
   selfService: { label: 'Bilgilerim', param: 'bilgilerim' },
   staffChangeRequests: { label: 'Değişiklik talepleri', param: 'degisiklik-talepleri' },
+  hourlyPayouts: { label: 'Ders saati hakedişi', param: 'ders-saati-hakedis' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -526,7 +531,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'refundInvoices' ||
       value === 'healthAccessLog' ||
       value === 'teacherFeedback' ||
-      value === 'staffChangeRequests'
+      value === 'staffChangeRequests' ||
+      value === 'hourlyPayouts'
     )
       return isManager
     if (value === 'socialActivities') return isManager && institutionType === 'school'
@@ -770,6 +776,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'tripReports' ? <FinanceTripReportsSection /> : null}
         {tab === 'schoolCalendar' ? <FinanceSchoolCalendarSection /> : null}
         {tab === 'selfService' ? <StaffSelfServiceView /> : null}
+        {tab === 'hourlyPayouts' ? <FinanceHourlyLessonPayoutsSection /> : null}
         {tab === 'staffChangeRequests' ? <FinanceStaffChangeRequestsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel

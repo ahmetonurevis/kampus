@@ -74,8 +74,11 @@ function decrypt(
   })
 }
 
-/** Saklanan satırı çözülmüş değerlere çevirir (yalnız bellekte). */
-function valuesOf(
+/**
+ * Saklanan satırı çözülmüş değerlere çevirir (yalnız bellekte). Self-servis onayı da (DOM-FIN-166)
+ * kartı bu yoldan okur.
+ */
+export function valuesOf(
   deps: PersonnelFileDeps,
   institutionId: string,
   stored: StoredPersonnelFile,
@@ -93,8 +96,8 @@ function valuesOf(
   }
 }
 
-/** Değerleri yazılacak kolonlara çevirir; T.C. kimlik no ve IBAN şifrelenir. */
-function columnsOf(
+/** Değerleri yazılacak kolonlara çevirir; T.C. kimlik no ve IBAN şifrelenir (DOM-FIN-166 onayı da). */
+export function columnsOf(
   deps: PersonnelFileDeps,
   institutionId: string,
   membershipId: string,

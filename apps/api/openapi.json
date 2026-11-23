@@ -21020,6 +21020,235 @@
           "canRevealNationalId"
         ]
       },
+      "StaffChangeRequestInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "membershipId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Talep eden personel"
+          },
+          "role": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "contact",
+              "emergency_contacts",
+              "bank",
+              "document"
+            ],
+            "description": "`contact` adres ve telefon, `emergency_contacts` acil durum kişileri, `bank` IBAN ve hesap sahibi, `document` özlük belgesi"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ],
+            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` geri çekildi"
+          },
+          "proposal": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "contact"
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "emergency_contacts"
+                  },
+                  "emergencyContacts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "relation": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "relation",
+                        "phone"
+                      ]
+                    },
+                    "description": "Acil durum kişileri; yalnız okuyabilen rolde bulunur"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "emergencyContacts"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "bank"
+                  },
+                  "ibanMasked": {
+                    "type": "string",
+                    "description": "Maskeli IBAN; tam IBAN hiçbir okumada dönmez"
+                  },
+                  "accountHolder": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ibanMasked",
+                  "accountHolder"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "document"
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "diploma",
+                      "health_report",
+                      "criminal_record",
+                      "certificate",
+                      "id_copy",
+                      "other"
+                    ]
+                  },
+                  "healthReportKind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "pre_employment",
+                          "periodic"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "documentDate": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hasFile": {
+                    "type": "boolean",
+                    "description": "Dosya eklenmiş mi; dosya yalnız yöneticinin ucundan açılır"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "documentType",
+                  "healthReportKind",
+                  "documentDate",
+                  "note",
+                  "hasFile"
+                ]
+              }
+            ],
+            "description": "Önerilen değerler; verilmeyen iletişim alanı değişmez, `null` temizler"
+          },
+          "staffDocumentId": {
+            "description": "Onaylanan belge talebinin açtığı özlük belgesi",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectionReason": {
+            "description": "Ret gerekçesi",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için talep sürümü"
+          }
+        },
+        "required": [
+          "id",
+          "membershipId",
+          "name",
+          "role",
+          "kind",
+          "status",
+          "proposal",
+          "staffDocumentId",
+          "decidedByName",
+          "decidedAt",
+          "rejectionReason",
+          "createdAt",
+          "version"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -42487,6 +42716,241 @@
           "updatedAt",
           "access",
           "canRevealNationalId"
+        ],
+        "additionalProperties": false
+      },
+      "StaffChangeRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "membershipId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Talep eden personel"
+          },
+          "role": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "contact",
+              "emergency_contacts",
+              "bank",
+              "document"
+            ],
+            "description": "`contact` adres ve telefon, `emergency_contacts` acil durum kişileri, `bank` IBAN ve hesap sahibi, `document` özlük belgesi"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ],
+            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` geri çekildi"
+          },
+          "proposal": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "contact"
+                  },
+                  "address": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "emergency_contacts"
+                  },
+                  "emergencyContacts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "relation": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "relation",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Acil durum kişileri; yalnız okuyabilen rolde bulunur"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "emergencyContacts"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "bank"
+                  },
+                  "ibanMasked": {
+                    "type": "string",
+                    "description": "Maskeli IBAN; tam IBAN hiçbir okumada dönmez"
+                  },
+                  "accountHolder": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "ibanMasked",
+                  "accountHolder"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "document"
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "diploma",
+                      "health_report",
+                      "criminal_record",
+                      "certificate",
+                      "id_copy",
+                      "other"
+                    ]
+                  },
+                  "healthReportKind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "pre_employment",
+                          "periodic"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "documentDate": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hasFile": {
+                    "type": "boolean",
+                    "description": "Dosya eklenmiş mi; dosya yalnız yöneticinin ucundan açılır"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "documentType",
+                  "healthReportKind",
+                  "documentDate",
+                  "note",
+                  "hasFile"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "description": "Önerilen değerler; verilmeyen iletişim alanı değişmez, `null` temizler"
+          },
+          "staffDocumentId": {
+            "description": "Onaylanan belge talebinin açtığı özlük belgesi",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rejectionReason": {
+            "description": "Ret gerekçesi",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "`If-Match` için talep sürümü"
+          }
+        },
+        "required": [
+          "id",
+          "membershipId",
+          "name",
+          "role",
+          "kind",
+          "status",
+          "proposal",
+          "staffDocumentId",
+          "decidedByName",
+          "decidedAt",
+          "rejectionReason",
+          "createdAt",
+          "version"
         ],
         "additionalProperties": false
       }
@@ -397108,6 +397572,3419 @@
                         "teachers",
                         "unlinked",
                         "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-staff-profile": {
+      "get": {
+        "operationId": "getOwnStaffProfile",
+        "summary": "Bilgilerim: özlük özetim",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Oturumdaki personelin özlük kartı (DOM-FIN-140), salt okunur: kimlik (maskeli T.C. kimlik no), iletişim, eğitim, banka (maskeli IBAN), acil durum kişileri. Kart yoksa `file: null`. `pendingKinds` onay bekleyen talebin türleridir. Değişiklik `POST /finance/my-change-requests` ile talep edilir (K-553). Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Adınız (platform hesabından)"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "file": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "updatedAt": {
+                                  "type": "string"
+                                },
+                                "identity": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nationalIdMasked": {
+                                      "description": "Maskeli T.C. kimlik no (`*******1234`); tam hâli ayrı uçtan",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "birthDate": {
+                                      "description": "Doğum günü (YYYY-MM-DD)",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "nationalIdMasked",
+                                    "birthDate"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Kimlik grubu; yalnız okuyabilen rolde bulunur"
+                                },
+                                "contact": {
+                                  "type": "object",
+                                  "properties": {
+                                    "address": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "phone": {
+                                      "description": "Kişisel telefon",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "email": {
+                                      "description": "Kişisel e-posta",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "address",
+                                    "phone",
+                                    "email"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Kişisel iletişim grubu; yalnız okuyabilen rolde bulunur"
+                                },
+                                "education": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "level": {
+                                        "type": "string",
+                                        "enum": [
+                                          "high_school",
+                                          "associate",
+                                          "bachelor",
+                                          "master",
+                                          "doctorate",
+                                          "other"
+                                        ]
+                                      },
+                                      "school": {
+                                        "type": "string"
+                                      },
+                                      "department": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "graduationYear": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Boşsa öğrenim sürüyor"
+                                      }
+                                    },
+                                    "required": [
+                                      "level",
+                                      "school",
+                                      "department",
+                                      "graduationYear"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Eğitim geçmişi; yalnız okuyabilen rolde bulunur"
+                                },
+                                "bank": {
+                                  "type": "object",
+                                  "properties": {
+                                    "ibanMasked": {
+                                      "description": "Maskeli IBAN (`TR**…1326`); tam IBAN hiçbir okumada dönmez",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "accountHolder": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "ibanMasked",
+                                    "accountHolder"
+                                  ],
+                                  "additionalProperties": false,
+                                  "description": "Banka grubu; yalnız yönetici ve muhasebede bulunur"
+                                },
+                                "emergencyContacts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "relation": {
+                                        "type": "string"
+                                      },
+                                      "phone": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "relation",
+                                      "phone"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Acil durum kişileri; yalnız okuyabilen rolde bulunur"
+                                }
+                              },
+                              "required": [
+                                "version",
+                                "updatedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Özlük kartınız, salt okunur; T.C. kimlik no ve IBAN maskeli. Kart yoksa boş"
+                        },
+                        "pendingKinds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "contact",
+                              "emergency_contacts",
+                              "bank",
+                              "document"
+                            ],
+                            "description": "`contact` adres ve telefon, `emergency_contacts` acil durum kişileri, `bank` IBAN ve hesap sahibi, `document` özlük belgesi"
+                          },
+                          "description": "Onay bekleyen talebinizin olduğu türler"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "name",
+                        "role",
+                        "active",
+                        "file",
+                        "pendingKinds"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-change-requests": {
+      "get": {
+        "operationId": "listOwnChangeRequests",
+        "summary": "Değişiklik taleplerim",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Oturumdaki personelin değişiklik talepleri, bekleyenler önce; IBAN maskeli, ret gerekçesi görünür. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` geri çekildi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StaffChangeRequest"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOwnChangeRequest",
+        "summary": "Değişiklik talep et",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Tür (`kind`) ve önerilen değerler (K-553): `contact` adres (10–500) ve/veya telefon (0XXXXXXXXXX; `null` temizler), `emergency_contacts` acil durum kişilerinin yeni listesi (1–5), `bank` TR IBAN (mod-97) ve hesap sahibi, `document` özlük belgesi (tür, sağlık raporunda işe giriş/periyodik, belge günü, isteğe bağlı `document` amaçlı dosya ve not). **Banka talebi taze oturum ister** (eskiyse 403 `reauthentication_required`) ve hesap sahibi personelin kendi adı olmalı (422 `staff_change_bank_holder_mismatch`; K-554). Aynı türde bekleyen talep varsa 409 `staff_change_request_pending_exists` (belge talebinde en çok 10 bekleyen, sonra 422 `staff_change_document_pending_limit`); kartta zaten kayıtlı değer 422 `staff_change_request_unchanged`; ayrılmış personel 422 `staff_self_service_inactive`. Belge tarihi bugünden sonra 422 `staff_document_date_in_future`; özel nitelikli belgeye not 422 `staff_document_sensitive_note`. Dosya yükleyenin, hazır ve bağsız olmalı (422 `file_unavailable`); öğretmen `document` amaçlı dosya yükleyemez, belgeyi dosyasız bildirir. Talep \"onay bekliyor\" olarak girer. Denetim kaydına tür ve alan adları yazılır, değer yazılmaz. `Idempotency-Key` isteğe bağlı. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "contact"
+                        ]
+                      },
+                      "address": {
+                        "description": "Ev adresi",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 10,
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "phone": {
+                        "description": "Kişisel telefon (0XXXXXXXXXX)",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "emergency_contacts"
+                        ]
+                      },
+                      "emergencyContacts": {
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "minLength": 2,
+                              "maxLength": 120,
+                              "description": "Ad soyad"
+                            },
+                            "relation": {
+                              "type": "string",
+                              "minLength": 2,
+                              "maxLength": 60,
+                              "description": "Yakınlık (eşi, annesi, kardeşi…)"
+                            },
+                            "phone": {
+                              "description": "Telefon (0XXXXXXXXXX)",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "relation",
+                            "phone"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Acil durum kişilerinin yeni listesi (en çok 5); liste bütün olarak yazılır"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "emergencyContacts"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "bank"
+                        ]
+                      },
+                      "iban": {
+                        "description": "TR IBAN (mod-97); şifreli saklanır, okumada maskeli",
+                        "type": "string"
+                      },
+                      "accountHolder": {
+                        "description": "Hesap sahibinin adı",
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "iban",
+                      "accountHolder"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "document"
+                        ]
+                      },
+                      "documentType": {
+                        "type": "string",
+                        "enum": [
+                          "diploma",
+                          "health_report",
+                          "criminal_record",
+                          "certificate",
+                          "id_copy",
+                          "other"
+                        ],
+                        "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                      },
+                      "healthReportKind": {
+                        "default": null,
+                        "description": "Yalnız sağlık raporunda ve orada zorunlu: `pre_employment`, `periodic`",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "pre_employment",
+                              "periodic"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "documentDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Belgenin düzenlendiği gün; bugünden sonra olamaz"
+                      },
+                      "fileId": {
+                        "default": null,
+                        "description": "Yüklenmiş `document` amaçlı dosya (`POST /files`); isteğe bağlı",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not; özel nitelikli belgede yazılmaz",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 300
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "documentType",
+                      "documentDate"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StaffChangeRequest"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-change-requests/{requestId}/cancel": {
+      "post": {
+        "operationId": "cancelOwnChangeRequest",
+        "summary": "Değişiklik talebimi geri çek",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Bekleyen kendi talebini geri çeker; belge dosyasının talep bağı kalkar. Bekleyen olmayan talep 422 `staff_change_request_not_pending`. Başka personelin ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StaffChangeRequest"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-staff-documents": {
+      "get": {
+        "operationId": "listOwnStaffDocuments",
+        "summary": "Özlük belgelerim",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Oturumdaki personelin kayıtlı özlük belgeleri (DOM-FIN-113; yerine geçilenler dahil) ve eksik zorunlu türler. Kendi verisi olduğundan özel nitelikli belgede de tür, tarihler ve dosya adı döner; dosya self-servisten açılmaz (K-555). Onay bekleyen belge talepleri `GET /finance/my-change-requests` içindedir. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "missingTypes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "diploma",
+                              "health_report",
+                              "criminal_record",
+                              "certificate",
+                              "id_copy",
+                              "other"
+                            ],
+                            "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                          },
+                          "description": "Eksik zorunlu türler (pasif personelde boş)"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "documentType": {
+                                "type": "string",
+                                "enum": [
+                                  "diploma",
+                                  "health_report",
+                                  "criminal_record",
+                                  "certificate",
+                                  "id_copy",
+                                  "other"
+                                ],
+                                "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                              },
+                              "healthReportKind": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "pre_employment",
+                                      "periodic"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik"
+                              },
+                              "documentDate": {
+                                "type": "string",
+                                "description": "Belge tarihi (YYYY-MM-DD)"
+                              },
+                              "validUntil": {
+                                "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "validUntilSource": {
+                                "type": "string",
+                                "enum": [
+                                  "type",
+                                  "manual"
+                                ],
+                                "description": "`type` türün süresinden hesaplandı, `manual` elle girildi"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "valid",
+                                  "expiring",
+                                  "expired",
+                                  "superseded"
+                                ],
+                                "description": "Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)"
+                              },
+                              "daysLeft": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                              },
+                              "sensitive": {
+                                "type": "boolean",
+                                "description": "Türü özel nitelikli mi"
+                              },
+                              "restricted": {
+                                "type": "boolean",
+                                "description": "Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null`"
+                              },
+                              "hasFile": {
+                                "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "file": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "byteSize": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "byteSize"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "replacesId": {
+                                "description": "Bu belgenin yerine geçtiği belge",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "supersededAt": {
+                                "description": "Yerine yeni belge geçtiği an",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "documentType",
+                              "healthReportKind",
+                              "documentDate",
+                              "validUntil",
+                              "validUntilSource",
+                              "status",
+                              "daysLeft",
+                              "sensitive",
+                              "restricted",
+                              "hasFile",
+                              "file",
+                              "note",
+                              "replacesId",
+                              "supersededAt",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bütün belgeler (yerine geçilenler dahil), tür ve belge tarihine göre"
+                        }
+                      },
+                      "required": [
+                        "missingTypes",
+                        "documents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-leave": {
+      "get": {
+        "operationId": "getOwnLeave",
+        "summary": "İzin bakiyem",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Oturumdaki personelin `date` (varsayılan bugün) gününe göre yıllık izin hak edişi ve bakiyesi (DOM-FIN-109: kalan, kullanılan, planlanan), kullanılmış izin kayıtları, son 50 izin talebi (DOM-FIN-116; bekleyenler önce) ve talep açılabilecek türler (K-555). İzin profili yoksa `entitlement: null`. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Bakiyenin hesaplanacağı gün; varsayılan bugün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string",
+                          "description": "Bakiyenin hesaplandığı gün"
+                        },
+                        "seniorityStartDate": {
+                          "description": "Kıdem başlangıcı; izin profili yoksa boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entitlement": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "asOf": {
+                                  "type": "string"
+                                },
+                                "serviceYears": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "accruals": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "serviceYear": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Kaçıncı hizmet yılının dolumu"
+                                      },
+                                      "date": {
+                                        "type": "string",
+                                        "description": "Hak ediş günü (yıl dönümü)"
+                                      },
+                                      "baseDays": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Kıdem dilimine göre gün (14, 20, 26)"
+                                      },
+                                      "age": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Hak ediş günündeki yaş; doğum günü yoksa boş"
+                                      },
+                                      "ageRule": {
+                                        "type": "boolean",
+                                        "description": "18 yaş altı ya da 50 yaş ve üstü en az 20 gün uygulandı mı"
+                                      },
+                                      "days": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "inOpeningBalance": {
+                                        "type": "boolean",
+                                        "description": "Açılış devrinin içinde (ayrıca sayılmaz)"
+                                      }
+                                    },
+                                    "required": [
+                                      "serviceYear",
+                                      "date",
+                                      "baseDays",
+                                      "age",
+                                      "ageRule",
+                                      "days",
+                                      "inOpeningBalance"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Her tam hizmet yılının hak edişi"
+                                },
+                                "next": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "serviceYear": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Kaçıncı hizmet yılının dolumu"
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "description": "Hak ediş günü (yıl dönümü)"
+                                        },
+                                        "baseDays": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Kıdem dilimine göre gün (14, 20, 26)"
+                                        },
+                                        "age": {
+                                          "anyOf": [
+                                            {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Hak ediş günündeki yaş; doğum günü yoksa boş"
+                                        },
+                                        "ageRule": {
+                                          "type": "boolean",
+                                          "description": "18 yaş altı ya da 50 yaş ve üstü en az 20 gün uygulandı mı"
+                                        },
+                                        "days": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "serviceYear",
+                                        "date",
+                                        "baseDays",
+                                        "age",
+                                        "ageRule",
+                                        "days"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Bir sonraki hak ediş; hizmet bittiyse boş"
+                                },
+                                "openingDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "entitledDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "usedDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "plannedDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Günden sonra başlayan yıllık izin kayıtları"
+                                },
+                                "carriedOverDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Son hak edişten önceki yıllardan devreden"
+                                },
+                                "currentYearDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "usedThisYearDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "balanceDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Kalan; eksi avans izindir"
+                                },
+                                "balanceAfterPlannedDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "asOf",
+                                "serviceYears",
+                                "accruals",
+                                "next",
+                                "openingDays",
+                                "entitledDays",
+                                "usedDays",
+                                "plannedDays",
+                                "carriedOverDays",
+                                "currentYearDays",
+                                "usedThisYearDays",
+                                "balanceDays",
+                                "balanceAfterPlannedDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Hak ediş ve bakiye; profil yoksa boş"
+                        },
+                        "records": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "typeCode": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "annual",
+                                  "excuse",
+                                  "unpaid",
+                                  "sick",
+                                  "other"
+                                ],
+                                "description": "`annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer"
+                              },
+                              "typeLabel": {
+                                "type": "string",
+                                "description": "Kayıt anındaki tür adı"
+                              },
+                              "paid": {
+                                "type": "boolean",
+                                "description": "Kayıt anında ücretli miydi"
+                              },
+                              "deductsFromAnnual": {
+                                "type": "boolean",
+                                "description": "Kayıt anında yıllık izinden düşüyor muydu"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              },
+                              "days": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kullanılan iş günü"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "requestId": {
+                                "description": "Kaydı üreten izin talebi (DOM-FIN-116); elle yazılmış kayıtta boş",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "typeCode",
+                              "kind",
+                              "typeLabel",
+                              "paid",
+                              "deductsFromAnnual",
+                              "startDate",
+                              "endDate",
+                              "days",
+                              "note",
+                              "requestId",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İptal edilmemiş kayıtlar, yeni başlayan önce"
+                        },
+                        "requests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Personelin adı"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "typeCode": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "annual",
+                                  "excuse",
+                                  "unpaid",
+                                  "sick",
+                                  "other"
+                                ]
+                              },
+                              "typeLabel": {
+                                "type": "string",
+                                "description": "Talep anındaki tür adı"
+                              },
+                              "deductsFromAnnual": {
+                                "type": "boolean",
+                                "description": "Talep anında tür yıllık izinden düşüyor muydu"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              },
+                              "days": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İstenen iş günü (tam gün)"
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "approved",
+                                  "rejected",
+                                  "cancelled"
+                                ],
+                                "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal"
+                              },
+                              "decidedAt": {
+                                "description": "Onay ya da ret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rejectReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "advanceApproved": {
+                                "type": "boolean",
+                                "description": "Avans izin olarak onaylandı mı (K-398)"
+                              },
+                              "cancelledAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lessonCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Talebe bağlı ders sayısı"
+                              },
+                              "substitutedCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yedek öğretmen seçilmiş ders sayısı"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için talep sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "name",
+                              "role",
+                              "typeCode",
+                              "kind",
+                              "typeLabel",
+                              "deductsFromAnnual",
+                              "startDate",
+                              "endDate",
+                              "days",
+                              "description",
+                              "status",
+                              "decidedAt",
+                              "rejectReason",
+                              "advanceApproved",
+                              "cancelledAt",
+                              "cancelReason",
+                              "lessonCount",
+                              "substitutedCount",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Son 50 izin talebiniz"
+                        },
+                        "types": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "annual",
+                                  "excuse",
+                                  "unpaid",
+                                  "sick",
+                                  "other"
+                                ]
+                              },
+                              "paid": {
+                                "type": "boolean"
+                              },
+                              "deductsFromAnnual": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "label",
+                              "kind",
+                              "paid",
+                              "deductsFromAnnual"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Talep açılabilecek etkin izin türleri"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "seniorityStartDate",
+                        "entitlement",
+                        "records",
+                        "requests",
+                        "types"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-leave-requests": {
+      "post": {
+        "operationId": "createOwnLeaveRequest",
+        "summary": "İzin talep et",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Oturumdaki personel adına izin talebi (DOM-FIN-116, K-555): tür, ilk ve son gün, iş günü, isteğe bağlı açıklama. Yönetici talebinin aynı kuralları uygulanır (çakışan talep 422, onaylı bordro ayı 409); öğretmende etkilenen dersler talebe kopyalanır, yedeği onayda yönetici seçer. Talep \"onay bekliyor\" olarak girer. Yanıtta yedek adayı ve ders ayrıntısı yoktur. `Idempotency-Key` zorunlu. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "typeCode": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{1,39}$",
+                    "description": "İzin türü kodu (DOM-FIN-109)"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İznin ilk günü"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İznin son günü (dahil)"
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 366,
+                    "description": "İzin iş günü (hafta tatili ve genel tatil hariç; elle, tam gün)"
+                  },
+                  "description": {
+                    "description": "İsteğe bağlı açıklama, en çok 500 karakter; denetim kaydına yazılmaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "typeCode",
+                  "startDate",
+                  "endDate",
+                  "days"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Personelin adı"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "typeCode": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "annual",
+                            "excuse",
+                            "unpaid",
+                            "sick",
+                            "other"
+                          ]
+                        },
+                        "typeLabel": {
+                          "type": "string",
+                          "description": "Talep anındaki tür adı"
+                        },
+                        "deductsFromAnnual": {
+                          "type": "boolean",
+                          "description": "Talep anında tür yıllık izinden düşüyor muydu"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "days": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İstenen iş günü (tam gün)"
+                        },
+                        "description": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "cancelled"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal"
+                        },
+                        "decidedAt": {
+                          "description": "Onay ya da ret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "advanceApproved": {
+                          "type": "boolean",
+                          "description": "Avans izin olarak onaylandı mı (K-398)"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lessonCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Talebe bağlı ders sayısı"
+                        },
+                        "substitutedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yedek öğretmen seçilmiş ders sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için talep sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "name",
+                        "role",
+                        "typeCode",
+                        "kind",
+                        "typeLabel",
+                        "deductsFromAnnual",
+                        "startDate",
+                        "endDate",
+                        "days",
+                        "description",
+                        "status",
+                        "decidedAt",
+                        "rejectReason",
+                        "advanceApproved",
+                        "cancelledAt",
+                        "cancelReason",
+                        "lessonCount",
+                        "substitutedCount",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-payslips": {
+      "get": {
+        "operationId": "listOwnPayslipMonths",
+        "summary": "Bordro pusulalarım",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Onaylı (kilitli) bordro dönemlerinde oturumdaki personelin kayıtlı hesapta satırı olan ayları, yeniden eskiye (DOM-FIN-119, K-555). Tutar dönmez; pusula `GET /finance/my-payslips/{month}` ile üretilir. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "month": {
+                            "type": "string"
+                          },
+                          "runId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "calculatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "month",
+                          "runId",
+                          "revision",
+                          "calculatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Onaylı dönemlerde pusulanız olan aylar, yeniden eskiye"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-payslips/{month}": {
+      "get": {
+        "operationId": "getOwnPayslip",
+        "summary": "Bordro pusulam (PDF verisi)",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Oturumdaki personelin ayın etkin kayıtlı hesabından ücret hesap pusulası verisi (DOM-FIN-119 içeriği, K-407); PDF web'de üretilir. Yalnız onaylı (kilitli) dönem: onaysız ay, kayıtlı hesabı olmayan ay ve hesapta satırı olmayan personel 404. Yönetici pusulasıyla aynı kurallar (K-555): taze oturum (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk (yönetici pusulasıyla ortak sayaç), `finance.payroll_payslip.export` denetim kaydı (satır kimliği, yalnız alan adları). Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi kaydı; öğrenci ve veli 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Bordro ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "runId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "Pusulanın üretildiği kayıtlı hesap"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kayıtlı hesabın revizyonu"
+                        },
+                        "calculatedAt": {
+                          "type": "string",
+                          "description": "Hesabın kaydedildiği an"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Dönem onaylı (kilitli) mı; değilse pusula değişebilir"
+                        },
+                        "institutionName": {
+                          "type": "string"
+                        },
+                        "payslips": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "entryDate": {
+                                "description": "Ay içinde işe giriş günü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "exitDate": {
+                                "description": "Ay içinde işten çıkış günü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "primDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Çalışma / prim günü"
+                              },
+                              "missingDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Eksik gün (neden yazılmaz)"
+                              },
+                              "earnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "wage",
+                                        "lesson",
+                                        "benefit",
+                                        "adjustment"
+                                      ],
+                                      "description": "`wage`, `lesson`, `benefit`, `adjustment`"
+                                    },
+                                    "code": {
+                                      "type": "string",
+                                      "description": "Ücret türü, ek ders türü, yan hak türü ya da düzeltme kalemi"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tutar, kuruş"
+                                    },
+                                    "hours": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste saat"
+                                    },
+                                    "rateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste birim ücret, kuruş"
+                                    },
+                                    "sgk": {
+                                      "type": "boolean",
+                                      "description": "SGK prime esas kazanca girer"
+                                    },
+                                    "taxable": {
+                                      "type": "boolean",
+                                      "description": "Gelir ve damga vergisi matrahına girer"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "code",
+                                    "amountCents",
+                                    "hours",
+                                    "rateCents",
+                                    "sgk",
+                                    "taxable"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Brüt kalemler"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Brüt, kuruş"
+                              },
+                              "sgkBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK prime esas kazanç, kuruş"
+                              },
+                              "sgkEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işçi payı, kuruş"
+                              },
+                              "unemploymentEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işçi payı, kuruş"
+                              },
+                              "incomeTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayın gelir vergisi matrahı, kuruş"
+                              },
+                              "cumulativeIncomeTaxBaseBeforeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Önceki kümülatif GV matrahı, kuruş"
+                              },
+                              "cumulativeIncomeTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu ay dahil kümülatif GV matrahı, kuruş"
+                              },
+                              "incomeTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan gelir vergisi, kuruş"
+                              },
+                              "incomeTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret gelir vergisi istisnası, kuruş"
+                              },
+                              "incomeTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek gelir vergisi, kuruş"
+                              },
+                              "stampTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Damga vergisi matrahı, kuruş"
+                              },
+                              "stampTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan damga vergisi, kuruş"
+                              },
+                              "stampTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret damga vergisi istisnası, kuruş"
+                              },
+                              "stampTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek damga vergisi, kuruş"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Net ücret (kesintilerden önce), kuruş"
+                              },
+                              "netAdjustmentCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Net düzeltme (işaretli), kuruş"
+                              },
+                              "deductions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "advance",
+                                        "garnishment",
+                                        "pension"
+                                      ],
+                                      "description": "`advance`, `garnishment`, `pension`"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Bu ay kesilen tutar, kuruş"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "amountCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Bu ay kesilen kesintiler (DOM-FIN-101 sırası)"
+                              },
+                              "deductionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti toplamı, kuruş"
+                              },
+                              "payableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek net, kuruş"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "entryDate",
+                              "exitDate",
+                              "primDays",
+                              "missingDays",
+                              "earnings",
+                              "grossCents",
+                              "sgkBaseCents",
+                              "sgkEmployeeCents",
+                              "unemploymentEmployeeCents",
+                              "incomeTaxBaseCents",
+                              "cumulativeIncomeTaxBaseBeforeCents",
+                              "cumulativeIncomeTaxBaseCents",
+                              "incomeTaxCents",
+                              "incomeTaxExemptionCents",
+                              "incomeTaxPayableCents",
+                              "stampTaxBaseCents",
+                              "stampTaxCents",
+                              "stampTaxExemptionCents",
+                              "stampTaxPayableCents",
+                              "netCents",
+                              "netAdjustmentCents",
+                              "deductions",
+                              "deductionCents",
+                              "payableCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ada göre; tek personel istendiyse bir eleman"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "runId",
+                        "revision",
+                        "calculatedAt",
+                        "locked",
+                        "institutionName",
+                        "payslips"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-change-requests": {
+      "get": {
+        "operationId": "listStaffChangeRequests",
+        "summary": "Değişiklik talepleri (onay kuyruğu)",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Personelin değişiklik talepleri, bekleyenler önce; durum, tür ve personel adıyla süzülür. Öneri IBAN'ı maskelidir; belge dosyası `GET …/{requestId}/file-url` ile açılır. Rol: yalnız `yonetici` (K-553). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` geri çekildi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "contact",
+                "emergency_contacts",
+                "bank",
+                "document"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "`contact` adres ve telefon, `emergency_contacts` acil durum kişileri, `bank` IBAN ve hesap sahibi, `document` özlük belgesi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StaffChangeRequest"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-change-requests/{requestId}/approve": {
+      "post": {
+        "operationId": "approveStaffChangeRequest",
+        "summary": "Değişiklik talebini onayla",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Onay aynı transaction'da kaydı yazar (K-553): kart talebinde özlük kartı (yoksa açılır; DOM-FIN-140 kuralları, ayrılmış personele yeni kart 422 `personnel_file_staff_inactive`), belge talebinde özlük belgesi (DOM-FIN-113 kuralları; dosya talepten belgeye taşınır, tekil türde eski belgenin yerine geçer). Bekleyen olmayan talep 422 `staff_change_request_not_pending`. Denetim kaydına talep ve kartın değişen alan adları yazılır. `If-Match` zorunlu; sürüm tutmazsa 409. Başka kurumun talebi 404. Rol: yalnız `yonetici` (K-553). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StaffChangeRequest"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-change-requests/{requestId}/reject": {
+      "post": {
+        "operationId": "rejectStaffChangeRequest",
+        "summary": "Değişiklik talebini reddet",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Gerekçeyle ret (5–500; personele gösterilir, denetim kaydına yazılmaz). Belge dosyasının talep bağı kalkar. Bekleyen olmayan talep 422 `staff_change_request_not_pending`. `If-Match` zorunlu; sürüm tutmazsa 409. Başka kurumun talebi 404. Rol: yalnız `yonetici` (K-553). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Ret gerekçesi (5–500); personele gösterilir, denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StaffChangeRequest"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-change-requests/{requestId}/file-url": {
+      "get": {
+        "operationId": "getStaffChangeRequestFileUrl",
+        "summary": "Belge talebinin dosyasını aç",
+        "tags": [
+          "finance-staff-self-service"
+        ],
+        "description": "Bekleyen belge talebinin dosyası için kısa ömürlü imzalı bağlantı (5 dk). Her üretim `finance.staff_change_request.file_open` denetimine yazılır; denetim yazılamazsa bağlantı dönmez. Dosyasız talep 422 `staff_change_request_no_file`; onaylanmış talepte dosya özlük belgesinin ucundan, reddedilen ya da geri çekilen talepte hiç açılmaz (404). Dosya `GET /files/{fileId}/url` yolundan açılmaz. Başka kurumun talebi 404. Rol: yalnız `yonetici` (K-553). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Kısa ömürlü imzalı GET bağlantısı"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "description": "Bağlantının geçerlilik sonu"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiresAt"
                       ],
                       "additionalProperties": false
                     }

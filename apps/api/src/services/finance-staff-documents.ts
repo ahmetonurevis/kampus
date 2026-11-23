@@ -20,7 +20,7 @@ import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { isStaffRole } from '@kampus/school-core/lib/staff-accounts.ts'
 
 import type { Database } from '../db/client.ts'
-import { findFile } from '../db/files.ts'
+import { attachFileRow, findFile } from '../db/files.ts'
 import { findStaffMember } from '../db/finance-pay-rates.ts'
 import {
   countDocumentAlerts,
@@ -43,7 +43,7 @@ import { AppError, ConflictError, NotFoundError, RuleViolationError } from '../e
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import type { StorageDriver } from '../storage/storage.ts'
 import { defineFileAttachment } from './file-registry.ts'
-import { attachFile, getFileUrl } from './files.ts'
+import { ATTACH_MESSAGES, attachFile, getFileUrl } from './files.ts'
 import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
@@ -80,7 +80,11 @@ defineFileAttachment(ATTACHMENT, {
   },
 })
 
-async function settingsOf(db: Database, institutionId: string): Promise<StaffDocumentSettings> {
+/** Kurumun çözülmüş tür ayarları (self-servis belge talebi de okur, DOM-FIN-166). */
+export async function settingsOf(
+  db: Database,
+  institutionId: string,
+): Promise<StaffDocumentSettings> {
   const { stored } = await loadStaffDocumentSettings(db, institutionId)
   return resolveStaffDocumentSettings(stored)
 }
@@ -335,9 +339,67 @@ export async function getStaffDocumentsFor(ctx: ServiceContext, membershipId: st
   }
 }
 
+/**
+ * Personelin kendi belgeleri (self-servis, DOM-FIN-166; K-555): onaylanmış belgeler (geçmiş dahil)
+ * ve eksik zorunlu türler. Kendi verisi olduğundan özel nitelikli belgede de tür, tarihler ve dosya
+ * adı döner; dosyanın kendisi self-servisten açılmaz. Personel değilse 404.
+ */
+export async function ownStaffDocumentsFor(ctx: ServiceContext) {
+  const member = await staffOf(ctx.db, ctx, ctx.actor.membershipId)
+  const settings = await settingsOf(ctx.db, ctx.institutionId)
+  const docs = await loadMemberDocuments(ctx.db, ctx.institutionId, [member.membershipId])
+  const today = dayKey(ctx.now)
+  return {
+    missingTypes: member.active ? missingStaffDocumentTypes(settings, docs) : [],
+    documents: await Promise.all(
+      docs.map(async (doc) =>
+        staffDocumentView(doc, {
+          today,
+          withinDays: STAFF_DOCUMENT_WITHIN_DAYS_DEFAULT,
+          sensitive: settings[doc.documentType].sensitive,
+          restricted: false,
+          file: await fileInfo(ctx.db, ctx.institutionId, doc.fileId),
+        }),
+      ),
+    ),
+  }
+}
+
 // --- Yazma ---------------------------------------------------------------------------------------
 
 type StaffDocumentParsed = ReturnType<typeof staffDocumentInputSchema.parse>
+
+/**
+ * Onaylanan self-servis belge talebinin dosyası (DOM-FIN-166, K-553) talepten belgeye taşınır:
+ * dosyayı personel yüklemiştir, onaylayan yönetici yükleyen olmadığından `attachFile` yerine bağ
+ * doğrudan değişir. Dosya hâlâ o talebe bağlı ve silinmemiş olmalıdır; değilse 422
+ * `file_unavailable`.
+ */
+async function transferFile(
+  tx: Database,
+  ctx: ServiceContext,
+  fileId: string,
+  from: { type: string; id: string },
+  documentId: string,
+): Promise<void> {
+  const row = await findFile(tx, ctx.institutionId, fileId, { lock: true })
+  if (
+    row === null ||
+    row.attachedType !== from.type ||
+    row.attachedId !== from.id ||
+    row.status === 'deleted' ||
+    row.status === 'rejected'
+  )
+    throw new RuleViolationError('file_unavailable', ATTACH_MESSAGES.file_unavailable)
+  const moved = await attachFileRow(
+    tx,
+    ctx.institutionId,
+    row,
+    { type: ATTACHMENT, id: documentId, dataSubjectId: null },
+    ctx.now,
+  )
+  if (!moved) throw new ConflictError()
+}
 type StaffDocumentPlanned = ReturnType<typeof planStaffDocument>
 
 /**
@@ -382,6 +444,7 @@ export async function writeStaffDocument(
   id: string,
   parsed: StaffDocumentParsed,
   plan: StaffDocumentPlanned,
+  options: { fileFrom?: { type: string; id: string } } = {},
 ): Promise<void> {
   if (plan.supersedes !== null) {
     const done = await supersedeStaffDocument(tx, ctx.institutionId, {
@@ -393,7 +456,9 @@ export async function writeStaffDocument(
   // Dosya belge satırından önce bağlanır: başkasının, başka kurumun ya da hazır olmayan dosya
   // yabancı anahtar hatası yerine 422 `file_unavailable` (bağlı dosya 409
   // `file_already_attached`) alır; bağ belge kimliğini taşır, yabancı anahtarı yoktur.
-  if (parsed.fileId !== null)
+  if (parsed.fileId !== null && options.fileFrom !== undefined)
+    await transferFile(tx, ctx, parsed.fileId, options.fileFrom, id)
+  else if (parsed.fileId !== null)
     await attachFile(tx, ctx, {
       fileId: parsed.fileId,
       attachedType: ATTACHMENT,

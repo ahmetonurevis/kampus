@@ -5026,6 +5026,61 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel self-servisi ve değişiklik talebi onayı (ON-189; DOM-FIN-166).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/my-staff-profile', 'ok(await get(PROFILE, aStaff.cookie))'],
+        ['liste', 'GET /api/v1/finance/my-change-requests', 'ok(await get(OWN, aStaff.cookie))'],
+        [
+          'gövde',
+          'POST /api/v1/finance/my-change-requests',
+          "{ kind: 'contact', phone: '05321234567', institutionId: b.id }",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/my-change-requests/:requestId/cancel',
+          'cancel(aStaff, bRequest)',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/my-staff-documents',
+          'ok(await get(MY_DOCS, aStaff.cookie))',
+        ],
+        ['liste', 'GET /api/v1/finance/my-leave', 'ok(await get(MY_LEAVE, aStaff.cookie))'],
+        ['gövde', 'POST /api/v1/finance/my-leave-requests', 'institutionId: b.id,'],
+        ['liste', 'GET /api/v1/finance/my-payslips', 'ok(await get(MY_PAYSLIPS, aStaff.cookie))'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/my-payslips/:month',
+          'get(`${MY_PAYSLIPS}/2026-03`, aStaff.cookie)',
+        ],
+        ['liste', 'GET /api/v1/finance/staff-change-requests', 'ok(await get(QUEUE, a.admin))'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-change-requests/:requestId/approve',
+          "decide(a.admin, bRequest, 'approve')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-change-requests/:requestId/reject',
+          "decide(a.admin, bRequest, 'reject'",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-change-requests/:requestId/file-url',
+          '`${QUEUE}/${String(bRequest.id)}/file-url`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-self-service.test.ts',
+        'DOM-FIN-166: başka kurumun talebi ve pusula ayı 404, B değişmez; kuyrukta ve self okumalarda B yok; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

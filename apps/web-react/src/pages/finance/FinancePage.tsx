@@ -291,6 +291,13 @@ const FinanceSchoolCalendarSection = lazy(async () => ({
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
+const StaffSelfServiceView = lazy(async () => ({
+  default: (await import('./FinanceStaffSelfServiceSection.tsx')).StaffSelfServiceView,
+}))
+const FinanceStaffChangeRequestsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffChangeRequestsSection.tsx'))
+    .FinanceStaffChangeRequestsSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -381,6 +388,8 @@ const VIEWS = {
   earlyDismissals: { label: 'Erken çıkış', param: 'erken-cikis' },
   tripReports: { label: 'Gezi raporları', param: 'gezi-raporlari' },
   schoolCalendar: { label: 'Okul takvimi', param: 'okul-takvimi' },
+  selfService: { label: 'Bilgilerim', param: 'bilgilerim' },
+  staffChangeRequests: { label: 'Değişiklik talepleri', param: 'degisiklik-talepleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -471,6 +480,9 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * (K-544).
  * Yemek aboneliği (DOM-FIN-164) ikisine açıktır; kesim ayarı yöneticide, gün iptalini ikisi de
  * yapar (K-547, K-548).
+ * Bilgilerim (DOM-FIN-166) ikisine açıktır: personel kendi özlük özetini, belgelerini, iznini ve
+ * pusulalarını görür, değişiklik talep eder; değişiklik talepleri kuyruğu yalnız yöneticidedir
+ * (K-553). Öğretmen aynı görünümü rol kabuğundan açar.
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -513,7 +525,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'donations' ||
       value === 'refundInvoices' ||
       value === 'healthAccessLog' ||
-      value === 'teacherFeedback'
+      value === 'teacherFeedback' ||
+      value === 'staffChangeRequests'
     )
       return isManager
     if (value === 'socialActivities') return isManager && institutionType === 'school'
@@ -756,6 +769,8 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'earlyDismissals' ? <FinanceEarlyDismissalsSection /> : null}
         {tab === 'tripReports' ? <FinanceTripReportsSection /> : null}
         {tab === 'schoolCalendar' ? <FinanceSchoolCalendarSection /> : null}
+        {tab === 'selfService' ? <StaffSelfServiceView /> : null}
+        {tab === 'staffChangeRequests' ? <FinanceStaffChangeRequestsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

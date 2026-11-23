@@ -4,6 +4,7 @@ import {
   usePayrollPayslips,
   type PayrollPayslips,
 } from '@kampus/react-shared/use-finance-payroll-runs.ts'
+import { useOwnPayslip } from '@kampus/react-shared/use-finance-staff-self-service.ts'
 import { useReauthRetry } from '@/auth/use-reauth-retry.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
@@ -27,8 +28,9 @@ type Rendering =
  * Ücret hesap pusulası düğmesi (DOM-FIN-119; ON-201). Tıklamada pusula verisi ayın kayıtlı
  * hesabından okunur (taze oturum; eskiyse parola sorulur ve okuma bir kez yinelenir; her okuma
  * denetime düşer), sonra PDF önizleme penceresi açılır. `membershipId` verilmezse ayın bütün
- * pusulaları tek belgede, her biri ayrı sayfada. Veri yalnız pencere açıkken bellekte tutulur;
- * jsPDF yalnız bu noktada yüklenir.
+ * pusulaları tek belgede, her biri ayrı sayfada. `own` personelin kendi pusulasıdır (self-servis,
+ * DOM-FIN-166 K-555; yalnız onaylı dönem, aynı şablon). Veri yalnız pencere açıkken bellekte
+ * tutulur; jsPDF yalnız bu noktada yüklenir.
  */
 export function FinancePayrollPayslipButton({
   month,
@@ -36,14 +38,18 @@ export function FinancePayrollPayslipButton({
   label,
   accessibleName,
   size,
+  own = false,
 }: {
   month: string
   membershipId?: string
+  own?: boolean
   label: string
   accessibleName?: string
   size?: ComponentProps<typeof Button>['size']
 }) {
-  const payslips = usePayrollPayslips()
+  const managerSlips = usePayrollPayslips()
+  const ownSlip = useOwnPayslip()
+  const pending = own ? ownSlip.isPending : managerSlips.isPending
   const { run, reauthModal } = useReauthRetry()
   const [data, setData] = useState<PayrollPayslips | null>(null)
   const [rendering, setRendering] = useState<Rendering>({ status: 'pending' })
@@ -71,7 +77,12 @@ export function FinancePayrollPayslipButton({
 
   async function open() {
     const outcome = await run(() =>
-      payslips.submit(membershipId === undefined ? { month } : { month, membershipId }, QUIET),
+      own
+        ? ownSlip.submit({ month }, QUIET)
+        : managerSlips.submit(
+            membershipId === undefined ? { month } : { month, membershipId },
+            QUIET,
+          ),
     )
     if (outcome.status !== 'done' || outcome.result.status !== 'success') return
     const fetched = outcome.result.data.data
@@ -88,8 +99,8 @@ export function FinancePayrollPayslipButton({
         size={size}
         aria-haspopup="dialog"
         aria-label={accessibleName}
-        disabled={payslips.isPending}
-        aria-busy={payslips.isPending || undefined}
+        disabled={pending}
+        aria-busy={pending || undefined}
         onClick={() => void open()}
       >
         <Icon name="FileText" size={16} aria-hidden="true" />

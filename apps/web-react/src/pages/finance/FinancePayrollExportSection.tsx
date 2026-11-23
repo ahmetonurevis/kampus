@@ -20,6 +20,7 @@ import {
 import { payrollItemLabel } from '@kampus/school-core/lib/finance-payroll-exports.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { ReauthModal } from '@/auth/ReauthModal.tsx'
+import { useAuth } from '@/auth/use-auth.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -37,6 +38,7 @@ import { StatGrid } from '../academic/AcademicParts.tsx'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { FinanceLessonHourSheetPanel } from './FinanceLessonHourSheetPanel.tsx'
+import { FinanceLessonHourSuggestionPanel } from './FinanceLessonHourSuggestionPanel.tsx'
 import { FinancePayrollExportProfileModal } from './FinancePayrollExportProfileModal.tsx'
 import {
   isPayrollMonth,
@@ -74,6 +76,9 @@ type Dialog =
  */
 export function FinancePayrollExportSection() {
   const today = dayKey()
+  const { session } = useAuth()
+  // Programdan öneri yalnız okulda (DOM-FIN-165); dil okulunun saat ücreti ayrıdır (IST-087).
+  const school = session?.institution?.type === 'school'
   const [month, setMonth] = useState(today.slice(0, 7))
   const valid = isPayrollMonth(month)
   const preview = usePayrollPreview(month, valid)
@@ -206,6 +211,7 @@ export function FinancePayrollExportSection() {
           <QueryError error={sheet.error} onRetry={() => void sheet.refetch()} />
         ) : null}
         {sheetData ? <FinanceLessonHourSheetPanel sheet={sheetData} /> : null}
+        {valid && school ? <FinanceLessonHourSuggestionPanel month={month} /> : null}
         {data ? (
           <>
             <StatGrid

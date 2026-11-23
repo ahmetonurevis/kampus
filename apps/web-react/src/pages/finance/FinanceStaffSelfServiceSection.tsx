@@ -42,6 +42,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { OwnHourlyPayoutPanel } from './FinanceHourlyLessonPayoutsSection.tsx'
 import { FinancePayrollPayslipButton } from './FinancePayrollPayslipButton.tsx'
 import {
   leaveRequestBody,
@@ -100,7 +101,7 @@ type Card = NonNullable<OwnStaffProfile['file']>
 /**
  * "Bilgilerim" (DOM-FIN-166; ON-189; K-553…K-555): personelin kendi özlük özeti (salt okunur,
  * maskeli), değişiklik talepleri, özlük belgeleri, izin bakiyesi ve talebi, onaylı dönem bordro
- * pusulaları. Değişiklik doğrudan yazılmaz, yönetici onayına talep olarak gider. Yönetici ve ön
+ * pusulaları ve saat ücretlide ders saati dökümü (DOM-FIN-167). Değişiklik doğrudan yazılmaz, yönetici onayına talep olarak gider. Yönetici ve ön
  * büroda Finans "Bilgilerim" sekmesidir; öğretmen menüsüne bağlanması rol kabuğundadır.
  */
 export function StaffSelfServiceView() {
@@ -116,6 +117,7 @@ export function StaffSelfServiceView() {
       <DocumentsPanel />
       <LeavePanel membershipId={data.membershipId} />
       <PayslipsPanel />
+      <OwnHourlyPayoutPanel className={PANEL} />
     </div>
   )
 }

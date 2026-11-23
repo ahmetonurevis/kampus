@@ -401080,6 +401080,1746 @@
         }
       }
     },
+    "/api/v1/finance/hourly-lesson-payouts/{month}": {
+      "get": {
+        "operationId": "getHourlyLessonPayouts",
+        "summary": "Ayın ders saati hakediş dökümü",
+        "tags": [
+          "finance-hourly-lesson-payouts"
+        ],
+        "description": "Saat ücretli öğretmenlerin ay dökümü (DOM-FIN-167, IST-087): öğretmen başına verilen ders ve saat, iptal, telafi, yedek ve yedeğe devredilen ders sayıları, ücret tanımı kırılımı ve tutar; kurum toplamı. Kaynak ders programıdır (iki kurum türünde de); ders durumu programdan ek ders önerisiyle aynı kuraldır: iptal, kurum tatili, öğretmenin kullanılmış izin ya da rapor günü, yedeğe devredilen ve henüz bitmemiş ders verilmemiş sayılır; yedek ders yedeğe, telafi dersi kendi kaydıyla verilmiş sayılır (DOM-FIN-165, K-550). Dil okulunda ayrıca açılmış grupların haftalık kalıbından oturum üretilir (plandan; grup iptal edildiyse iptal anından sonraki oturum iptal, öğretmenin aynı saatte programda dersi varsa oturum sayılmaz; K-557). Yalnız verilen ders ödenir: satır dersin gününde yürürlükteki ana ücretle fiyatlanır, ders saati ücreti × ders saati, saatlik ücret × dakika ÷ 60 (kuruşa yuvarlanır); o gün tanım yoksa ya da aylıksa tutar boş ve uyarılı (K-556). Kapsam: ayda dersi olan, ayla kesişen ana ücretlerinden biri saatlik ya da ders saati olan ya da hiç ana ücreti olmayan personel. Ekran okuması `finance.hourly_lesson_payout.read` denetimine düşer (tutar ve izin günü taşır). Her PDF verisi (`purpose=pdf`) ve CSV (`Accept: text/csv`; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, ders başına satır ve öğretmen toplamı) `finance.hourly_lesson_payout.export` denetimine düşer (yalnız alan adları), taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Döküm bordroya aktarılmaz (K-558). Rol: yalnız `yonetici` (K-558; muhasebe rolü yok). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "pdf"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekran, `pdf` PDF verisi (taze oturum, `finance.hourly_lesson_payout.export` denetimi)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Döküm ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "monthComplete": {
+                          "type": "boolean"
+                        },
+                        "attendanceKnown": {
+                          "type": "boolean"
+                        },
+                        "teachers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "payBasis": {
+                                "type": "string",
+                                "enum": [
+                                  "hourly",
+                                  "mixed",
+                                  "unknown"
+                                ],
+                                "description": "`hourly` saat ya da ders saati ücretli, `mixed` ay içinde aylık ve saat ücreti, `unknown` ayda ana ücret tanımı yok"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "lessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ayın bütün ders satırları"
+                                  },
+                                  "givenLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Verilen ders sayısı"
+                                  },
+                                  "givenHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Verilen ders saati"
+                                  },
+                                  "givenMinutes": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Verilen dersin dakikası"
+                                  },
+                                  "ownHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kendi dersi (verilen)"
+                                  },
+                                  "substituteHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yedek girdiği ders (verilen)"
+                                  },
+                                  "makeupLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Verilen telafi dersi sayısı"
+                                  },
+                                  "makeupHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Verilen telafi ders saati"
+                                  },
+                                  "groupHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Plandan grup dersi (verilen)"
+                                  },
+                                  "cancelledLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İptal edilen ders sayısı"
+                                  },
+                                  "cancelledHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İptal edilen ders saati"
+                                  },
+                                  "substitutedOutLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yedeğe devredilen ders sayısı"
+                                  },
+                                  "holidayLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tatile denk gelen ders sayısı"
+                                  },
+                                  "leaveLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğretmenin izinli ya da raporlu olduğu gündeki ders sayısı"
+                                  },
+                                  "upcomingLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Henüz yapılmamış ders sayısı"
+                                  },
+                                  "duplicateLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Programla çakıştığı için sayılmayan grup oturumu"
+                                  },
+                                  "attendanceMissingLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Sınıfın o günü yoklaması alınmamış verilen ders"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Fiyatlanan derslerin toplamı (kuruş)"
+                                  },
+                                  "unpricedHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Verilip tutarı hesaplanamayan ders saati"
+                                  }
+                                },
+                                "required": [
+                                  "lessons",
+                                  "givenLessons",
+                                  "givenHours",
+                                  "givenMinutes",
+                                  "ownHours",
+                                  "substituteHours",
+                                  "makeupLessons",
+                                  "makeupHours",
+                                  "groupHours",
+                                  "cancelledLessons",
+                                  "cancelledHours",
+                                  "substitutedOutLessons",
+                                  "holidayLessons",
+                                  "leaveLessons",
+                                  "upcomingLessons",
+                                  "duplicateLessons",
+                                  "attendanceMissingLessons",
+                                  "amountCents",
+                                  "unpricedHours"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "rates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "rateType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hourly",
+                                        "lesson_hour"
+                                      ],
+                                      "description": "`hourly` saatlik (dakikadan), `lesson_hour` ders saati ücreti"
+                                    },
+                                    "rateCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Birim ücret (kuruş)"
+                                    },
+                                    "startDate": {
+                                      "type": "string"
+                                    },
+                                    "endDate": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "lessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Bu ücretle fiyatlanan ders"
+                                    },
+                                    "hours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ders saati"
+                                    },
+                                    "minutes": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dakika"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tutar (kuruş)"
+                                    }
+                                  },
+                                  "required": [
+                                    "rateType",
+                                    "rateCents",
+                                    "startDate",
+                                    "endDate",
+                                    "lessons",
+                                    "hours",
+                                    "minutes",
+                                    "amountCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Ay içinde uygulanan ücret tanımları (değişirse birden çok)"
+                              },
+                              "warnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "no_pay_rate",
+                                    "rate_gap",
+                                    "monthly_days",
+                                    "attendance_missing",
+                                    "group_plan",
+                                    "duplicate"
+                                  ]
+                                },
+                                "description": "`no_pay_rate` ana ücret yok, `rate_gap` bazı günlerde tanım yok, `monthly_days` bazı günlerde aylık ücret, `attendance_missing` yoklama alınmamış gün, `group_plan` grup dersleri plandan, `duplicate` programla çakışan grup oturumu"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "payBasis",
+                              "totals",
+                              "rates",
+                              "warnings"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayda dersi olan saat ücretli ya da ücret tanımsız öğretmenler, ada göre"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "teacherCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Öğretmen"
+                            },
+                            "givenLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen ders"
+                            },
+                            "givenHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen ders saati"
+                            },
+                            "cancelledLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen ders"
+                            },
+                            "makeupLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen telafi dersi"
+                            },
+                            "amountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Toplam tutar (kuruş)"
+                            },
+                            "unpricedTeacherCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tutarı eksik kalan öğretmen"
+                            }
+                          },
+                          "required": [
+                            "teacherCount",
+                            "givenLessons",
+                            "givenHours",
+                            "cancelledLessons",
+                            "makeupLessons",
+                            "amountCents",
+                            "unpricedTeacherCount"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "monthComplete",
+                        "attendanceKnown",
+                        "teachers",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/hourly-lesson-payouts/{month}/teachers/{membershipId}": {
+      "get": {
+        "operationId": "getHourlyLessonPayoutDetail",
+        "summary": "Öğretmenin gün gün ders saati hakediş dökümü",
+        "tags": [
+          "finance-hourly-lesson-payouts"
+        ],
+        "description": "Öğretmenin ay dökümü: gün gün her ders (sınıf ya da grup, ders, dakika, ders saati, durum, tür, telafi bağı, tatil adı, yoklama işareti), birim ücret ve tutar. Kaynak ders programıdır (iki kurum türünde de); ders durumu programdan ek ders önerisiyle aynı kuraldır: iptal, kurum tatili, öğretmenin kullanılmış izin ya da rapor günü, yedeğe devredilen ve henüz bitmemiş ders verilmemiş sayılır; yedek ders yedeğe, telafi dersi kendi kaydıyla verilmiş sayılır (DOM-FIN-165, K-550). Dil okulunda ayrıca açılmış grupların haftalık kalıbından oturum üretilir (plandan; grup iptal edildiyse iptal anından sonraki oturum iptal, öğretmenin aynı saatte programda dersi varsa oturum sayılmaz; K-557). Yalnız verilen ders ödenir: satır dersin gününde yürürlükteki ana ücretle fiyatlanır, ders saati ücreti × ders saati, saatlik ücret × dakika ÷ 60 (kuruşa yuvarlanır); o gün tanım yoksa ya da aylıksa tutar boş ve uyarılı (K-556). Kapsam: ayda dersi olan, ayla kesişen ana ücretlerinden biri saatlik ya da ders saati olan ya da hiç ana ücreti olmayan personel. Dökümde olmayan (aylık ücretli, ayda dersi yok) ya da başka kurumun üyeliği 404. Ekran okuması `finance.hourly_lesson_payout.read` denetimine düşer. Her PDF verisi (`purpose=pdf`) ve CSV (`Accept: text/csv`; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, ders başına satır ve öğretmen toplamı) `finance.hourly_lesson_payout.export` denetimine düşer (yalnız alan adları), taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-558; muhasebe rolü yok). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "pdf"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekran, `pdf` PDF verisi (taze oturum, `finance.hourly_lesson_payout.export` denetimi)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Döküm ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Öğretmenin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "staffName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean"
+                        },
+                        "payBasis": {
+                          "type": "string",
+                          "enum": [
+                            "hourly",
+                            "mixed",
+                            "unknown"
+                          ],
+                          "description": "`hourly` saat ya da ders saati ücretli, `mixed` ay içinde aylık ve saat ücreti, `unknown` ayda ana ücret tanımı yok"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "lessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayın bütün ders satırları"
+                            },
+                            "givenLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen ders sayısı"
+                            },
+                            "givenHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen ders saati"
+                            },
+                            "givenMinutes": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen dersin dakikası"
+                            },
+                            "ownHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kendi dersi (verilen)"
+                            },
+                            "substituteHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yedek girdiği ders (verilen)"
+                            },
+                            "makeupLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen telafi dersi sayısı"
+                            },
+                            "makeupHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilen telafi ders saati"
+                            },
+                            "groupHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Plandan grup dersi (verilen)"
+                            },
+                            "cancelledLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen ders sayısı"
+                            },
+                            "cancelledHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen ders saati"
+                            },
+                            "substitutedOutLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yedeğe devredilen ders sayısı"
+                            },
+                            "holidayLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tatile denk gelen ders sayısı"
+                            },
+                            "leaveLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Öğretmenin izinli ya da raporlu olduğu gündeki ders sayısı"
+                            },
+                            "upcomingLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Henüz yapılmamış ders sayısı"
+                            },
+                            "duplicateLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Programla çakıştığı için sayılmayan grup oturumu"
+                            },
+                            "attendanceMissingLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sınıfın o günü yoklaması alınmamış verilen ders"
+                            },
+                            "amountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Fiyatlanan derslerin toplamı (kuruş)"
+                            },
+                            "unpricedHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Verilip tutarı hesaplanamayan ders saati"
+                            }
+                          },
+                          "required": [
+                            "lessons",
+                            "givenLessons",
+                            "givenHours",
+                            "givenMinutes",
+                            "ownHours",
+                            "substituteHours",
+                            "makeupLessons",
+                            "makeupHours",
+                            "groupHours",
+                            "cancelledLessons",
+                            "cancelledHours",
+                            "substitutedOutLessons",
+                            "holidayLessons",
+                            "leaveLessons",
+                            "upcomingLessons",
+                            "duplicateLessons",
+                            "attendanceMissingLessons",
+                            "amountCents",
+                            "unpricedHours"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "rates": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "rateType": {
+                                "type": "string",
+                                "enum": [
+                                  "hourly",
+                                  "lesson_hour"
+                                ],
+                                "description": "`hourly` saatlik (dakikadan), `lesson_hour` ders saati ücreti"
+                              },
+                              "rateCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Birim ücret (kuruş)"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lessons": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu ücretle fiyatlanan ders"
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ders saati"
+                              },
+                              "minutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dakika"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tutar (kuruş)"
+                              }
+                            },
+                            "required": [
+                              "rateType",
+                              "rateCents",
+                              "startDate",
+                              "endDate",
+                              "lessons",
+                              "hours",
+                              "minutes",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ay içinde uygulanan ücret tanımları (değişirse birden çok)"
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "no_pay_rate",
+                              "rate_gap",
+                              "monthly_days",
+                              "attendance_missing",
+                              "group_plan",
+                              "duplicate"
+                            ]
+                          },
+                          "description": "`no_pay_rate` ana ücret yok, `rate_gap` bazı günlerde tanım yok, `monthly_days` bazı günlerde aylık ücret, `attendance_missing` yoklama alınmamış gün, `group_plan` grup dersleri plandan, `duplicate` programla çakışan grup oturumu"
+                        },
+                        "month": {
+                          "type": "string"
+                        },
+                        "monthComplete": {
+                          "type": "boolean",
+                          "description": "Ay bitti mi; bitmediyse gelecek dersler sayılmaz"
+                        },
+                        "attendanceKnown": {
+                          "type": "boolean",
+                          "description": "Yoklama okunabildi mi (`academic` modülü açık)"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "string"
+                              },
+                              "lines": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "lessonId": {
+                                      "type": "string",
+                                      "description": "Ders programı kaydı ya da `group:<grup>:<gün>:<saat>`"
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "enum": [
+                                        "schedule",
+                                        "group"
+                                      ],
+                                      "description": "`schedule` ders programı, `group` grup planı"
+                                    },
+                                    "day": {
+                                      "type": "string"
+                                    },
+                                    "startsAt": {
+                                      "type": "string"
+                                    },
+                                    "minutes": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dakika"
+                                    },
+                                    "hours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ders saati (programda 40, grupta 45 dakika; en az 1)"
+                                    },
+                                    "classId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "groupId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "subjectId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "title": {
+                                      "description": "Ders ya da kur adı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "placeName": {
+                                      "description": "Sınıf ya da grup adı; kayıt yoksa boş",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "counted",
+                                        "cancelled",
+                                        "holiday",
+                                        "leave",
+                                        "substituted_out",
+                                        "upcoming",
+                                        "duplicate"
+                                      ],
+                                      "description": "`counted` verildi, `cancelled` iptal, `holiday` tatil, `leave` öğretmen izinli, `substituted_out` yedeğe devredildi, `upcoming` henüz yapılmadı, `duplicate` programla çakışan grup oturumu"
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "own",
+                                        "substitute",
+                                        "makeup",
+                                        "group"
+                                      ],
+                                      "description": "`own` kendi dersi, `substitute` yedek, `makeup` telafi, `group` grup dersi"
+                                    },
+                                    "makeupForLessonId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "holidayTitle": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "attendanceMissing": {
+                                      "type": [
+                                        "boolean",
+                                        "null"
+                                      ]
+                                    },
+                                    "rateType": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "hourly",
+                                            "lesson_hour"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "rateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "amountCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Satır tutarı (kuruş); fiyatlanamadıysa boş"
+                                    },
+                                    "unpriced": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "no_rate",
+                                            "monthly"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Verilen dersin tutarı neden boş: `no_rate` tanım yok, `monthly` aylık ücret"
+                                    }
+                                  },
+                                  "required": [
+                                    "lessonId",
+                                    "source",
+                                    "day",
+                                    "startsAt",
+                                    "minutes",
+                                    "hours",
+                                    "classId",
+                                    "groupId",
+                                    "subjectId",
+                                    "title",
+                                    "placeName",
+                                    "status",
+                                    "kind",
+                                    "makeupForLessonId",
+                                    "holidayTitle",
+                                    "attendanceMissing",
+                                    "rateType",
+                                    "rateCents",
+                                    "amountCents",
+                                    "unpriced"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "lines"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayın dersi olan günleri ve dersleri"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "staffName",
+                        "role",
+                        "staffActive",
+                        "payBasis",
+                        "totals",
+                        "rates",
+                        "warnings",
+                        "month",
+                        "monthComplete",
+                        "attendanceKnown",
+                        "days"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/my-hourly-lesson-payouts/{month}": {
+      "get": {
+        "operationId": "getOwnHourlyLessonPayout",
+        "summary": "Ders saati hakediş dökümüm",
+        "tags": [
+          "finance-hourly-lesson-payouts"
+        ],
+        "description": "Oturumdaki personelin ay dökümü (self-servis, DOM-FIN-166): yönetici dökümüyle aynı içerik. İstekte personel kimliği yoktur. Dökümü yoksa (aylık ücretli ya da ayda dersi yok) `payout: null`; PDF ve CSV istenirse 404. Kaynak ders programıdır (iki kurum türünde de); ders durumu programdan ek ders önerisiyle aynı kuraldır: iptal, kurum tatili, öğretmenin kullanılmış izin ya da rapor günü, yedeğe devredilen ve henüz bitmemiş ders verilmemiş sayılır; yedek ders yedeğe, telafi dersi kendi kaydıyla verilmiş sayılır (DOM-FIN-165, K-550). Dil okulunda ayrıca açılmış grupların haftalık kalıbından oturum üretilir (plandan; grup iptal edildiyse iptal anından sonraki oturum iptal, öğretmenin aynı saatte programda dersi varsa oturum sayılmaz; K-557). Yalnız verilen ders ödenir: satır dersin gününde yürürlükteki ana ücretle fiyatlanır, ders saati ücreti × ders saati, saatlik ücret × dakika ÷ 60 (kuruşa yuvarlanır); o gün tanım yoksa ya da aylıksa tutar boş ve uyarılı (K-556). Kapsam: ayda dersi olan, ayla kesişen ana ücretlerinden biri saatlik ya da ders saati olan ya da hiç ana ücreti olmayan personel. Ekran okuması denetime düşmez. Her PDF verisi (`purpose=pdf`) ve CSV (`Accept: text/csv`; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, ders başına satır ve öğretmen toplamı) `finance.hourly_lesson_payout.export` denetimine düşer (yalnız alan adları), taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi dökümü; öğrenci ve veli 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "pdf"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekran, `pdf` PDF verisi (taze oturum, `finance.hourly_lesson_payout.export` denetimi)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Döküm ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "payout": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "membershipId": {
+                                  "type": "string"
+                                },
+                                "staffName": {
+                                  "type": "string"
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                                },
+                                "staffActive": {
+                                  "type": "boolean"
+                                },
+                                "payBasis": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hourly",
+                                    "mixed",
+                                    "unknown"
+                                  ],
+                                  "description": "`hourly` saat ya da ders saati ücretli, `mixed` ay içinde aylık ve saat ücreti, `unknown` ayda ana ücret tanımı yok"
+                                },
+                                "totals": {
+                                  "type": "object",
+                                  "properties": {
+                                    "lessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın bütün ders satırları"
+                                    },
+                                    "givenLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Verilen ders sayısı"
+                                    },
+                                    "givenHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Verilen ders saati"
+                                    },
+                                    "givenMinutes": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Verilen dersin dakikası"
+                                    },
+                                    "ownHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kendi dersi (verilen)"
+                                    },
+                                    "substituteHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yedek girdiği ders (verilen)"
+                                    },
+                                    "makeupLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Verilen telafi dersi sayısı"
+                                    },
+                                    "makeupHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Verilen telafi ders saati"
+                                    },
+                                    "groupHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Plandan grup dersi (verilen)"
+                                    },
+                                    "cancelledLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "İptal edilen ders sayısı"
+                                    },
+                                    "cancelledHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "İptal edilen ders saati"
+                                    },
+                                    "substitutedOutLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yedeğe devredilen ders sayısı"
+                                    },
+                                    "holidayLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tatile denk gelen ders sayısı"
+                                    },
+                                    "leaveLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğretmenin izinli ya da raporlu olduğu gündeki ders sayısı"
+                                    },
+                                    "upcomingLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Henüz yapılmamış ders sayısı"
+                                    },
+                                    "duplicateLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Programla çakıştığı için sayılmayan grup oturumu"
+                                    },
+                                    "attendanceMissingLessons": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Sınıfın o günü yoklaması alınmamış verilen ders"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Fiyatlanan derslerin toplamı (kuruş)"
+                                    },
+                                    "unpricedHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Verilip tutarı hesaplanamayan ders saati"
+                                    }
+                                  },
+                                  "required": [
+                                    "lessons",
+                                    "givenLessons",
+                                    "givenHours",
+                                    "givenMinutes",
+                                    "ownHours",
+                                    "substituteHours",
+                                    "makeupLessons",
+                                    "makeupHours",
+                                    "groupHours",
+                                    "cancelledLessons",
+                                    "cancelledHours",
+                                    "substitutedOutLessons",
+                                    "holidayLessons",
+                                    "leaveLessons",
+                                    "upcomingLessons",
+                                    "duplicateLessons",
+                                    "attendanceMissingLessons",
+                                    "amountCents",
+                                    "unpricedHours"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "rates": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "rateType": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hourly",
+                                          "lesson_hour"
+                                        ],
+                                        "description": "`hourly` saatlik (dakikadan), `lesson_hour` ders saati ücreti"
+                                      },
+                                      "rateCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Birim ücret (kuruş)"
+                                      },
+                                      "startDate": {
+                                        "type": "string"
+                                      },
+                                      "endDate": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "lessons": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Bu ücretle fiyatlanan ders"
+                                      },
+                                      "hours": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Ders saati"
+                                      },
+                                      "minutes": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Dakika"
+                                      },
+                                      "amountCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Tutar (kuruş)"
+                                      }
+                                    },
+                                    "required": [
+                                      "rateType",
+                                      "rateCents",
+                                      "startDate",
+                                      "endDate",
+                                      "lessons",
+                                      "hours",
+                                      "minutes",
+                                      "amountCents"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Ay içinde uygulanan ücret tanımları (değişirse birden çok)"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "no_pay_rate",
+                                      "rate_gap",
+                                      "monthly_days",
+                                      "attendance_missing",
+                                      "group_plan",
+                                      "duplicate"
+                                    ]
+                                  },
+                                  "description": "`no_pay_rate` ana ücret yok, `rate_gap` bazı günlerde tanım yok, `monthly_days` bazı günlerde aylık ücret, `attendance_missing` yoklama alınmamış gün, `group_plan` grup dersleri plandan, `duplicate` programla çakışan grup oturumu"
+                                },
+                                "month": {
+                                  "type": "string"
+                                },
+                                "monthComplete": {
+                                  "type": "boolean",
+                                  "description": "Ay bitti mi; bitmediyse gelecek dersler sayılmaz"
+                                },
+                                "attendanceKnown": {
+                                  "type": "boolean",
+                                  "description": "Yoklama okunabildi mi (`academic` modülü açık)"
+                                },
+                                "days": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "day": {
+                                        "type": "string"
+                                      },
+                                      "lines": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "lessonId": {
+                                              "type": "string",
+                                              "description": "Ders programı kaydı ya da `group:<grup>:<gün>:<saat>`"
+                                            },
+                                            "source": {
+                                              "type": "string",
+                                              "enum": [
+                                                "schedule",
+                                                "group"
+                                              ],
+                                              "description": "`schedule` ders programı, `group` grup planı"
+                                            },
+                                            "day": {
+                                              "type": "string"
+                                            },
+                                            "startsAt": {
+                                              "type": "string"
+                                            },
+                                            "minutes": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991,
+                                              "description": "Dakika"
+                                            },
+                                            "hours": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991,
+                                              "description": "Ders saati (programda 40, grupta 45 dakika; en az 1)"
+                                            },
+                                            "classId": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "groupId": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "subjectId": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "title": {
+                                              "description": "Ders ya da kur adı",
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "placeName": {
+                                              "description": "Sınıf ya da grup adı; kayıt yoksa boş",
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "status": {
+                                              "type": "string",
+                                              "enum": [
+                                                "counted",
+                                                "cancelled",
+                                                "holiday",
+                                                "leave",
+                                                "substituted_out",
+                                                "upcoming",
+                                                "duplicate"
+                                              ],
+                                              "description": "`counted` verildi, `cancelled` iptal, `holiday` tatil, `leave` öğretmen izinli, `substituted_out` yedeğe devredildi, `upcoming` henüz yapılmadı, `duplicate` programla çakışan grup oturumu"
+                                            },
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "own",
+                                                "substitute",
+                                                "makeup",
+                                                "group"
+                                              ],
+                                              "description": "`own` kendi dersi, `substitute` yedek, `makeup` telafi, `group` grup dersi"
+                                            },
+                                            "makeupForLessonId": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "holidayTitle": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            },
+                                            "attendanceMissing": {
+                                              "type": [
+                                                "boolean",
+                                                "null"
+                                              ]
+                                            },
+                                            "rateType": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "hourly",
+                                                    "lesson_hour"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "rateCents": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "amountCents": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "Satır tutarı (kuruş); fiyatlanamadıysa boş"
+                                            },
+                                            "unpriced": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "no_rate",
+                                                    "monthly"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ],
+                                              "description": "Verilen dersin tutarı neden boş: `no_rate` tanım yok, `monthly` aylık ücret"
+                                            }
+                                          },
+                                          "required": [
+                                            "lessonId",
+                                            "source",
+                                            "day",
+                                            "startsAt",
+                                            "minutes",
+                                            "hours",
+                                            "classId",
+                                            "groupId",
+                                            "subjectId",
+                                            "title",
+                                            "placeName",
+                                            "status",
+                                            "kind",
+                                            "makeupForLessonId",
+                                            "holidayTitle",
+                                            "attendanceMissing",
+                                            "rateType",
+                                            "rateCents",
+                                            "amountCents",
+                                            "unpriced"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "day",
+                                      "lines"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Ayın dersi olan günleri ve dersleri"
+                                }
+                              },
+                              "required": [
+                                "membershipId",
+                                "staffName",
+                                "role",
+                                "staffActive",
+                                "payBasis",
+                                "totals",
+                                "rates",
+                                "warnings",
+                                "month",
+                                "monthComplete",
+                                "attendanceKnown",
+                                "days"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Dökümün yoksa (aylık ücretli ya da dersin yok) boş"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "payout"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

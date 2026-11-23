@@ -1226,6 +1226,13 @@
       "when": 1795346776161,
       "tag": "0174_create_school_calendar_events",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1795462273714,
+      "tag": "0175_create_meal_subscriptions",
+      "breakpoints": true
     }
   ]
 }

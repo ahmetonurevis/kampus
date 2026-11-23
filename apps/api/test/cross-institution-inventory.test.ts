@@ -4935,6 +4935,68 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yemek aboneliği ve gün iptali (ON-150; DOM-FIN-164).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/meal-subscriptions/my', 'get(MY, a.parent)'],
+        ['liste', 'GET /api/v1/finance/meal-subscriptions', 'ok(await get(BASE, a.admin))'],
+        [
+          'gövde',
+          'POST /api/v1/finance/meal-subscriptions',
+          "body({ studentId: 'test-b-ogrenci' })",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/meal-subscriptions/:subscriptionId',
+          'get(url(theirs.id), a.admin)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/meal-subscriptions/:subscriptionId',
+          'patch(url(theirs.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/meal-subscriptions/:subscriptionId',
+          'remove(url(theirs.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/meal-subscriptions/:subscriptionId/cancellations',
+          'post(cancelUrl(theirs.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/meal-subscriptions/:subscriptionId/cancellations/:cancellationId',
+          '`${cancelUrl(theirs.id)}/${String(cancellation.id)}`',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/meal-daily-counts',
+          'get(`${DAILY}?date=${TODAY}`, a.admin)',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/meal-monthly-summary',
+          'get(`${MONTHLY}?month=2026-10`, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/meal-subscription-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/meal-subscription-settings',
+          "cutoffTime: '11:00', institutionId: b.id",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-meal-subscriptions.test.ts',
+        'DOM-FIN-164: başka kurumun aboneliği 404, B değişmez; listede, sayımda ve özette B yok; institutionId ve B öğrencisi etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

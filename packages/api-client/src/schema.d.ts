@@ -17392,6 +17392,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/meal-subscriptions/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yemek aboneliklerim (veli ve öğrenci)
+         * @description Velinin bağlı çocuklarının ya da öğrencinin sürmekte ve başlamamış yemek abonelikleri: öğün, tarih, günler, diyet türü ve bugünden 28 günlük yemek takvimi (yemek var, iptal, geç iptal, tatil; kesim anı). `canCancel`/`canRestore` velide kesime göre hesaplanır, öğrencide hep `false` (K-548). Kapsam sunucuda core `mealMenus` kuralıyla daralır. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `meals`.
+         */
+        get: operations["listMyMealSubscriptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yemek abonelikleri
+         * @description Arşivlenmemiş abonelikler, öğrenci adına göre: öğrenci, sınıf, öğün, tarih, günler, diyet türü ve durum (bugüne göre başlamadı, sürüyor, bitti). Süzgeç öğrenci adı (`q`), durum, öğün, diyet türü ve sınıf. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["listMealSubscriptions"];
+        put?: never;
+        /**
+         * Yemek aboneliği aç
+         * @description Öğrenci (yok 422 `meal_subscription_student_not_found`, pasif 422 `meal_subscription_student_inactive`), kurumda açık öğün (422 `meal_kind_disabled`), başlangıç–bitiş (bugünden önce 422 `meal_subscription_start_past`, en çok 366 gün), hafta günleri ve diyet türü; "diğer" diyette kısa açıklama zorunlu, diğerlerinde yazılmaz (400). Aynı öğünde tarihleri değen abonelik 409 `meal_subscription_overlap` (K-547). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        post: operations["createMealSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-subscriptions/{subscriptionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yemek aboneliği ayrıntısı
+         * @description Abonelik, kesim, bugünden 28 günlük yemek takvimi (okul bayraklarıyla) ve bütün etkin iptaller. Başka kurumun ya da arşivli abonelik 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealSubscription"];
+        put?: never;
+        post?: never;
+        /**
+         * Başlamamış aboneliği sil
+         * @description Yalnız başlamamış abonelik arşivlenir; başlamış abonelik 422 `meal_subscription_started` (bitiş gününü değiştirin; K-547). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        delete: operations["archiveMealSubscription"];
+        options?: never;
+        head?: never;
+        /**
+         * Yemek aboneliğini düzenle
+         * @description Başlamamış abonelikte tarih, gün ve diyet değişir (başlangıç bugünden önce 422 `meal_subscription_start_past`). Başlamış abonelikte yalnız bitiş günü değişir (başka alan 422 `meal_subscription_started`, bugünden önce 422 `meal_subscription_end_past`); bitmiş abonelik 422 `meal_subscription_ended`. Sonuç bütün olarak doğrulanır (422 `meal_subscription_end_before_start`, `meal_diet_note_required` …); değişiklik yoksa 422 `meal_subscription_unchanged`; çakışma 409 `meal_subscription_overlap` (K-547). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        patch: operations["updateMealSubscription"];
+        trace?: never;
+    };
+    "/api/v1/finance/meal-subscriptions/{subscriptionId}/cancellations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yemek günlerini iptal et
+         * @description Aboneliğin seçilen yemek günleri iptal edilir (en çok 31 gün). Yemek günü değil 422 `meal_day_not_subscribed`, okul takviminde tatil 422 `meal_day_holiday`, geçmiş gün 422 `meal_day_past`, zaten iptal 409 `meal_day_already_cancelled`. Kesim (kurum ayarı; varsayılan bir gün önce 15:00) geçtiyse veli 422 `meal_cancellation_cutoff_passed` alır, okulun iptali `late: true` (geç iptal) yazılır ve iade/mahsup gününe girmez (K-548). Gerekçe alınmaz. Veli yalnız bağlı çocuğunun aboneliğinde (başka öğrenci 404). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`, `veli`; diğer roller 403. Modüller `finance` ve `meals`.
+         */
+        post: operations["cancelMealDays"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-subscriptions/{subscriptionId}/cancellations/{cancellationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Gün iptalini geri al
+         * @description İptal geri alınır, gün yeniden yemek günü olur. Geçmiş gün 422 `meal_day_past`; veli yalnız kesimden önce (sonra 422 `meal_cancellation_cutoff_passed`), okul gün bitene kadar (K-548). Veli yalnız bağlı çocuğunun aboneliğinde (başka öğrenci 404). `If-Match` (iptalin sürümü) zorunlu. Rol: `yonetici`, `onburo`, `veli`; diğer roller 403. Modüller `finance` ve `meals`.
+         */
+        delete: operations["restoreMealDay"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-daily-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Günlük yemek sayısı (mutfak)
+         * @description Seçilen gün için öğün × diyet türü yemek sayısı; iptal ve geç iptal düşülür ve ayrıca sayılır; sınıf kırılımı. Okul takviminde kurum tatiliyse sayılar sıfır ve tatilin adı döner (K-549). Öğrenci adı dönmez. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealDailyCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-monthly-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aylık yemek gün özeti
+         * @description Ayda yemek günü olan her abonelik: abone olunan gün (tatil hariç), tatil, iptal, geç iptal, yemek günü ve iade/mahsup için gün sayısı (= kesimden önce iptal). Tutar hesaplanmaz (ek hizmet kalemi ON-087 ile; K-549, H-119). Öğrenci adına göre, sayfalı; süzgeç ay, öğrenci adı, öğün ve sınıf. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["listMealMonthlySummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/meal-subscription-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gün iptali kesimi
+         * @description Kesim yemek gününden kaç gün önce ve saat kaçta (Europe/Istanbul); hiç kaydedilmediyse bir gün önce 15:00 ve sürüm 1 (K-548). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).
+         */
+        get: operations["getMealSubscriptionSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Gün iptali kesimini kaydet
+         * @description Kesim 0–7 gün önce, `SS:DD` saatinde; değişiklik yoksa 422 `meal_subscription_settings_unchanged`. Yeni kesim kaydedildiği andan sonraki iptallere uygulanır; yapılmış iptaller değişmez (K-548). `If-Match` zorunlu (hiç kaydedilmediyse 1). Rol: `yonetici`; diğer roller 403. Modüller `finance` ve `meals`.
+         */
+        patch: operations["setMealSubscriptionSettings"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -182551,6 +182727,1698 @@ export interface operations {
                             /** @description Son değişiklik anı (ISO 8601) */
                             updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyMealSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bugün (YYYY-MM-DD, Europe/Istanbul) */
+                            today: string;
+                            /** @description Gün iptali kesimi */
+                            cutoff: {
+                                /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                                cutoffDaysBefore: number;
+                                /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                                cutoffTime: string;
+                            };
+                            /** @description Kapsamdaki öğrencilerin sürmekte ve başlamamış abonelikleri */
+                            subscriptions: {
+                                id: string;
+                                studentId: string;
+                                studentName: string;
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                /** @description İlk yemek günü (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                                endDate: string;
+                                /** @description Yemek günleri (1 pazartesi … 7 pazar) */
+                                weekdays: number[];
+                                /** @enum {string} */
+                                dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                                dietNote: string | null;
+                                /**
+                                 * @description `upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)
+                                 * @enum {string}
+                                 */
+                                status: "upcoming" | "active" | "ended";
+                                days: {
+                                    /** @description Yemek günü (YYYY-MM-DD) */
+                                    mealDate: string;
+                                    /**
+                                     * @description `scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil
+                                     * @enum {string}
+                                     */
+                                    status: "scheduled" | "cancelled" | "late_cancelled" | "holiday";
+                                    /** @description Okul takvimindeki tatilin adı */
+                                    holidayTitle: string | null;
+                                    /** @description İptalin son anı (kesim, ISO 8601) */
+                                    deadline: string;
+                                    /** @description İsteği yapan bu günü iptal edebilir mi */
+                                    canCancel: boolean;
+                                    /** @description İsteği yapan bu günün iptalini geri alabilir mi */
+                                    canRestore: boolean;
+                                    cancellation: {
+                                        id: string;
+                                        /** @description İptal edilen gün (YYYY-MM-DD) */
+                                        mealDate: string;
+                                        /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                        late: boolean;
+                                        /**
+                                         * @description `family` veli, `school` okul
+                                         * @enum {string}
+                                         */
+                                        cancelledBy: "family" | "school";
+                                        /** @description İptal anı (ISO 8601) */
+                                        cancelledAt: string;
+                                        /** @description Geri alma için `If-Match` sürümü */
+                                        version: number;
+                                    } | null;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMealSubscriptions: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğrenci adında arama (en az 2 karakter) */
+                q?: string;
+                /** @description Durum süzgeci (bugüne göre) */
+                status?: "upcoming" | "active" | "ended";
+                /** @description Öğün süzgeci */
+                mealKind?: "breakfast" | "lunch" | "snack";
+                /** @description Diyet türü süzgeci */
+                dietType?: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                /** @description Sınıf süzgeci */
+                classId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            /** @description İlk yemek günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Yemek günleri (1 pazartesi … 7 pazar) */
+                            weekdays: number[];
+                            /** @enum {string} */
+                            dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                            dietNote: string | null;
+                            /**
+                             * @description `upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)
+                             * @enum {string}
+                             */
+                            status: "upcoming" | "active" | "ended";
+                            classId: string | null;
+                            className: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createMealSubscription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Yeni yemek aboneliği */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrenci (students) */
+                    studentId: string;
+                    /**
+                     * @description Öğün; kurumda açık olmalı
+                     * @enum {string}
+                     */
+                    mealKind: "breakfast" | "lunch" | "snack";
+                    /** @description İlk yemek günü (YYYY-MM-DD, Europe/Istanbul) */
+                    startDate: string;
+                    /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                    endDate: string;
+                    /** @description Yemek günleri (ISO: 1 pazartesi … 7 pazar) */
+                    weekdays: number[];
+                    /**
+                     * @description Diyet türü
+                     * @enum {string}
+                     */
+                    dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                    /** @description “Diğer” diyetin kısa açıklaması (2–200; ör. “domuz eti içermeyen”); tıbbi ayrıntı yazılmaz, diğer türlerde `null` */
+                    dietNote?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            /** @description İlk yemek günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Yemek günleri (1 pazartesi … 7 pazar) */
+                            weekdays: number[];
+                            /** @enum {string} */
+                            dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                            dietNote: string | null;
+                            /**
+                             * @description `upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)
+                             * @enum {string}
+                             */
+                            status: "upcoming" | "active" | "ended";
+                            classId: string | null;
+                            className: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gün iptali kesimi */
+                            cutoff: {
+                                /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                                cutoffDaysBefore: number;
+                                /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                                cutoffTime: string;
+                            };
+                            /** @description Bugünden 28 günlük yemek takvimi (yalnız yemek günleri) */
+                            days: {
+                                /** @description Yemek günü (YYYY-MM-DD) */
+                                mealDate: string;
+                                /**
+                                 * @description `scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil
+                                 * @enum {string}
+                                 */
+                                status: "scheduled" | "cancelled" | "late_cancelled" | "holiday";
+                                /** @description Okul takvimindeki tatilin adı */
+                                holidayTitle: string | null;
+                                /** @description İptalin son anı (kesim, ISO 8601) */
+                                deadline: string;
+                                /** @description İsteği yapan bu günü iptal edebilir mi */
+                                canCancel: boolean;
+                                /** @description İsteği yapan bu günün iptalini geri alabilir mi */
+                                canRestore: boolean;
+                                cancellation: {
+                                    id: string;
+                                    /** @description İptal edilen gün (YYYY-MM-DD) */
+                                    mealDate: string;
+                                    /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                    late: boolean;
+                                    /**
+                                     * @description `family` veli, `school` okul
+                                     * @enum {string}
+                                     */
+                                    cancelledBy: "family" | "school";
+                                    /** @description İptal anı (ISO 8601) */
+                                    cancelledAt: string;
+                                    /** @description Geri alma için `If-Match` sürümü */
+                                    version: number;
+                                } | null;
+                            }[];
+                            /** @description Etkin iptaller, yeni gün önce */
+                            cancellations: {
+                                id: string;
+                                /** @description İptal edilen gün (YYYY-MM-DD) */
+                                mealDate: string;
+                                /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                late: boolean;
+                                /**
+                                 * @description `family` veli, `school` okul
+                                 * @enum {string}
+                                 */
+                                cancelledBy: "family" | "school";
+                                /** @description İptal anı (ISO 8601) */
+                                cancelledAt: string;
+                                /** @description Geri alma için `If-Match` sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            /** @description İlk yemek günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Yemek günleri (1 pazartesi … 7 pazar) */
+                            weekdays: number[];
+                            /** @enum {string} */
+                            dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                            dietNote: string | null;
+                            /**
+                             * @description `upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)
+                             * @enum {string}
+                             */
+                            status: "upcoming" | "active" | "ended";
+                            classId: string | null;
+                            className: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gün iptali kesimi */
+                            cutoff: {
+                                /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                                cutoffDaysBefore: number;
+                                /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                                cutoffTime: string;
+                            };
+                            /** @description Bugünden 28 günlük yemek takvimi (yalnız yemek günleri) */
+                            days: {
+                                /** @description Yemek günü (YYYY-MM-DD) */
+                                mealDate: string;
+                                /**
+                                 * @description `scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil
+                                 * @enum {string}
+                                 */
+                                status: "scheduled" | "cancelled" | "late_cancelled" | "holiday";
+                                /** @description Okul takvimindeki tatilin adı */
+                                holidayTitle: string | null;
+                                /** @description İptalin son anı (kesim, ISO 8601) */
+                                deadline: string;
+                                /** @description İsteği yapan bu günü iptal edebilir mi */
+                                canCancel: boolean;
+                                /** @description İsteği yapan bu günün iptalini geri alabilir mi */
+                                canRestore: boolean;
+                                cancellation: {
+                                    id: string;
+                                    /** @description İptal edilen gün (YYYY-MM-DD) */
+                                    mealDate: string;
+                                    /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                    late: boolean;
+                                    /**
+                                     * @description `family` veli, `school` okul
+                                     * @enum {string}
+                                     */
+                                    cancelledBy: "family" | "school";
+                                    /** @description İptal anı (ISO 8601) */
+                                    cancelledAt: string;
+                                    /** @description Geri alma için `If-Match` sürümü */
+                                    version: number;
+                                } | null;
+                            }[];
+                            /** @description Etkin iptaller, yeni gün önce */
+                            cancellations: {
+                                id: string;
+                                /** @description İptal edilen gün (YYYY-MM-DD) */
+                                mealDate: string;
+                                /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                late: boolean;
+                                /**
+                                 * @description `family` veli, `school` okul
+                                 * @enum {string}
+                                 */
+                                cancelledBy: "family" | "school";
+                                /** @description İptal anı (ISO 8601) */
+                                cancelledAt: string;
+                                /** @description Geri alma için `If-Match` sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveMealSubscription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                subscriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMealSubscription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                subscriptionId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Değişen alanlar; başlamış abonelikte yalnız `endDate` (diyet ya da gün değişikliği için abonelik bitirilip yenisi açılır) */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İlk yemek günü (YYYY-MM-DD, Europe/Istanbul) */
+                    startDate?: string;
+                    /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                    endDate?: string;
+                    /** @description Yemek günleri (ISO: 1 pazartesi … 7 pazar) */
+                    weekdays?: number[];
+                    /**
+                     * @description Diyet türü
+                     * @enum {string}
+                     */
+                    dietType?: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                    /** @description “Diğer” diyetin kısa açıklaması (2–200; ör. “domuz eti içermeyen”); tıbbi ayrıntı yazılmaz, diğer türlerde `null` */
+                    dietNote?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            /** @description İlk yemek günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Son yemek günü (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Yemek günleri (1 pazartesi … 7 pazar) */
+                            weekdays: number[];
+                            /** @enum {string} */
+                            dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                            dietNote: string | null;
+                            /**
+                             * @description `upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)
+                             * @enum {string}
+                             */
+                            status: "upcoming" | "active" | "ended";
+                            classId: string | null;
+                            className: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gün iptali kesimi */
+                            cutoff: {
+                                /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                                cutoffDaysBefore: number;
+                                /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                                cutoffTime: string;
+                            };
+                            /** @description Bugünden 28 günlük yemek takvimi (yalnız yemek günleri) */
+                            days: {
+                                /** @description Yemek günü (YYYY-MM-DD) */
+                                mealDate: string;
+                                /**
+                                 * @description `scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil
+                                 * @enum {string}
+                                 */
+                                status: "scheduled" | "cancelled" | "late_cancelled" | "holiday";
+                                /** @description Okul takvimindeki tatilin adı */
+                                holidayTitle: string | null;
+                                /** @description İptalin son anı (kesim, ISO 8601) */
+                                deadline: string;
+                                /** @description İsteği yapan bu günü iptal edebilir mi */
+                                canCancel: boolean;
+                                /** @description İsteği yapan bu günün iptalini geri alabilir mi */
+                                canRestore: boolean;
+                                cancellation: {
+                                    id: string;
+                                    /** @description İptal edilen gün (YYYY-MM-DD) */
+                                    mealDate: string;
+                                    /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                    late: boolean;
+                                    /**
+                                     * @description `family` veli, `school` okul
+                                     * @enum {string}
+                                     */
+                                    cancelledBy: "family" | "school";
+                                    /** @description İptal anı (ISO 8601) */
+                                    cancelledAt: string;
+                                    /** @description Geri alma için `If-Match` sürümü */
+                                    version: number;
+                                } | null;
+                            }[];
+                            /** @description Etkin iptaller, yeni gün önce */
+                            cancellations: {
+                                id: string;
+                                /** @description İptal edilen gün (YYYY-MM-DD) */
+                                mealDate: string;
+                                /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                late: boolean;
+                                /**
+                                 * @description `family` veli, `school` okul
+                                 * @enum {string}
+                                 */
+                                cancelledBy: "family" | "school";
+                                /** @description İptal anı (ISO 8601) */
+                                cancelledAt: string;
+                                /** @description Geri alma için `If-Match` sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelMealDays: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                subscriptionId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Gün iptali; gerekçe alınmaz (sağlık bilgisi yazılmasın diye) */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal edilen yemek günleri (YYYY-MM-DD, Europe/Istanbul) */
+                    dates: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subscriptionId: string;
+                            cancellations: {
+                                id: string;
+                                /** @description İptal edilen gün (YYYY-MM-DD) */
+                                mealDate: string;
+                                /** @description Kesimden sonra okulun iptali; iade/mahsup gününe girmez */
+                                late: boolean;
+                                /**
+                                 * @description `family` veli, `school` okul
+                                 * @enum {string}
+                                 */
+                                cancelledBy: "family" | "school";
+                                /** @description İptal anı (ISO 8601) */
+                                cancelledAt: string;
+                                /** @description Geri alma için `If-Match` sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restoreMealDay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                subscriptionId: string;
+                cancellationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealDailyCount: {
+        parameters: {
+            query?: {
+                /** @description Gün (YYYY-MM-DD); verilmezse bugün (Europe/Istanbul) */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            date: string;
+                            /** @description Gün okul takviminde kurum tatiliyse adı; sayılar sıfır */
+                            holidayTitle: string | null;
+                            /** @description Öğün başına sayım (kurumun açık öğünleri ve aboneliği olan öğünler) */
+                            meals: {
+                                /** @enum {string} */
+                                mealKind: "breakfast" | "lunch" | "snack";
+                                /** @description Yemek verilecek öğrenci (iptaller düşülmüş) */
+                                total: number;
+                                /** @description Kesimden önce iptal */
+                                cancelled: number;
+                                /** @description Kesimden sonra okulun iptali */
+                                lateCancelled: number;
+                                /** @description Diyet türü başına yemek sayısı (beş tür, sıfırlar dahil) */
+                                diets: {
+                                    /** @enum {string} */
+                                    dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                                    count: number;
+                                }[];
+                            }[];
+                            /** @description Sınıf kırılımı; yalnız yemeği olan sınıflar */
+                            classes: {
+                                /** @description Sınıf; sınıfsız öğrenci `null` */
+                                classId: string | null;
+                                className: string | null;
+                                meals: {
+                                    /** @enum {string} */
+                                    mealKind: "breakfast" | "lunch" | "snack";
+                                    total: number;
+                                    /** @description Diyet türü başına yemek sayısı (beş tür, sıfırlar dahil) */
+                                    diets: {
+                                        /** @enum {string} */
+                                        dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                                        count: number;
+                                    }[];
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMealMonthlySummary: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ay (YYYY-AA); verilmezse bu ay */
+                month?: string;
+                /** @description Öğrenci adında arama (en az 2 karakter) */
+                q?: string;
+                /** @description Öğün süzgeci */
+                mealKind?: "breakfast" | "lunch" | "snack";
+                /** @description Sınıf süzgeci */
+                classId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subscriptionId: string;
+                            studentId: string;
+                            studentName: string;
+                            classId: string | null;
+                            className: string | null;
+                            /** @enum {string} */
+                            mealKind: "breakfast" | "lunch" | "snack";
+                            /** @enum {string} */
+                            dietType: "standard" | "vegetarian" | "gluten_free" | "lactose_free" | "other";
+                            /** @description Ayda yemek günü (tatil hariç; gelecek günler planlı) */
+                            subscribedDays: number;
+                            /** @description Yemek gününe denk gelen kurum tatili */
+                            holidayDays: number;
+                            /** @description Kesimden önce iptal edilen gün */
+                            cancelledDays: number;
+                            /** @description Kesimden sonra okulun iptal ettiği gün */
+                            lateCancelledDays: number;
+                            /** @description Yemek verilen ya da verilecek gün */
+                            mealDays: number;
+                            /** @description İade ya da mahsup için gün sayısı (= kesimden önce iptal); tutar ON-087 ile */
+                            refundableDays: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMealSubscriptionSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                            cutoffDaysBefore: number;
+                            /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                            cutoffTime: string;
+                            /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setMealSubscriptionSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Gün iptali kesimi */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                    cutoffDaysBefore: number;
+                    /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                    cutoffTime: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kesim yemek gününden kaç gün önce (0 aynı gün) */
+                            cutoffDaysBefore: number;
+                            /** @description Kesim saati (SS:DD, Europe/Istanbul) */
+                            cutoffTime: string;
+                            /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
                             version: number;
                         };
                     };

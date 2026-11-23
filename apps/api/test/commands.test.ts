@@ -356,6 +356,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Okul takvimi etkinliği; çift tıklama ikinci taslağı açmaz
   // (routes/finance-school-calendar.ts; DOM-FIN-163, ON-090).
   'POST /api/v1/finance/school-calendar/events',
+  // Yemek aboneliği ve gün iptali; çift tıklama ikinci aboneliği ya da iptali yazmaz
+  // (routes/finance-meal-subscriptions.ts; DOM-FIN-164, ON-150).
+  'POST /api/v1/finance/meal-subscriptions',
+  'POST /api/v1/finance/meal-subscriptions/{subscriptionId}/cancellations',
 ]
 // Onur: kayıt ve finans sonu
 

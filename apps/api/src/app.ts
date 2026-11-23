@@ -150,6 +150,7 @@ import { registerFinanceEarlyDismissalRoutes } from './routes/finance-early-dism
 import { registerFinanceTripReportRoutes } from './routes/finance-trip-reports.ts'
 import { registerFinanceMealAllergyCheckRoutes } from './routes/finance-meal-allergy-checks.ts'
 import { registerFinanceSchoolCalendarRoutes } from './routes/finance-school-calendar.ts'
+import { registerFinanceMealSubscriptionRoutes } from './routes/finance-meal-subscriptions.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -404,6 +405,9 @@ export const REDACTED_PATHS = [
   '*.reasonNote',
   'releasedToName',
   '*.releasedToName',
+  // kvkk: Ç — "diğer" diyetin kısa açıklaması (DOM-FIN-164, ON-150); serbest metin.
+  'dietNote',
+  '*.dietNote',
   // kvkk: Ö — öğrencinin sağlık ve acil bilgisi (IST-020, DOM-ILT-035) ve şifreli paketi.
   'allergies',
   '*.allergies',
@@ -745,6 +749,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTripReportRoutes(app, storage)
   registerFinanceMealAllergyCheckRoutes(app)
   registerFinanceSchoolCalendarRoutes(app)
+  registerFinanceMealSubscriptionRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

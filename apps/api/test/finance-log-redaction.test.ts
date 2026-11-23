@@ -264,4 +264,22 @@ describe('guvenlik-kvkk: kayıt ve finans alanları logda gizlenir', () => {
       await app.close()
     }
   })
+
+  test('DOM-FIN-164: yemek aboneliğinin diyet açıklaması üst düzeyde ve iç içe yazılmaz', async () => {
+    const logs: string[] = []
+    const texts = { top: 'Gizli-diyet-aciklamasi', nested: 'Gizli-govdedeki-diyet' }
+    const app = await buildTestApp(db, { logs })
+    try {
+      app.log.info({ dietNote: texts.top, dietType: 'other' }, 'yemek aboneliği')
+      app.log.info({ body: { dietNote: texts.nested } }, 'abonelik gövdesi')
+      const text = logs.join('')
+      assert.ok(text.includes('"msg":"yemek aboneliği"'), 'log satırı yok')
+      for (const [field, value] of Object.entries(texts))
+        assert.equal(text.includes(value), false, `logda: ${field}`)
+      // Diyet türü (kod) logda kalır.
+      assert.ok(text.includes('"dietType":"other"'))
+    } finally {
+      await app.close()
+    }
+  })
 })

@@ -391780,6 +391780,3398 @@
         }
       }
     },
+    "/api/v1/finance/meal-subscriptions/my": {
+      "get": {
+        "operationId": "listMyMealSubscriptions",
+        "summary": "Yemek aboneliklerim (veli ve öğrenci)",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Velinin bağlı çocuklarının ya da öğrencinin sürmekte ve başlamamış yemek abonelikleri: öğün, tarih, günler, diyet türü ve bugünden 28 günlük yemek takvimi (yemek var, iptal, geç iptal, tatil; kesim anı). `canCancel`/`canRestore` velide kesime göre hesaplanır, öğrencide hep `false` (K-548). Kapsam sunucuda core `mealMenus` kuralıyla daralır. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `meals`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "today": {
+                          "type": "string",
+                          "description": "Bugün (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "cutoff": {
+                          "type": "object",
+                          "properties": {
+                            "cutoffDaysBefore": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                            },
+                            "cutoffTime": {
+                              "type": "string",
+                              "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                            }
+                          },
+                          "required": [
+                            "cutoffDaysBefore",
+                            "cutoffTime"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Gün iptali kesimi"
+                        },
+                        "subscriptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "description": "İlk yemek günü (YYYY-MM-DD)"
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                              },
+                              "weekdays": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "description": "Yemek günleri (1 pazartesi … 7 pazar)"
+                              },
+                              "dietType": {
+                                "type": "string",
+                                "enum": [
+                                  "standard",
+                                  "vegetarian",
+                                  "gluten_free",
+                                  "lactose_free",
+                                  "other"
+                                ]
+                              },
+                              "dietNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "upcoming",
+                                  "active",
+                                  "ended"
+                                ],
+                                "description": "`upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)"
+                              },
+                              "days": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealDate": {
+                                      "type": "string",
+                                      "description": "Yemek günü (YYYY-MM-DD)"
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "scheduled",
+                                        "cancelled",
+                                        "late_cancelled",
+                                        "holiday"
+                                      ],
+                                      "description": "`scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil"
+                                    },
+                                    "holidayTitle": {
+                                      "description": "Okul takvimindeki tatilin adı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "deadline": {
+                                      "type": "string",
+                                      "description": "İptalin son anı (kesim, ISO 8601)"
+                                    },
+                                    "canCancel": {
+                                      "type": "boolean",
+                                      "description": "İsteği yapan bu günü iptal edebilir mi"
+                                    },
+                                    "canRestore": {
+                                      "type": "boolean",
+                                      "description": "İsteği yapan bu günün iptalini geri alabilir mi"
+                                    },
+                                    "cancellation": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {
+                                              "type": "string"
+                                            },
+                                            "mealDate": {
+                                              "type": "string",
+                                              "description": "İptal edilen gün (YYYY-MM-DD)"
+                                            },
+                                            "late": {
+                                              "type": "boolean",
+                                              "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                                            },
+                                            "cancelledBy": {
+                                              "type": "string",
+                                              "enum": [
+                                                "family",
+                                                "school"
+                                              ],
+                                              "description": "`family` veli, `school` okul"
+                                            },
+                                            "cancelledAt": {
+                                              "type": "string",
+                                              "description": "İptal anı (ISO 8601)"
+                                            },
+                                            "version": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991,
+                                              "description": "Geri alma için `If-Match` sürümü"
+                                            }
+                                          },
+                                          "required": [
+                                            "id",
+                                            "mealDate",
+                                            "late",
+                                            "cancelledBy",
+                                            "cancelledAt",
+                                            "version"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "mealDate",
+                                    "status",
+                                    "holidayTitle",
+                                    "deadline",
+                                    "canCancel",
+                                    "canRestore",
+                                    "cancellation"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "studentId",
+                              "studentName",
+                              "mealKind",
+                              "startDate",
+                              "endDate",
+                              "weekdays",
+                              "dietType",
+                              "dietNote",
+                              "status",
+                              "days"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kapsamdaki öğrencilerin sürmekte ve başlamamış abonelikleri"
+                        }
+                      },
+                      "required": [
+                        "today",
+                        "cutoff",
+                        "subscriptions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-subscriptions": {
+      "get": {
+        "operationId": "listMealSubscriptions",
+        "summary": "Yemek abonelikleri",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Arşivlenmemiş abonelikler, öğrenci adına göre: öğrenci, sınıf, öğün, tarih, günler, diyet türü ve durum (bugüne göre başlamadı, sürüyor, bitti). Süzgeç öğrenci adı (`q`), durum, öğün, diyet türü ve sınıf. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğrenci adında arama (en az 2 karakter)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "active",
+                "ended"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci (bugüne göre)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "snack"
+              ]
+            },
+            "in": "query",
+            "name": "mealKind",
+            "required": false,
+            "description": "Öğün süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "vegetarian",
+                "gluten_free",
+                "lactose_free",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "dietType",
+            "required": false,
+            "description": "Diyet türü süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "mealKind": {
+                            "type": "string",
+                            "enum": [
+                              "breakfast",
+                              "lunch",
+                              "snack"
+                            ]
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "İlk yemek günü (YYYY-MM-DD)"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                          },
+                          "weekdays": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "description": "Yemek günleri (1 pazartesi … 7 pazar)"
+                          },
+                          "dietType": {
+                            "type": "string",
+                            "enum": [
+                              "standard",
+                              "vegetarian",
+                              "gluten_free",
+                              "lactose_free",
+                              "other"
+                            ]
+                          },
+                          "dietNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "upcoming",
+                              "active",
+                              "ended"
+                            ],
+                            "description": "`upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)"
+                          },
+                          "classId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "mealKind",
+                          "startDate",
+                          "endDate",
+                          "weekdays",
+                          "dietType",
+                          "dietNote",
+                          "status",
+                          "classId",
+                          "className",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMealSubscription",
+        "summary": "Yemek aboneliği aç",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Öğrenci (yok 422 `meal_subscription_student_not_found`, pasif 422 `meal_subscription_student_inactive`), kurumda açık öğün (422 `meal_kind_disabled`), başlangıç–bitiş (bugünden önce 422 `meal_subscription_start_past`, en çok 366 gün), hafta günleri ve diyet türü; \"diğer\" diyette kısa açıklama zorunlu, diğerlerinde yazılmaz (400). Aynı öğünde tarihleri değen abonelik 409 `meal_subscription_overlap` (K-547). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Öğrenci (students)"
+                  },
+                  "mealKind": {
+                    "type": "string",
+                    "enum": [
+                      "breakfast",
+                      "lunch",
+                      "snack"
+                    ],
+                    "description": "Öğün; kurumda açık olmalı"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İlk yemek günü (YYYY-MM-DD, Europe/Istanbul)"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                  },
+                  "weekdays": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 7
+                    },
+                    "description": "Yemek günleri (ISO: 1 pazartesi … 7 pazar)"
+                  },
+                  "dietType": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "vegetarian",
+                      "gluten_free",
+                      "lactose_free",
+                      "other"
+                    ],
+                    "description": "Diyet türü"
+                  },
+                  "dietNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "“Diğer” diyetin kısa açıklaması (2–200; ör. “domuz eti içermeyen”); tıbbi ayrıntı yazılmaz, diğer türlerde `null`"
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "mealKind",
+                  "startDate",
+                  "endDate",
+                  "weekdays",
+                  "dietType"
+                ],
+                "additionalProperties": false,
+                "description": "Yeni yemek aboneliği"
+              }
+            }
+          },
+          "description": "Yeni yemek aboneliği"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "mealKind": {
+                          "type": "string",
+                          "enum": [
+                            "breakfast",
+                            "lunch",
+                            "snack"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "İlk yemek günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                        },
+                        "weekdays": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Yemek günleri (1 pazartesi … 7 pazar)"
+                        },
+                        "dietType": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "vegetarian",
+                            "gluten_free",
+                            "lactose_free",
+                            "other"
+                          ]
+                        },
+                        "dietNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "active",
+                            "ended"
+                          ],
+                          "description": "`upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "cutoff": {
+                          "type": "object",
+                          "properties": {
+                            "cutoffDaysBefore": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                            },
+                            "cutoffTime": {
+                              "type": "string",
+                              "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                            }
+                          },
+                          "required": [
+                            "cutoffDaysBefore",
+                            "cutoffTime"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Gün iptali kesimi"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "mealDate": {
+                                "type": "string",
+                                "description": "Yemek günü (YYYY-MM-DD)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "cancelled",
+                                  "late_cancelled",
+                                  "holiday"
+                                ],
+                                "description": "`scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil"
+                              },
+                              "holidayTitle": {
+                                "description": "Okul takvimindeki tatilin adı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "deadline": {
+                                "type": "string",
+                                "description": "İptalin son anı (kesim, ISO 8601)"
+                              },
+                              "canCancel": {
+                                "type": "boolean",
+                                "description": "İsteği yapan bu günü iptal edebilir mi"
+                              },
+                              "canRestore": {
+                                "type": "boolean",
+                                "description": "İsteği yapan bu günün iptalini geri alabilir mi"
+                              },
+                              "cancellation": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "mealDate": {
+                                        "type": "string",
+                                        "description": "İptal edilen gün (YYYY-MM-DD)"
+                                      },
+                                      "late": {
+                                        "type": "boolean",
+                                        "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                                      },
+                                      "cancelledBy": {
+                                        "type": "string",
+                                        "enum": [
+                                          "family",
+                                          "school"
+                                        ],
+                                        "description": "`family` veli, `school` okul"
+                                      },
+                                      "cancelledAt": {
+                                        "type": "string",
+                                        "description": "İptal anı (ISO 8601)"
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Geri alma için `If-Match` sürümü"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "mealDate",
+                                      "late",
+                                      "cancelledBy",
+                                      "cancelledAt",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "mealDate",
+                              "status",
+                              "holidayTitle",
+                              "deadline",
+                              "canCancel",
+                              "canRestore",
+                              "cancellation"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bugünden 28 günlük yemek takvimi (yalnız yemek günleri)"
+                        },
+                        "cancellations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mealDate": {
+                                "type": "string",
+                                "description": "İptal edilen gün (YYYY-MM-DD)"
+                              },
+                              "late": {
+                                "type": "boolean",
+                                "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                              },
+                              "cancelledBy": {
+                                "type": "string",
+                                "enum": [
+                                  "family",
+                                  "school"
+                                ],
+                                "description": "`family` veli, `school` okul"
+                              },
+                              "cancelledAt": {
+                                "type": "string",
+                                "description": "İptal anı (ISO 8601)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Geri alma için `If-Match` sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mealDate",
+                              "late",
+                              "cancelledBy",
+                              "cancelledAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin iptaller, yeni gün önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "mealKind",
+                        "startDate",
+                        "endDate",
+                        "weekdays",
+                        "dietType",
+                        "dietNote",
+                        "status",
+                        "classId",
+                        "className",
+                        "version",
+                        "cutoff",
+                        "days",
+                        "cancellations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-subscriptions/{subscriptionId}": {
+      "get": {
+        "operationId": "getMealSubscription",
+        "summary": "Yemek aboneliği ayrıntısı",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Abonelik, kesim, bugünden 28 günlük yemek takvimi (okul bayraklarıyla) ve bütün etkin iptaller. Başka kurumun ya da arşivli abonelik 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "mealKind": {
+                          "type": "string",
+                          "enum": [
+                            "breakfast",
+                            "lunch",
+                            "snack"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "İlk yemek günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                        },
+                        "weekdays": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Yemek günleri (1 pazartesi … 7 pazar)"
+                        },
+                        "dietType": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "vegetarian",
+                            "gluten_free",
+                            "lactose_free",
+                            "other"
+                          ]
+                        },
+                        "dietNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "active",
+                            "ended"
+                          ],
+                          "description": "`upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "cutoff": {
+                          "type": "object",
+                          "properties": {
+                            "cutoffDaysBefore": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                            },
+                            "cutoffTime": {
+                              "type": "string",
+                              "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                            }
+                          },
+                          "required": [
+                            "cutoffDaysBefore",
+                            "cutoffTime"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Gün iptali kesimi"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "mealDate": {
+                                "type": "string",
+                                "description": "Yemek günü (YYYY-MM-DD)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "cancelled",
+                                  "late_cancelled",
+                                  "holiday"
+                                ],
+                                "description": "`scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil"
+                              },
+                              "holidayTitle": {
+                                "description": "Okul takvimindeki tatilin adı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "deadline": {
+                                "type": "string",
+                                "description": "İptalin son anı (kesim, ISO 8601)"
+                              },
+                              "canCancel": {
+                                "type": "boolean",
+                                "description": "İsteği yapan bu günü iptal edebilir mi"
+                              },
+                              "canRestore": {
+                                "type": "boolean",
+                                "description": "İsteği yapan bu günün iptalini geri alabilir mi"
+                              },
+                              "cancellation": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "mealDate": {
+                                        "type": "string",
+                                        "description": "İptal edilen gün (YYYY-MM-DD)"
+                                      },
+                                      "late": {
+                                        "type": "boolean",
+                                        "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                                      },
+                                      "cancelledBy": {
+                                        "type": "string",
+                                        "enum": [
+                                          "family",
+                                          "school"
+                                        ],
+                                        "description": "`family` veli, `school` okul"
+                                      },
+                                      "cancelledAt": {
+                                        "type": "string",
+                                        "description": "İptal anı (ISO 8601)"
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Geri alma için `If-Match` sürümü"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "mealDate",
+                                      "late",
+                                      "cancelledBy",
+                                      "cancelledAt",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "mealDate",
+                              "status",
+                              "holidayTitle",
+                              "deadline",
+                              "canCancel",
+                              "canRestore",
+                              "cancellation"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bugünden 28 günlük yemek takvimi (yalnız yemek günleri)"
+                        },
+                        "cancellations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mealDate": {
+                                "type": "string",
+                                "description": "İptal edilen gün (YYYY-MM-DD)"
+                              },
+                              "late": {
+                                "type": "boolean",
+                                "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                              },
+                              "cancelledBy": {
+                                "type": "string",
+                                "enum": [
+                                  "family",
+                                  "school"
+                                ],
+                                "description": "`family` veli, `school` okul"
+                              },
+                              "cancelledAt": {
+                                "type": "string",
+                                "description": "İptal anı (ISO 8601)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Geri alma için `If-Match` sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mealDate",
+                              "late",
+                              "cancelledBy",
+                              "cancelledAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin iptaller, yeni gün önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "mealKind",
+                        "startDate",
+                        "endDate",
+                        "weekdays",
+                        "dietType",
+                        "dietNote",
+                        "status",
+                        "classId",
+                        "className",
+                        "version",
+                        "cutoff",
+                        "days",
+                        "cancellations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMealSubscription",
+        "summary": "Yemek aboneliğini düzenle",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Başlamamış abonelikte tarih, gün ve diyet değişir (başlangıç bugünden önce 422 `meal_subscription_start_past`). Başlamış abonelikte yalnız bitiş günü değişir (başka alan 422 `meal_subscription_started`, bugünden önce 422 `meal_subscription_end_past`); bitmiş abonelik 422 `meal_subscription_ended`. Sonuç bütün olarak doğrulanır (422 `meal_subscription_end_before_start`, `meal_diet_note_required` …); değişiklik yoksa 422 `meal_subscription_unchanged`; çakışma 409 `meal_subscription_overlap` (K-547). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İlk yemek günü (YYYY-MM-DD, Europe/Istanbul)"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                  },
+                  "weekdays": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 7
+                    },
+                    "description": "Yemek günleri (ISO: 1 pazartesi … 7 pazar)"
+                  },
+                  "dietType": {
+                    "type": "string",
+                    "enum": [
+                      "standard",
+                      "vegetarian",
+                      "gluten_free",
+                      "lactose_free",
+                      "other"
+                    ],
+                    "description": "Diyet türü"
+                  },
+                  "dietNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "“Diğer” diyetin kısa açıklaması (2–200; ör. “domuz eti içermeyen”); tıbbi ayrıntı yazılmaz, diğer türlerde `null`"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Değişen alanlar; başlamış abonelikte yalnız `endDate` (diyet ya da gün değişikliği için abonelik bitirilip yenisi açılır)"
+              }
+            }
+          },
+          "description": "Değişen alanlar; başlamış abonelikte yalnız `endDate` (diyet ya da gün değişikliği için abonelik bitirilip yenisi açılır)"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": "string"
+                        },
+                        "mealKind": {
+                          "type": "string",
+                          "enum": [
+                            "breakfast",
+                            "lunch",
+                            "snack"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "İlk yemek günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Son yemek günü (YYYY-MM-DD, dahil)"
+                        },
+                        "weekdays": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Yemek günleri (1 pazartesi … 7 pazar)"
+                        },
+                        "dietType": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "vegetarian",
+                            "gluten_free",
+                            "lactose_free",
+                            "other"
+                          ]
+                        },
+                        "dietNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "active",
+                            "ended"
+                          ],
+                          "description": "`upcoming` başlamadı, `active` sürüyor, `ended` bitti (bugüne göre)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "cutoff": {
+                          "type": "object",
+                          "properties": {
+                            "cutoffDaysBefore": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                            },
+                            "cutoffTime": {
+                              "type": "string",
+                              "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                            }
+                          },
+                          "required": [
+                            "cutoffDaysBefore",
+                            "cutoffTime"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Gün iptali kesimi"
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "mealDate": {
+                                "type": "string",
+                                "description": "Yemek günü (YYYY-MM-DD)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "cancelled",
+                                  "late_cancelled",
+                                  "holiday"
+                                ],
+                                "description": "`scheduled` yemek var, `cancelled` iptal, `late_cancelled` geç iptal, `holiday` tatil"
+                              },
+                              "holidayTitle": {
+                                "description": "Okul takvimindeki tatilin adı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "deadline": {
+                                "type": "string",
+                                "description": "İptalin son anı (kesim, ISO 8601)"
+                              },
+                              "canCancel": {
+                                "type": "boolean",
+                                "description": "İsteği yapan bu günü iptal edebilir mi"
+                              },
+                              "canRestore": {
+                                "type": "boolean",
+                                "description": "İsteği yapan bu günün iptalini geri alabilir mi"
+                              },
+                              "cancellation": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "mealDate": {
+                                        "type": "string",
+                                        "description": "İptal edilen gün (YYYY-MM-DD)"
+                                      },
+                                      "late": {
+                                        "type": "boolean",
+                                        "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                                      },
+                                      "cancelledBy": {
+                                        "type": "string",
+                                        "enum": [
+                                          "family",
+                                          "school"
+                                        ],
+                                        "description": "`family` veli, `school` okul"
+                                      },
+                                      "cancelledAt": {
+                                        "type": "string",
+                                        "description": "İptal anı (ISO 8601)"
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Geri alma için `If-Match` sürümü"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "mealDate",
+                                      "late",
+                                      "cancelledBy",
+                                      "cancelledAt",
+                                      "version"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "mealDate",
+                              "status",
+                              "holidayTitle",
+                              "deadline",
+                              "canCancel",
+                              "canRestore",
+                              "cancellation"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bugünden 28 günlük yemek takvimi (yalnız yemek günleri)"
+                        },
+                        "cancellations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mealDate": {
+                                "type": "string",
+                                "description": "İptal edilen gün (YYYY-MM-DD)"
+                              },
+                              "late": {
+                                "type": "boolean",
+                                "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                              },
+                              "cancelledBy": {
+                                "type": "string",
+                                "enum": [
+                                  "family",
+                                  "school"
+                                ],
+                                "description": "`family` veli, `school` okul"
+                              },
+                              "cancelledAt": {
+                                "type": "string",
+                                "description": "İptal anı (ISO 8601)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Geri alma için `If-Match` sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mealDate",
+                              "late",
+                              "cancelledBy",
+                              "cancelledAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin iptaller, yeni gün önce"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "mealKind",
+                        "startDate",
+                        "endDate",
+                        "weekdays",
+                        "dietType",
+                        "dietNote",
+                        "status",
+                        "classId",
+                        "className",
+                        "version",
+                        "cutoff",
+                        "days",
+                        "cancellations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveMealSubscription",
+        "summary": "Başlamamış aboneliği sil",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Yalnız başlamamış abonelik arşivlenir; başlamış abonelik 422 `meal_subscription_started` (bitiş gününü değiştirin; K-547). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-subscriptions/{subscriptionId}/cancellations": {
+      "post": {
+        "operationId": "cancelMealDays",
+        "summary": "Yemek günlerini iptal et",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Aboneliğin seçilen yemek günleri iptal edilir (en çok 31 gün). Yemek günü değil 422 `meal_day_not_subscribed`, okul takviminde tatil 422 `meal_day_holiday`, geçmiş gün 422 `meal_day_past`, zaten iptal 409 `meal_day_already_cancelled`. Kesim (kurum ayarı; varsayılan bir gün önce 15:00) geçtiyse veli 422 `meal_cancellation_cutoff_passed` alır, okulun iptali `late: true` (geç iptal) yazılır ve iade/mahsup gününe girmez (K-548). Gerekçe alınmaz. Veli yalnız bağlı çocuğunun aboneliğinde (başka öğrenci 404). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`, `veli`; diğer roller 403. Modüller `finance` ve `meals`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dates": {
+                    "minItems": 1,
+                    "maxItems": 31,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    },
+                    "description": "İptal edilen yemek günleri (YYYY-MM-DD, Europe/Istanbul)"
+                  }
+                },
+                "required": [
+                  "dates"
+                ],
+                "additionalProperties": false,
+                "description": "Gün iptali; gerekçe alınmaz (sağlık bilgisi yazılmasın diye)"
+              }
+            }
+          },
+          "description": "Gün iptali; gerekçe alınmaz (sağlık bilgisi yazılmasın diye)"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subscriptionId": {
+                          "type": "string"
+                        },
+                        "cancellations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mealDate": {
+                                "type": "string",
+                                "description": "İptal edilen gün (YYYY-MM-DD)"
+                              },
+                              "late": {
+                                "type": "boolean",
+                                "description": "Kesimden sonra okulun iptali; iade/mahsup gününe girmez"
+                              },
+                              "cancelledBy": {
+                                "type": "string",
+                                "enum": [
+                                  "family",
+                                  "school"
+                                ],
+                                "description": "`family` veli, `school` okul"
+                              },
+                              "cancelledAt": {
+                                "type": "string",
+                                "description": "İptal anı (ISO 8601)"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Geri alma için `If-Match` sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mealDate",
+                              "late",
+                              "cancelledBy",
+                              "cancelledAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "subscriptionId",
+                        "cancellations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-subscriptions/{subscriptionId}/cancellations/{cancellationId}": {
+      "delete": {
+        "operationId": "restoreMealDay",
+        "summary": "Gün iptalini geri al",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "İptal geri alınır, gün yeniden yemek günü olur. Geçmiş gün 422 `meal_day_past`; veli yalnız kesimden önce (sonra 422 `meal_cancellation_cutoff_passed`), okul gün bitene kadar (K-548). Veli yalnız bağlı çocuğunun aboneliğinde (başka öğrenci 404). `If-Match` (iptalin sürümü) zorunlu. Rol: `yonetici`, `onburo`, `veli`; diğer roller 403. Modüller `finance` ve `meals`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "cancellationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-daily-counts": {
+      "get": {
+        "operationId": "getMealDailyCount",
+        "summary": "Günlük yemek sayısı (mutfak)",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Seçilen gün için öğün × diyet türü yemek sayısı; iptal ve geç iptal düşülür ve ayrıca sayılır; sınıf kırılımı. Okul takviminde kurum tatiliyse sayılar sıfır ve tatilin adı döner (K-549). Öğrenci adı dönmez. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (YYYY-MM-DD); verilmezse bugün (Europe/Istanbul)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "holidayTitle": {
+                          "description": "Gün okul takviminde kurum tatiliyse adı; sayılar sıfır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "mealKind": {
+                                "type": "string",
+                                "enum": [
+                                  "breakfast",
+                                  "lunch",
+                                  "snack"
+                                ]
+                              },
+                              "total": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yemek verilecek öğrenci (iptaller düşülmüş)"
+                              },
+                              "cancelled": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesimden önce iptal"
+                              },
+                              "lateCancelled": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesimden sonra okulun iptali"
+                              },
+                              "diets": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "dietType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "standard",
+                                        "vegetarian",
+                                        "gluten_free",
+                                        "lactose_free",
+                                        "other"
+                                      ]
+                                    },
+                                    "count": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "dietType",
+                                    "count"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Diyet türü başına yemek sayısı (beş tür, sıfırlar dahil)"
+                              }
+                            },
+                            "required": [
+                              "mealKind",
+                              "total",
+                              "cancelled",
+                              "lateCancelled",
+                              "diets"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğün başına sayım (kurumun açık öğünleri ve aboneliği olan öğünler)"
+                        },
+                        "classes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "classId": {
+                                "description": "Sınıf; sınıfsız öğrenci `null`",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "className": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "meals": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mealKind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "breakfast",
+                                        "lunch",
+                                        "snack"
+                                      ]
+                                    },
+                                    "total": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "diets": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "dietType": {
+                                            "type": "string",
+                                            "enum": [
+                                              "standard",
+                                              "vegetarian",
+                                              "gluten_free",
+                                              "lactose_free",
+                                              "other"
+                                            ]
+                                          },
+                                          "count": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "dietType",
+                                          "count"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "Diyet türü başına yemek sayısı (beş tür, sıfırlar dahil)"
+                                    }
+                                  },
+                                  "required": [
+                                    "mealKind",
+                                    "total",
+                                    "diets"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "classId",
+                              "className",
+                              "meals"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sınıf kırılımı; yalnız yemeği olan sınıflar"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "holidayTitle",
+                        "meals",
+                        "classes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-monthly-summary": {
+      "get": {
+        "operationId": "listMealMonthlySummary",
+        "summary": "Aylık yemek gün özeti",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Ayda yemek günü olan her abonelik: abone olunan gün (tatil hariç), tatil, iptal, geç iptal, yemek günü ve iade/mahsup için gün sayısı (= kesimden önce iptal). Tutar hesaplanmaz (ek hizmet kalemi ON-087 ile; K-549, H-119). Öğrenci adına göre, sayfalı; süzgeç ay, öğrenci adı, öğün ve sınıf. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "description": "Ay (YYYY-AA); verilmezse bu ay"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğrenci adında arama (en az 2 karakter)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "snack"
+              ]
+            },
+            "in": "query",
+            "name": "mealKind",
+            "required": false,
+            "description": "Öğün süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "classId",
+            "required": false,
+            "description": "Sınıf süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "subscriptionId": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "classId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mealKind": {
+                            "type": "string",
+                            "enum": [
+                              "breakfast",
+                              "lunch",
+                              "snack"
+                            ]
+                          },
+                          "dietType": {
+                            "type": "string",
+                            "enum": [
+                              "standard",
+                              "vegetarian",
+                              "gluten_free",
+                              "lactose_free",
+                              "other"
+                            ]
+                          },
+                          "subscribedDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ayda yemek günü (tatil hariç; gelecek günler planlı)"
+                          },
+                          "holidayDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yemek gününe denk gelen kurum tatili"
+                          },
+                          "cancelledDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kesimden önce iptal edilen gün"
+                          },
+                          "lateCancelledDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kesimden sonra okulun iptal ettiği gün"
+                          },
+                          "mealDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yemek verilen ya da verilecek gün"
+                          },
+                          "refundableDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İade ya da mahsup için gün sayısı (= kesimden önce iptal); tutar ON-087 ile"
+                          }
+                        },
+                        "required": [
+                          "subscriptionId",
+                          "studentId",
+                          "studentName",
+                          "classId",
+                          "className",
+                          "mealKind",
+                          "dietType",
+                          "subscribedDays",
+                          "holidayDays",
+                          "cancelledDays",
+                          "lateCancelledDays",
+                          "mealDays",
+                          "refundableDays"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/meal-subscription-settings": {
+      "get": {
+        "operationId": "getMealSubscriptionSettings",
+        "summary": "Gün iptali kesimi",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Kesim yemek gününden kaç gün önce ve saat kaçta (Europe/Istanbul); hiç kaydedilmediyse bir gün önce 15:00 ve sürüm 1 (K-548). Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `meals` (kapalıysa 403).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cutoffDaysBefore": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                        },
+                        "cutoffTime": {
+                          "type": "string",
+                          "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "cutoffDaysBefore",
+                        "cutoffTime",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setMealSubscriptionSettings",
+        "summary": "Gün iptali kesimini kaydet",
+        "tags": [
+          "finance-meal-subscriptions"
+        ],
+        "description": "Kesim 0–7 gün önce, `SS:DD` saatinde; değişiklik yoksa 422 `meal_subscription_settings_unchanged`. Yeni kesim kaydedildiği andan sonraki iptallere uygulanır; yapılmış iptaller değişmez (K-548). `If-Match` zorunlu (hiç kaydedilmediyse 1). Rol: `yonetici`; diğer roller 403. Modüller `finance` ve `meals`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cutoffDaysBefore": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 7,
+                    "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                  },
+                  "cutoffTime": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                  }
+                },
+                "required": [
+                  "cutoffDaysBefore",
+                  "cutoffTime"
+                ],
+                "additionalProperties": false,
+                "description": "Gün iptali kesimi"
+              }
+            }
+          },
+          "description": "Gün iptali kesimi"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cutoffDaysBefore": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesim yemek gününden kaç gün önce (0 aynı gün)"
+                        },
+                        "cutoffTime": {
+                          "type": "string",
+                          "description": "Kesim saati (SS:DD, Europe/Istanbul)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "cutoffDaysBefore",
+                        "cutoffTime",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

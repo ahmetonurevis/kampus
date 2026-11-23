@@ -1,0 +1,147 @@
+import { z } from 'zod'
+
+import {
+  PAYROLL_ADJUSTMENT_ITEMS,
+  PAYROLL_CHECK_BLOCKERS,
+  PAYROLL_CHECK_WARNINGS,
+  PAYROLL_LESSON_SHEET_CHECKS,
+  PAYROLL_MAX_MONTH,
+  PAYROLL_MIN_MONTH,
+  PAYROLL_PERIOD_STATES,
+  PAYROLL_RUN_CHECKS,
+  payrollMonthSchema,
+} from '@kampus/school-core/lib/finance-payroll-periods.ts'
+
+import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+
+/** Bordro dönemi şemaları (DOM-FIN-108; ON-200). Yalnız yöneticiye döner (K-359). */
+
+const summarySchema = z.object({
+  staffCount: z.number().int().describe('Ayda en az bir günü yürürlükte tanımı olan personel'),
+  rateCount: z.number().int().describe('Ayla kesişen ücret tanımı sayısı'),
+  monthlyGrossTotalCents: z
+    .number()
+    .int()
+    .describe('Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş'),
+  adjustmentCount: z.number().int().describe('Bu aya aktarılan düzeltme sayısı'),
+  adjustmentTotalCents: z.number().int().describe('Bu aya aktarılan düzeltmelerin toplamı, kuruş'),
+  parameterSetId: z.string().nullable().describe('Ayın ilk günü geçerli bordro parametre seti'),
+  parameterEffectiveFrom: z.string().nullable().describe('Geçerli setin yürürlük başlangıcı'),
+  inputsHash: z.string().describe('Girdi damgası (SHA-256, onaltılık)'),
+})
+
+const checksSchema = z.object({
+  lessonSheet: z.object({
+    state: z
+      .enum(PAYROLL_LESSON_SHEET_CHECKS)
+      .describe(
+        'Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı',
+      ),
+    entryCount: z.number().int().describe('Ayın ek ders saati kaydı sayısı'),
+    pendingCount: z.number().int().describe('Müdür onayı bekleyen saat kaydı sayısı'),
+  }),
+  payrollRun: z.object({
+    state: z
+      .enum(PAYROLL_RUN_CHECKS)
+      .describe('Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş'),
+    revision: z.number().int().nullable().describe('Etkin hesabın revizyonu'),
+    calculatedAt: z.string().nullable().describe('Etkin hesabın kayıt anı'),
+  }),
+  deductions: z.object({
+    advanceCount: z.number().int().describe('Ayın avans taksiti sayısı'),
+    garnishmentCount: z.number().int().describe('Ayda kesilecek icra sayısı'),
+    pensionCount: z.number().int().describe('Ayda kesilecek BES katkısı sayısı'),
+    advanceTotalCents: z
+      .number()
+      .int()
+      .describe(
+        'Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında',
+      ),
+  }),
+  blockers: z
+    .array(z.enum(PAYROLL_CHECK_BLOCKERS))
+    .describe('Onayı durduran engeller; boş değilse onay 409 döner'),
+  warnings: z.array(z.enum(PAYROLL_CHECK_WARNINGS)).describe('Onayı durdurmayan uyarılar'),
+})
+
+const periodSchema = z.object({
+  month: z.string().describe('Bordro ayı (YYYY-AA)'),
+  state: z
+    .enum(PAYROLL_PERIOD_STATES)
+    .describe('`open` açık, `approved` onaylı (kilitli), `reopened` yeniden açılmış'),
+  version: z
+    .number()
+    .int()
+    .nullable()
+    .describe('Dönem kaydının sürümü (yeniden açmada `If-Match`); açık ayda boş'),
+  approvedAt: z.string().nullable().describe('Son onay anı'),
+  approvedByName: z.string().nullable().describe('Son onaylayan'),
+  approvalCount: z.number().int().describe('Onay sayısı (yeniden açıp onaylamada artar)'),
+  approved: summarySchema.nullable().describe('Son onay anının girdi özeti'),
+  current: summarySchema
+    .nullable()
+    .describe(
+      'Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır',
+    ),
+  checks: checksSchema
+    .nullable()
+    .describe(
+      'Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)',
+    ),
+  reopenedAt: z.string().nullable(),
+  reopenedByName: z.string().nullable(),
+  reopenReason: z.string().nullable().describe('Son yeniden açma gerekçesi'),
+  adjustmentCount: z.number().int().describe('Bu aydan çıkan iptal edilmemiş düzeltme sayısı'),
+})
+
+export const periodYearResponse = dataResponse(
+  z.object({
+    year: z.number().int(),
+    currentMonth: z.string().describe('Bugünün ayı (Europe/Istanbul)'),
+    lockedMonths: z.array(z.string()).describe('Kurumun bütün onaylı (kilitli) ayları, artan'),
+    months: z.array(periodSchema).describe('Yılın 12 ayı'),
+  }),
+)
+export const periodResponse = dataResponse(periodSchema)
+
+const adjustmentSchema = z.object({
+  id: z.string(),
+  sourceMonth: z.string().describe('Düzeltilen (kilitli) ay'),
+  targetMonth: z.string().describe('Farkın aktarılacağı ilk kilitsiz ay'),
+  membershipId: z.string(),
+  staffName: z.string(),
+  item: z.enum(PAYROLL_ADJUSTMENT_ITEMS),
+  // kvkk: K (ücret farkı)
+  amountCents: z.number().int().describe('İşaretli fark, kuruş'),
+  currency: z.literal('TRY'),
+  reason: z.string(),
+  createdByName: z.string().nullable(),
+  createdAt: z.string(),
+  version: z.number().int().describe('İptalde `If-Match` için sürüm'),
+})
+export const adjustmentResponse = dataResponse(adjustmentSchema)
+export const adjustmentListResponse = z.object({
+  data: z.array(adjustmentSchema),
+  meta: pageMetaSchema,
+})
+export const adjustmentCancelResponse = dataResponse(
+  z.object({ id: z.string(), archivedAt: z.string() }),
+)
+
+export const yearQuery = z.strictObject({
+  year: z.coerce
+    .number()
+    .int()
+    .min(Number(PAYROLL_MIN_MONTH.slice(0, 4)))
+    .max(Number(PAYROLL_MAX_MONTH.slice(0, 4)))
+    .optional()
+    .describe('Yıl; varsayılan bu yıl (Europe/Istanbul)'),
+})
+export const adjustmentListQuery = z.strictObject({ ...pageQuerySchema.shape })
+
+export const monthParams = z.object({
+  month: payrollMonthSchema.describe('Bordro ayı (YYYY-AA)'),
+})
+export const adjustmentParams = z.object({
+  adjustmentId: z.uuid('Düzeltme kaydı geçersiz.'),
+})

@@ -1,0 +1,311 @@
+import { isIP } from 'node:net'
+
+import { z } from 'zod'
+
+import { decodeFieldKey } from './lib/field-crypto.ts'
+
+// Ortam değişkenleri yalnız bu dosyada okunur ve doğrulanır; eksik veya geçersizse süreç başlamaz.
+
+const csv = z
+  .string()
+  .default('')
+  .transform((value) =>
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  )
+
+/** `.env` içindeki boş değer (`DEMO_PASSWORD=`) tanımsız sayılır. */
+function optional<T extends z.ZodType>(schema: T) {
+  return z.preprocess((value) => (value === '' ? undefined : value), schema.optional())
+}
+
+const databaseUrl = z.url({ protocol: /^postgres(ql)?$/ })
+
+/** `proxy-addr`'ın tanıdığı adres grupları (Fastify `trustProxy`). */
+const PROXY_RANGE_NAMES = new Set(['loopback', 'linklocal', 'uniquelocal'])
+
+function isProxyAddress(value: string): boolean {
+  if (PROXY_RANGE_NAMES.has(value)) return true
+  const [address = '', prefix, ...rest] = value.split('/')
+  const version = isIP(address)
+  if (version === 0 || rest.length > 0) return false
+  if (prefix === undefined) return true
+  if (!/^\d{1,3}$/.test(prefix)) return false
+  return Number(prefix) <= (version === 4 ? 32 : 128)
+}
+
+/**
+ * Hangi vekilin `X-Forwarded-For` başlığına güvenileceği. Boş/`false`/`0`: hiçbirine (varsayılan).
+ * Pozitif tamsayı: istemciye en yakın o kadar vekil atlanır (hop). Aksi halde virgülle ayrılmış
+ * vekil IP/CIDR listesi. `true` (bütün vekiller) reddedilir: başlığı istemci yazabilir ve hız
+ * sınırı IP'si sahtelenir.
+ */
+const trustProxy = z
+  .string()
+  .default('')
+  .transform((value, ctx): false | number | string[] => {
+    const trimmed = value.trim()
+    if (trimmed === '' || trimmed === 'false' || trimmed === '0') return false
+    if (/^\d+$/.test(trimmed)) return Number(trimmed)
+    const items = trimmed
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+    if (items.length === 0 || !items.every(isProxyAddress)) {
+      ctx.addIssue({ code: 'custom', message: 'invalid' })
+      return z.NEVER
+    }
+    return items
+  })
+
+/** Örnek dosyalarda ve betiklerde geçen, gizli olmayan değerler; üretimde reddedilir. */
+export const PLACEHOLDER_SECRET_PREFIX = 'CHANGE_ME'
+/** Gizli olmayan test anahtarı (base64 "kampus-test-field-key-not-secret"); üretimde reddedilir. */
+export const TEST_FIELD_ENCRYPTION_KEY = 'a2FtcHVzLXRlc3QtZmllbGQta2V5LW5vdC1zZWNyZXQ='
+/**
+ * Geliştirme ve testte `FIELD_ENCRYPTION_KEY` verilmezse kullanılan bilinen anahtar (`.env.example`
+ * değeri, base64 "CHANGE_ME-dev-field-key-32-bytes"). Gizli değildir; üretimde reddedilir.
+ */
+export const DEVELOPMENT_FIELD_ENCRYPTION_KEY = 'Q0hBTkdFX01FLWRldi1maWVsZC1rZXktMzItYnl0ZXM='
+const KNOWN_PUBLIC_SECRETS = new Set([
+  'degistir-en-az-32-karakter-rastgele-deger',
+  'cli-schema-generation-only-not-a-secret',
+  'openapi-generation-only-not-a-secret',
+  'test-secret-test-secret-test-secret-0123',
+  // Alan şifreleme anahtarları (base64): test, betik ve `.env.example` değerleri.
+  TEST_FIELD_ENCRYPTION_KEY,
+  DEVELOPMENT_FIELD_ENCRYPTION_KEY,
+])
+
+function isPlaceholderSecret(secret: string): boolean {
+  return (
+    secret.toUpperCase().startsWith(PLACEHOLDER_SECRET_PREFIX) || KNOWN_PUBLIC_SECRETS.has(secret)
+  )
+}
+
+/**
+ * Alan şifreleme anahtarı yer tutucu mu: bilinen değer, çözülmüş hali `CHANGE_ME` ile başlıyor ya
+ * da elle yazılmış gibi az çeşitli (ör. 32 sıfır bayt; rastgele 32 baytta 16'dan az farklı bayt
+ * olasılığı ihmal edilebilir).
+ */
+function isPlaceholderFieldKey(value: string): boolean {
+  const decoded = decodeFieldKey(value)
+  if (isPlaceholderSecret(value) || decoded === null) return true
+  return isPlaceholderSecret(decoded.toString('latin1')) || new Set(decoded).size < 16
+}
+
+export const configSchema = z
+  .object({
+    /**
+     * Varsayılanı yoktur: verilmezse süreç başlamaz. Böylece ortamı unutulmuş bir üretim sunucusu
+     * geliştirme ayarlarıyla (Expo kökenleri, API belgesi) açılmaz.
+     */
+    NODE_ENV: z.enum(['development', 'test', 'production']),
+    HOST: z.string().min(1).default('127.0.0.1'),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
+    /** Ters vekil arkasında hop sayısı veya vekil IP/CIDR listesi; varsayılan güvenme. */
+    TRUST_PROXY: trustProxy,
+    DATABASE_URL: databaseUrl,
+    BETTER_AUTH_SECRET: z.string().min(32),
+    /**
+     * Özel nitelikli alanların (sağlık ve acil bilgi) AES-256-GCM ana anahtarı: base64, çözülünce
+     * tam 32 bayt (`openssl rand -base64 32`). Kurum anahtarı bundan türetilir (`lib/field-crypto.ts`).
+     * Üretimde zorunludur ve yer tutucu reddedilir; geliştirme ve testte verilmezse bilinen
+     * `DEVELOPMENT_FIELD_ENCRYPTION_KEY` kullanılır (aşağıdaki `transform`; ayrıştırılmış alan her
+     * zaman doludur). Değiştirilirse eski satırlar çözülemez (döndürme sürümlüdür).
+     */
+    FIELD_ENCRYPTION_KEY: optional(
+      z.string().refine((value) => decodeFieldKey(value) !== null, { message: 'invalid' }),
+    ),
+    /** API'nin dışarıdan görünen kök adresi; üretimde zorunlu. */
+    BETTER_AUTH_URL: optional(z.url()),
+    /** İzinli web kökenleri (tam eşleşme). CORS ve Better Auth `trustedOrigins` aynı listeyi kullanır. */
+    CORS_ORIGINS: csv.pipe(z.array(z.url())),
+    /**
+     * Web uygulamasının dışarıdan görünen kök adresi; parola sıfırlama bağlantısı
+     * (`/parola-sifirla#token=…`) buna kurulur, istek başlığından türetilmez (Host sahteleme).
+     * Geliştirme/testte verilmezse `http://localhost:5174`; üretimde verilmezse iletisi gönderilmez.
+     */
+    WEB_URL: optional(z.url({ protocol: /^https?$/ })),
+    /**
+     * E-posta gönderici (IST-003): `log` bağlantıyı belirteciyle loga yazar (yalnız yerel
+     * geliştirme), `memory` bellek kutusuna koyar (test), `none` hiçbir şey göndermez ve uyarı
+     * loglar. Verilmezse geliştirmede `log`, testte `memory`, üretimde `none`; üretimde `log` ve
+     * `memory` reddedilir, böylece sıfırlama belirteci üretim loguna girmez. Gerçek sağlayıcı: OG-095.
+     */
+    MAIL_DRIVER: optional(z.enum(['log', 'memory', 'none'])),
+    /** Mobil uygulama şeması gibi tarayıcı dışı güvenilen kökenler. */
+    TRUSTED_ORIGINS: csv.default(['kampus://']),
+    /** Yalnız `db:seed`: demo kullanıcılarının parolası. Üretimde verilmezse tohum çalışmaz. */
+    DEMO_PASSWORD: optional(z.string().min(12)),
+    /**
+     * Dosya deposu sürücüsü (ADR 0003 karar 1). Bugün yalnız `disk`.
+     * TODO(F3c2-s3): `s3` sürücüsü ve `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`,
+     * `S3_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL` doğrulaması.
+     */
+    STORAGE_DRIVER: z.enum(['disk']).default('disk'),
+    /**
+     * `disk` sürücüsünün kök klasörü (göreliyse API'nin çalışma klasörüne göre); verilmezse
+     * `var/storage`. Disk sürücüsü üretimde kullanılmadığından (`assertStorageForEnvironment`)
+     * üretimde zorunlu değildir.
+     */
+    STORAGE_DIR: optional(z.string().min(1)),
+    /**
+     * Arka plan iş kuyruğu (`pg-boss`, `src/jobs`): `true` sunucu süreci kuyruğu açar, zamanlanmış
+     * işleri kurar ve işleri çalıştırır; `false` açmaz. Verilmezse geliştirme ve üretimde açık,
+     * testte kapalı (API testleri ve React e2e kuyruğa bağlanmaz). Kuyruk `DATABASE_URL`
+     * veritabanında kendi `pgboss` şemasını kullanır.
+     */
+    JOBS_ENABLED: optional(z.enum(['true', 'false'])),
+    /**
+     * Ses dönüştürme ikilileri (`media.transcode`, ADR 0003 karar 10): yol ya da `PATH`'teki ad.
+     * Verilmezse `ffmpeg` ve `ffprobe`. İkili yoksa dönüşüm geçici hatayla yeniden denenir, son
+     * denemede dosya reddedilir.
+     */
+    FFMPEG_PATH: optional(z.string().min(1)).transform((value) => value ?? 'ffmpeg'),
+    FFPROBE_PATH: optional(z.string().min(1)).transform((value) => value ?? 'ffprobe'),
+    /**
+     * Dosya taraması (`file.scan`, ADR 0003 karar 8): `clamav` belge, görsel ve video yüklemelerini
+     * `clamd`'ye TCP ile gönderir; `off` taramaz, dosya `pending` kalır ve bağlanamaz (clamd'siz
+     * yerel geliştirme ve e2e). Verilmezse üretimde `clamav`, başka ortamda `off`; üretimde `off`
+     * reddedilir (taramasız dosya dağıtılmaz). Testteki sahte tarayıcı `buildApp` seçeneğidir.
+     */
+    FILE_SCANNER: optional(z.enum(['clamav', 'off'])),
+    /** `clamd` TCP adresi (`compose.yaml` `clamav` profili: 127.0.0.1:3310). */
+    CLAMAV_HOST: optional(z.string().min(1)).transform((value) => value ?? '127.0.0.1'),
+    CLAMAV_PORT: optional(z.coerce.number().int().min(1).max(65535)).transform(
+      (value) => value ?? 3310,
+    ),
+    /**
+     * Tek taramanın üst süresi (ms): bağlantı, akış ve yanıt dahil. Aşılırsa tarama geçici hatadır
+     * ve iş yeniden denenir. En büyük yükleme (200 MB video) yerel ağda bu sürede taranır.
+     */
+    CLAMAV_TIMEOUT_MS: optional(z.coerce.number().int().min(1000).max(600_000)).transform(
+      (value) => value ?? 120_000,
+    ),
+  })
+  .superRefine((config, ctx) => {
+    if (config.NODE_ENV !== 'production') return
+    if (config.MAIL_DRIVER === 'log' || config.MAIL_DRIVER === 'memory')
+      ctx.addIssue({ code: 'custom', path: ['MAIL_DRIVER'], message: 'not_for_production' })
+    if (!config.BETTER_AUTH_URL)
+      ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
+    if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
+      ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
+    if (!config.FIELD_ENCRYPTION_KEY)
+      ctx.addIssue({ code: 'custom', path: ['FIELD_ENCRYPTION_KEY'], message: 'required' })
+    else if (isPlaceholderFieldKey(config.FIELD_ENCRYPTION_KEY))
+      ctx.addIssue({ code: 'custom', path: ['FIELD_ENCRYPTION_KEY'], message: 'placeholder' })
+    if (config.FILE_SCANNER === 'off')
+      ctx.addIssue({ code: 'custom', path: ['FILE_SCANNER'], message: 'not_for_production' })
+  })
+  // Üretimde anahtar yukarıda zorunlu kılındı; başka ortamda bilinen geliştirme anahtarına düşer.
+  // Düşüş sessiz kalmasın diye bayrakla işaretlenir; uygulama başlarken bir kez uyarı yazar
+  // (`app.ts`; anahtar değeri loga girmez).
+  .transform((config) => ({
+    ...config,
+    FIELD_ENCRYPTION_KEY: config.FIELD_ENCRYPTION_KEY ?? DEVELOPMENT_FIELD_ENCRYPTION_KEY,
+    fieldEncryptionKeyIsDevelopmentDefault: config.FIELD_ENCRYPTION_KEY === undefined,
+  }))
+
+export type Config = z.infer<typeof configSchema>
+
+function failure(error: z.ZodError): Error {
+  // Değerler (gizli bilgiler) yazdırılmaz; yalnız değişken adları.
+  const names = [...new Set(error.issues.map((issue) => issue.path.join('.')))]
+  return new Error(`Geçersiz veya eksik ortam değişkenleri: ${names.join(', ')}`)
+}
+
+/** Ortamı yalnız şemayla doğrular; başlangıç denetimleri `loadConfig`'tedir. */
+export function parseConfig(env: Record<string, string | undefined> = process.env): Config {
+  const parsed = configSchema.safeParse(env)
+  if (!parsed.success) throw failure(parsed.error)
+  return parsed.data
+}
+
+export const DISK_STORAGE_IN_PRODUCTION_MESSAGE =
+  'STORAGE_DRIVER=disk üretimde kullanılmaz (ADR 0003 karar 1: disk yalnız test ve yerel geliştirme içindir). S3 sürücüsü gelene kadar API üretim ortamında başlatılamaz.'
+
+/**
+ * ADR 0003 karar 1: `disk` sürücüsü yalnız test ve yerel geliştirme içindir; üretimde seçiliyse
+ * süreç başlangıçta açık bir hatayla durur. Bugün tek sürücü disk olduğundan API üretimde
+ * başlamaz. TODO(F3c2-s3): S3 sürücüsü gelince üretimde `s3` zorunlu olur ve bu denetim onun
+ * ortam değişkenlerini ister.
+ */
+export function assertStorageForEnvironment(config: Config): void {
+  if (config.NODE_ENV === 'production' && config.STORAGE_DRIVER === 'disk')
+    throw new Error(DISK_STORAGE_IN_PRODUCTION_MESSAGE)
+}
+
+/** Süreç başlangıcı (sunucu, tohum): şema doğrulaması ve ortam denetimleri. */
+export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
+  const config = parseConfig(env)
+  assertStorageForEnvironment(config)
+  return config
+}
+
+/** Migration betiği yalnız bağlantı adresine ihtiyaç duyar. */
+export function loadDatabaseUrl(env: Record<string, string | undefined> = process.env): string {
+  const parsed = z.object({ DATABASE_URL: databaseUrl }).safeParse(env)
+  if (!parsed.success) throw failure(parsed.error)
+  return parsed.data.DATABASE_URL
+}
+
+/**
+ * `test:pg` takımının PostgreSQL 16 adresi (`TEST_PG_URL`). Verilmezse gerçek veritabanı testleri
+ * atlanır; adres her test koşusunda tabloları değiştirdiğinden yalnız atılabilir veritabanı verilir.
+ */
+export function loadTestPgUrl(
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const parsed = z.object({ TEST_PG_URL: optional(databaseUrl) }).safeParse(env)
+  if (!parsed.success) throw failure(parsed.error)
+  return parsed.data.TEST_PG_URL ?? null
+}
+
+export function publicUrl(config: Config): string {
+  return config.BETTER_AUTH_URL ?? `http://localhost:${config.PORT}`
+}
+
+/** `WEB_URL` verilmediğinde geliştirme ve testte web-react geliştirme sunucusu. */
+export const DEFAULT_DEV_WEB_URL = 'http://localhost:5174'
+
+/** Web kök adresi (sonda `/` yok); üretimde `WEB_URL` yoksa `null` (bağlantı kurulmaz). */
+export function webUrl(config: Config): string | null {
+  const value = config.WEB_URL ?? (isDevelopmentLike(config) ? DEFAULT_DEV_WEB_URL : null)
+  return value ? value.replace(/\/+$/, '') : null
+}
+
+/** Yerel geliştirme ve testte `STORAGE_DIR` verilmezse kullanılan klasör (git'e girmez). */
+export const DEFAULT_STORAGE_DIR = 'var/storage'
+
+/** Disk deposunun kök klasörü: verilen değer veya varsayılan (disk üretimde kullanılmaz). */
+export function storageDir(config: Config): string {
+  return config.STORAGE_DIR ?? DEFAULT_STORAGE_DIR
+}
+
+/** Dosya tarayıcısı: `FILE_SCANNER` ya da ortamın varsayılanı (yalnız üretimde `clamav`). */
+export function fileScannerDriver(config: Config): 'clamav' | 'off' {
+  return config.FILE_SCANNER ?? (config.NODE_ENV === 'production' ? 'clamav' : 'off')
+}
+
+/** İş kuyruğu açık mı: `JOBS_ENABLED` ya da ortamın varsayılanı (testte kapalı). */
+export function jobsEnabled(config: Config): boolean {
+  if (config.JOBS_ENABLED !== undefined) return config.JOBS_ENABLED === 'true'
+  return config.NODE_ENV !== 'test'
+}
+
+/** Geliştirme kolaylıkları (Expo Go kökenleri, API belgesi) yalnız açıkça bu ortamlarda açılır. */
+export function isDevelopmentLike(config: Config): boolean {
+  return config.NODE_ENV === 'development' || config.NODE_ENV === 'test'
+}
+
+/** Çerez, üretimde ve dış adres https olduğunda her zaman `Secure` işaretlenir. */
+export function useSecureCookies(config: Config): boolean {
+  return config.NODE_ENV === 'production' || new URL(publicUrl(config)).protocol === 'https:'
+}

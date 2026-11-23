@@ -2,12 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { state, role, selectedChildId, transaction, notify, logError } from '../stores/demo.js'
-import { workflowPage } from '@kampus/school-core/modules/school-workflows.js'
+import { workflowPage } from '@kampus/school-core/modules/school-workflows.ts'
 import {
   runWorkflow,
   workflowSchemas,
   renewalQuote,
-} from '@kampus/school-core/lib/school-workflows.js'
+} from '@kampus/school-core/lib/school-workflows.ts'
 import {
   workflowRows,
   workflowDetails,
@@ -18,7 +18,7 @@ import {
   normalizeWorkflowInput,
   csvTemplate,
   workflowCsvReferences,
-} from '@kampus/school-core/lib/workflow-presentation.js'
+} from '@kampus/school-core/lib/workflow-presentation.ts'
 import { money, dayKey, timeLabel, dateLabel } from '../lib/format.js'
 import { exportCsv } from '../lib/download.js'
 import { useDetailPanel } from '../lib/use-detail-panel.js'

@@ -3,6 +3,7 @@ packages:
   - packages/*
 allowBuilds:
   core-js: false
+  esbuild: true
 minimumReleaseAgeExclude:
   - '@eslint-react/ast@5.21.0'
   - '@eslint-react/core@5.21.0'
@@ -13,3 +14,16 @@ minimumReleaseAgeExclude:
   - eslint-plugin-react-x@5.21.0
 onlyBuiltDependencies:
   - esbuild
+# OG-201: geçişli güvenlik yamaları; yalnız açıklı aralıklar sabitlenir.
+overrides:
+  'dompurify@<3.4.17': 3.4.17
+  'node-forge@<1.4.1': 1.4.1
+  'shell-quote@>=1.8.4 <1.11.0': 1.11.0
+  'source-map-js@>=1.0.0 <1.2.2': 1.2.2
+  'zod@>=4.0.0 <4.6.6': 4.6.6
+# OG-201 takibi: GHSA-mrhx-c7xc-m3w5 zod 3 için yamasız (yama yalnız >=4.6.6). zod 3.25.76 yalnız
+# @expo/cli (derleme/geliştirme CLI'ı) içinde; API ve uygulamaların çalışma anında yok ve dış girdi
+# doğrulamaz. zod 4 aralığı yukarıdaki override ile yamalı. Expo zod 4'e geçince bu satır kaldırılır.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5

@@ -1,0 +1,2 @@
+-- Elle yazıldı (ON-331): mükerrer izinin kuruluşu değişti (K-120); şema değişikliği yoktur.
+COMMENT ON COLUMN "bank_transactions"."fingerprint" IS 'Mükerrer izi (K-107, K-120): hesap + gün + tutar ile banka referansı (en az 6 harf/rakam ve rakam içerir) ya da referans yoksa normalleştirilmiş açıklama, gönderen ve kısa referans; aynı dosyadaki sıra numarasıyla birlikte anahtarın sha256 özeti. Hesapta tekil; aynı hareket CSV ya da MT940 olarak ikinci kez aktarılmaz.';

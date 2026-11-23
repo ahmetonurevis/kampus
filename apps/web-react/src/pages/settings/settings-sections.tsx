@@ -1,0 +1,96 @@
+// Ayarlar sekme kaydı: rol + modül → sekme ya da sekme içi bölüm. İki kaynak birleşir: Oğuzhan'ın
+// girdileri aşağıdaki ilk dizi, kayıt ve finans girdileri `// Onur: kayıt ve finans` bloğudur.
+// Süzme, sıra ve adres anahtarı mantığı `settings-tabs.ts` içindedir; sayfa `SettingsPage.tsx`.
+// Yeni sekme/bölüm eklemek için `docs/sayfalar/platform.md` "Ayar sekmesi ekleme".
+import type { ComponentType } from 'react'
+import { AcademicYearSection } from './AcademicYearSection.tsx'
+import { AuditSection } from './AuditSection.tsx'
+import { ModuleSettingsSection } from './ModuleSettingsSection.tsx'
+import { UsersSection } from './UsersSection.tsx'
+import type { SettingsEntry } from './settings-tabs.ts'
+
+// Onur: kayıt ve finans
+import { FinancePurchaseApprovalSettings } from './FinancePurchaseApprovalSettings.tsx'
+import { PaymentSettingsSection } from './PaymentSettingsSection.tsx'
+import { ProspectDocumentTypeSettings } from './ProspectDocumentTypeSettings.tsx'
+
+const ONUR_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
+  // Nakit tahsilat ve banka hesapları kendi sekmesindedir; finans kapalıysa sekme de kapanır.
+  {
+    kind: 'tab',
+    id: 'payments',
+    label: 'Ödeme & Banka',
+    param: 'odeme',
+    roles: ['yonetici'],
+    module: 'finance',
+    order: 28,
+    component: PaymentSettingsSection,
+  },
+  // Satın alma talebinin kademeli onay eşikleri (ON-223, K-260); finans kapalıysa sekme kapanır.
+  {
+    kind: 'tab',
+    id: 'purchase-approval',
+    label: 'Satın alma onayı',
+    param: 'satin-alma-onayi',
+    roles: ['yonetici'],
+    module: 'finance',
+    order: 29,
+    component: FinancePurchaseApprovalSettings,
+  },
+  // Aday belge türü listesi (ON-263, K-320); aday modülü (crm) kapalıysa sekme kapanır.
+  {
+    kind: 'tab',
+    id: 'prospect-documents',
+    label: 'Aday belgeleri',
+    param: 'aday-belgeleri',
+    roles: ['yonetici'],
+    module: 'crm',
+    order: 27,
+    component: ProspectDocumentTypeSettings,
+  },
+]
+// Onur: kayıt ve finans sonu
+
+const PLATFORM_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
+  {
+    kind: 'tab',
+    id: 'general',
+    label: 'Kurum & Modüller',
+    param: '',
+    roles: ['yonetici'],
+    order: 10,
+    component: ModuleSettingsSection,
+  },
+  {
+    kind: 'tab',
+    id: 'users',
+    label: 'Kullanıcı & Yetkiler',
+    param: 'kullanicilar',
+    roles: ['yonetici'],
+    order: 20,
+    component: UsersSection,
+  },
+  {
+    kind: 'tab',
+    id: 'academic-year',
+    label: 'Eğitim yılı',
+    param: 'egitim-yili',
+    roles: ['yonetici'],
+    order: 25,
+    component: AcademicYearSection,
+  },
+  {
+    kind: 'tab',
+    id: 'activity',
+    label: 'İşlem Geçmişi',
+    param: 'gecmis',
+    roles: ['yonetici'],
+    order: 30,
+    component: AuditSection,
+  },
+]
+
+export const SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
+  ...PLATFORM_SETTINGS_SECTIONS,
+  ...ONUR_SETTINGS_SECTIONS,
+]

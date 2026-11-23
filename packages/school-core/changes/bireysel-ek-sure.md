@@ -1,0 +1,8 @@
+---
+etki: minor
+---
+
+- Bireysel ek süre (OG-248; DOM-BEC-043): yeni `skills/extra-time.ts`. `planExtraTime` öğretmenin (yalnız kendi ataması) ya da yöneticinin bir kursiyere süreli görevde ek süre vermesini, değiştirmesini ve kaldırmasını planlar; kayıtlar değişmez ve yalnız eklenir (`ExtraTimeRow`, sıra numarası sürümdür, `minutes: 0` kaldırmadır). Sınır 1–300 dakika ve görevin kendi süresi; teslim penceresi kapandıysa 422 `submission_closed`, süresiz görevde `extra_time_untimed`, görevin süresini aşan `extra_time_too_long`, süren denemeyi geçmişte bitirecek kısaltma `extra_time_below_elapsed`; verilmiş ek süreye ikinci verme 409 `extra_time_exists`, olmayanı değiştirme 404 `extra_time_not_found`, eski sürüm 409 `version_conflict`; modül kapalıysa 403 `module_disabled`.
+- Gerekçe artık serbest metin değil, kategoridir (`EXTRA_TIME_REASONS`: `accommodation`, `technical_issue`, `other`); `extraTimeSchema` `scoring.ts`'ten `extra-time.ts`'e taşındı ve `reason` alanı değişti (önceki serbest metin hiçbir yerde kullanılmıyordu). Sağlık ve engel bilgisi kayda girmesin diye not alanı yoktur.
+- `AttemptTiming.extraTime` (isteğe bağlı): kursiyerin ek süre geçmişi verilirse her denemenin ek süresi geçmişten hesaplanır (`attemptExtraMinutes`): süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz. `attemptEndsAt` isteğe bağlı teslim anı alır. `learnerTiming` atamanın süresiyle geçmişi birleştirir.
+- `extraTimeGrantSchema`: ilk verme gövdesi (`learnerId` + `extraTimeSchema` alanları); API gövdesi ve web formu aynı şemayı kullanır, kursiyer boşsa "Bir kursiyer seçin." mesajı döner.

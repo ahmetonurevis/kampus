@@ -1,0 +1,448 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import type { Role } from '../packages/school-core/src/modules/navigation.ts'
+import type { Actor } from '../packages/school-core/src/lib/scope.ts'
+import {
+  ONUR_WRITE_ACTION_ROLES,
+  WRITE_ACTIONS,
+  WRITE_ACTION_ROLES,
+  PROVIDER_CONFIRMATION_ACTIONS,
+  authorize,
+  requireAuthorized,
+  requiresProviderConfirmation,
+  sessionAuthorize,
+  type WriteDecision,
+} from '../packages/school-core/src/lib/authorize.ts'
+import { PLATFORM_WRITE_ACTION_ROLES } from '../packages/school-core/src/platform/authorize.ts'
+import { ONUR_OPERATION_COMMANDS } from '../packages/school-core/src/modules/commands.ts'
+import { PLATFORM_OPERATION_COMMANDS } from '../packages/school-core/src/platform/commands.ts'
+import { isDomainError } from './support/domain-error.ts'
+
+const now = '2026-10-06T10:00:00.000Z'
+const seed = () => createSeed(new Date(now))
+const roles: Role[] = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli']
+const actors: Record<Role, Actor> = {
+  yonetici: { role: 'yonetici', links: [] },
+  onburo: { role: 'onburo', links: [] },
+  // Selin Kaya: c1 dahil sınıflarda matematik.
+  ogretmen: { role: 'ogretmen', links: [{ kind: 'teacher', recordId: 't1' }] },
+  ogrenci: { role: 'ogrenci', links: [{ kind: 'student', recordId: 's1' }] },
+  veli: {
+    role: 'veli',
+    links: [
+      { kind: 'child', recordId: 's1' },
+      { kind: 'child', recordId: 's2' },
+    ],
+  },
+}
+const code = (decision: WriteDecision) => (decision.allowed ? 'allowed' : decision.code)
+
+test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
+  assert.deepEqual(WRITE_ACTION_ROLES, {
+    'invoice.pay': ['yonetici', 'onburo'],
+    'payment.reverse': ['yonetici'],
+    'tariff.manage': ['yonetici'],
+    'scholarship.manage': ['yonetici'],
+    'student.withdraw': ['yonetici'],
+    'invoice.payOnline': ['veli'],
+    'attendance.record': ['yonetici', 'ogretmen'],
+    'grade.record': ['ogretmen'],
+    'grade.update': ['yonetici', 'ogretmen'],
+    'record.archive': ['yonetici'],
+    'record.restore': ['yonetici'],
+    'branch.save': ['yonetici'],
+    'teacher.save': ['yonetici'],
+    'class.save': ['yonetici'],
+    'announcement.publish': ['yonetici', 'onburo', 'ogretmen'],
+    'announcement.revise': ['yonetici', 'onburo', 'ogretmen'],
+    'announcement.withdraw': ['yonetici', 'onburo', 'ogretmen'],
+    'announcement.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'conversation.start': ['ogretmen', 'ogrenci', 'veli'],
+    'message.send': ['ogretmen', 'ogrenci', 'veli'],
+    'message.read': ['ogretmen', 'ogrenci', 'veli'],
+    'conversation.access': ['yonetici'],
+    'request.open': ['veli'],
+    'request.update': ['yonetici', 'onburo'],
+    'absence.notify': ['veli'],
+    'absence.attach': ['veli'],
+    'absence.approve': ['yonetici'],
+    'absence.reject': ['yonetici'],
+    'appointment.book': ['ogrenci', 'veli'],
+    'appointment.update': ['ogretmen', 'ogrenci', 'veli'],
+    'appointment.slots': ['ogrenci', 'veli'],
+    'question.ask': ['ogrenci'],
+    'question.answer': ['ogretmen'],
+    'question.withdraw': ['ogrenci'],
+    'homework.assign': ['yonetici', 'ogretmen'],
+    'homework.update': ['yonetici', 'ogretmen'],
+    'homework.archive': ['yonetici', 'ogretmen'],
+    'homework.submit': ['ogrenci'],
+    'homework.grade': ['ogretmen'],
+    'permissionForm.create': ['yonetici', 'ogretmen'],
+    'permissionForm.update': ['yonetici', 'ogretmen'],
+    'permissionForm.close': ['yonetici', 'ogretmen'],
+    'permissionForm.cancel': ['yonetici', 'ogretmen'],
+    'permissionForm.archive': ['yonetici', 'ogretmen'],
+    'permissionForm.decide': ['veli', 'ogrenci'],
+    'prospect.create': ['yonetici', 'onburo'],
+    'prospect.stage': ['yonetici', 'onburo'],
+    'prospect.stageRevert': ['yonetici'],
+    'prospect.consent': ['yonetici', 'onburo'],
+    'prospect.update': ['yonetici', 'onburo'],
+    'prospect.note': ['yonetici', 'onburo'],
+    'prospect.meeting': ['yonetici', 'onburo'],
+    'prospect.trial': ['yonetici', 'onburo'],
+    'prospect.trialResult': ['ogretmen'],
+    'prospect.enroll': ['yonetici', 'onburo'],
+    'video.progress': ['ogrenci'],
+    'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'notice.publish': ['yonetici'],
+    'notice.acknowledge': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'consent.give': ['ogrenci', 'veli'],
+    'consent.withdraw': ['ogrenci', 'veli'],
+    'consent.read': ['yonetici', 'onburo', 'ogrenci', 'veli'],
+    'consent.status': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'academicYear.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'academicYear.manage': ['yonetici'],
+    'guardian.read': ['yonetici', 'onburo', 'veli'],
+    'guardian.manage': ['yonetici', 'onburo'],
+    'guardian.invite': ['yonetici', 'onburo'],
+    'guardian.invite_list': ['yonetici', 'onburo'],
+    'guardian.invite_cancel': ['yonetici', 'onburo'],
+    'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'course.manage': ['yonetici', 'ogretmen'],
+    'course.eozel': ['yonetici'],
+    'group.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'group.manage': ['yonetici', 'ogretmen'],
+    'group.waitlist': ['yonetici', 'onburo'],
+    'quiz.create': ['yonetici', 'ogretmen'],
+    'quiz.update': ['yonetici', 'ogretmen'],
+    'quiz.archive': ['yonetici', 'ogretmen'],
+    'quiz.start': ['ogrenci'],
+    'quiz.submit': ['ogrenci'],
+    // Onur: sözleşme onayı (ON-028, #28).
+    'contract.sign': ['yonetici'],
+    'contract.approve': ['yonetici', 'onburo', 'veli'],
+    'contract.amend': ['yonetici', 'onburo'],
+  })
+  // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
+  assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())
+})
+
+test('Eylem iki kaynakta (platform ve Onur bloğu) birden bulunmaz; kaynaklar komut tablosuyla eşleşir (IST-004)', () => {
+  const shared = Object.keys(PLATFORM_WRITE_ACTION_ROLES).filter((action) =>
+    Object.hasOwn(ONUR_WRITE_ACTION_ROLES, action),
+  )
+  assert.deepEqual(shared, [], `eylem iki kaynakta: ${shared.join(', ')}`)
+  assert.equal(
+    Object.keys(WRITE_ACTION_ROLES).length,
+    Object.keys(PLATFORM_WRITE_ACTION_ROLES).length + Object.keys(ONUR_WRITE_ACTION_ROLES).length,
+  )
+  // Rol tablosunun her kaynağı komut tablosunun aynı kaynağıyla birebir örtüşür.
+  assert.deepEqual(
+    Object.keys(PLATFORM_WRITE_ACTION_ROLES).sort(),
+    Object.keys(PLATFORM_OPERATION_COMMANDS).sort(),
+  )
+  assert.deepEqual(
+    Object.keys(ONUR_WRITE_ACTION_ROLES).sort(),
+    Object.keys(ONUR_OPERATION_COMMANDS).sort(),
+  )
+})
+
+test('Tahsilat kaydı yalnız yönetici ve ön büroda; veli tahsilat kaydedemez', () => {
+  const state = seed()
+  const pay = (role: Role, studentId: string) =>
+    code(authorize(actors[role], 'invoice.pay', { studentId }, state))
+  assert.equal(pay('yonetici', 's9'), 'allowed')
+  assert.equal(pay('onburo', 's9'), 'allowed')
+  // Ödeme sağlayıcısı yokken veliye tahsilat açmak para alınmadan taksiti kapattırırdı.
+  assert.equal(pay('veli', 's1'), 'permission_denied')
+  assert.equal(pay('veli', 's9'), 'permission_denied')
+  assert.equal(pay('ogretmen', 's1'), 'permission_denied')
+  assert.equal(pay('ogrenci', 's1'), 'permission_denied')
+  assert.equal(requiresProviderConfirmation('invoice.pay'), false)
+})
+
+test('Çevrim içi ödeme yalnız velinin bağlı çocuğunda izinli ve sağlayıcı onayı bekler', () => {
+  const state = seed()
+  const payOnline = (role: Role, studentId: string) =>
+    code(authorize(actors[role], 'invoice.payOnline', { studentId }, state))
+  assert.equal(payOnline('veli', 's1'), 'allowed')
+  assert.equal(payOnline('veli', 's2'), 'allowed')
+  assert.equal(payOnline('veli', 's9'), 'student_scope_denied')
+  for (const role of ['yonetici', 'onburo', 'ogretmen', 'ogrenci'] as const)
+    assert.equal(payOnline(role, 's1'), 'permission_denied')
+  assert.deepEqual(PROVIDER_CONFIRMATION_ACTIONS, ['invoice.payOnline'])
+  assert.equal(requiresProviderConfirmation('invoice.payOnline'), true)
+  state.modules.finance = false
+  assert.equal(payOnline('veli', 's1'), 'module_disabled')
+})
+
+test('Yoklama: öğretmen ders verdiği sınıfta aynı gün; yönetici gerekçeyle düzeltir', () => {
+  const state = seed()
+  const own = state.assignments.find((a) => a.teacherId === 't1')!.classId
+  const other = state.classes.find(
+    (c) => !state.assignments.some((a) => a.classId === c.id && a.teacherId === 't1'),
+  )!.id
+  const take = (role: Role, classId: string, date = now, reason?: string) =>
+    code(
+      authorize(
+        actors[role],
+        'attendance.record',
+        { classId, date, ...(reason ? { reason } : {}) },
+        state,
+        { now },
+      ),
+    )
+  assert.equal(take('ogretmen', own), 'allowed')
+  assert.equal(take('ogretmen', other), 'attendance_class_forbidden')
+  assert.equal(
+    take('ogretmen', own, '2026-10-05T09:00:00.000Z'),
+    'attendance_correction_admin_only',
+  )
+  assert.equal(take('yonetici', other), 'correction_reason_required')
+  assert.equal(
+    take('yonetici', other, '2026-10-01T09:00:00.000Z', 'Rapor teslim edildi'),
+    'allowed',
+  )
+  for (const role of ['onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(take(role, own), 'permission_denied')
+  // Pasif öğretmen kaydı yetki vermez (DOM-YTK-022: atama sona erince yazma biter).
+  state.teachers.find((t) => t.id === 't1')!.isActive = false
+  assert.equal(take('ogretmen', own), 'attendance_class_forbidden')
+})
+
+test('Not: öğretmen atandığı sınıf + derste girer; yönetici yalnız gerekçeli düzeltir', () => {
+  const state = seed()
+  const ownClass = state.assignments.find((a) => a.teacherId === 't1' && a.subjectId === 'math')!
+  const student = state.students.find((s) => s.classId === ownClass.classId)!.id
+  const outsider = state.students.find(
+    (s) => !state.assignments.some((a) => a.classId === s.classId && a.teacherId === 't1'),
+  )!.id
+  const grade = (role: Role, studentId: string, subjectId = 'math') =>
+    code(authorize(actors[role], 'grade.record', { studentId, subjectId }, state))
+  const update = (role: Role, studentId: string, reason?: string) =>
+    code(
+      authorize(
+        actors[role],
+        'grade.update',
+        { studentId, subjectId: 'math', ...(reason ? { reason } : {}) },
+        state,
+      ),
+    )
+  assert.equal(grade('ogretmen', student), 'allowed')
+  assert.equal(grade('ogretmen', student, 'science'), 'grade_assignment_forbidden')
+  assert.equal(grade('ogretmen', outsider), 'grade_assignment_forbidden')
+  for (const role of ['yonetici', 'onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(grade(role, student), 'permission_denied')
+  assert.equal(update('ogretmen', student), 'allowed')
+  assert.equal(update('ogretmen', outsider), 'grade_assignment_forbidden')
+  assert.equal(update('yonetici', outsider), 'correction_reason_required')
+  assert.equal(update('yonetici', outsider, 'Okuma hatası düzeltildi'), 'allowed')
+  for (const role of ['onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(update(role, student, 'Gerekçe'), 'permission_denied')
+})
+
+test('Kampüs, sınıf ve kadro arşivi ile geri alma yalnız yöneticidedir', () => {
+  const state = seed()
+  for (const action of ['record.archive', 'record.restore'] as const)
+    for (const kind of ['branch', 'class', 'teacher'] as const)
+      for (const role of roles)
+        assert.equal(
+          code(authorize(actors[role], action, { kind }, state)),
+          role === 'yonetici' ? 'allowed' : 'permission_denied',
+        )
+})
+
+test('Modül kapalıyken eylem rol denetiminden önce reddedilir', () => {
+  const state = seed()
+  state.modules.finance = false
+  state.modules.academic = false
+  assert.equal(
+    code(authorize(actors.yonetici, 'invoice.pay', { studentId: 's1' }, state)),
+    'module_disabled',
+  )
+  assert.equal(
+    code(authorize(actors.ogrenci, 'grade.record', { studentId: 's1', subjectId: 'math' }, state)),
+    'module_disabled',
+  )
+  assert.equal(
+    code(authorize(actors.ogretmen, 'attendance.record', { classId: 'c1', date: now }, state)),
+    'module_disabled',
+  )
+  // Çekirdek kayıtlar modüle bağlı değildir.
+  assert.equal(
+    code(authorize(actors.yonetici, 'record.archive', { kind: 'class' }, state)),
+    'allowed',
+  )
+  // Haritada olmayan modül kapalı sayılır.
+  delete state.modules.finance
+  assert.equal(
+    code(authorize(actors.onburo, 'invoice.pay', { studentId: 's1' }, state)),
+    'module_disabled',
+  )
+})
+
+test('Bilinmeyen rol ve bağlantısız öğretmen hiçbir yazma yetkisi almaz', () => {
+  const state = seed()
+  const stranger: Actor = { role: 'misafir' as Role, links: [] }
+  const teacher: Actor = { role: 'ogretmen', links: [] }
+  assert.equal(
+    code(authorize(stranger, 'invoice.pay', { studentId: 's1' }, state)),
+    'permission_denied',
+  )
+  assert.equal(
+    code(authorize(teacher, 'grade.record', { studentId: 's1', subjectId: 'math' }, state)),
+    'grade_assignment_forbidden',
+  )
+})
+
+test('requireAuthorized reddi DomainError olarak fırlatır; izinli istek sessiz geçer', () => {
+  const state = seed()
+  assert.throws(
+    () => requireAuthorized(actors.ogrenci, 'invoice.pay', { studentId: 's1' }, state),
+    isDomainError('permission_denied', 'forbidden'),
+  )
+  assert.throws(
+    () =>
+      requireAuthorized(actors.yonetici, 'attendance.record', { classId: 'c1', date: now }, state, {
+        now,
+      }),
+    isDomainError('correction_reason_required', 'rule'),
+  )
+  state.modules.finance = false
+  assert.throws(
+    () => requireAuthorized(actors.yonetici, 'invoice.pay', { studentId: 's1' }, state),
+    isDomainError('module_disabled', 'forbidden'),
+  )
+  requireAuthorized(actors.yonetici, 'record.restore', { kind: 'branch' }, state)
+})
+
+test('Dil okulunda tahsilat yetkisi okuldakiyle aynıdır', () => {
+  const state = seed()
+  assert.equal(
+    code(
+      authorize(actors.onburo, 'invoice.pay', { studentId: 's1' }, state, {
+        institutionType: 'language_school',
+      }),
+    ),
+    'allowed',
+  )
+})
+
+test('Çevrimdışı demo oturumu sessionActor ile aynı kararı alır', () => {
+  const state = seed()
+  assert.equal(
+    code(
+      sessionAuthorize(state, { role: 'veli', childId: 's1' }, 'invoice.payOnline', {
+        studentId: 's2',
+      }),
+    ),
+    'allowed',
+  )
+  assert.equal(
+    code(sessionAuthorize(state, { role: 'veli' }, 'invoice.payOnline', { studentId: 's9' })),
+    'student_scope_denied',
+  )
+  assert.equal(
+    code(sessionAuthorize(state, { role: 'veli' }, 'invoice.pay', { studentId: 's1' })),
+    'permission_denied',
+  )
+  assert.equal(
+    code(
+      sessionAuthorize(
+        state,
+        { role: 'ogretmen' },
+        'attendance.record',
+        { classId: 'c1', date: now },
+        { now },
+      ),
+    ),
+    'allowed',
+  )
+})
+
+test('DOM-YTK-057 rıza okuması: personel rıza vermez, öğretmen yalnız sonucu ve yalnız kendi öğrencisinde; kapsam dışı 404', () => {
+  const state = seed()
+  const outside = state.students.find(
+    (student) =>
+      !state.assignments.some((a) => a.classId === student.classId && a.teacherId === 't1') &&
+      !state.classes.some((c) => c.id === student.classId && c.teacherId === 't1'),
+  )
+  assert.ok(outside, 'örnek veride t1 kapsamı dışında öğrenci yok')
+  const decide = (role: Role, action: 'consent.read' | 'consent.status', studentId: string) =>
+    code(authorize(actors[role], action, { studentId }, state))
+  for (const role of roles) {
+    for (const action of ['consent.give', 'consent.withdraw'] as const)
+      assert.equal(
+        code(authorize(actors[role], action, {}, state)),
+        role === 'ogrenci' || role === 'veli' ? 'allowed' : 'permission_denied',
+        `${role} ${action}`,
+      )
+  }
+  assert.equal(decide('yonetici', 'consent.read', outside.id), 'allowed')
+  assert.equal(decide('onburo', 'consent.status', outside.id), 'allowed')
+  assert.equal(decide('ogretmen', 'consent.read', 's1'), 'permission_denied')
+  assert.equal(decide('ogretmen', 'consent.status', 's1'), 'allowed')
+  assert.equal(decide('ogretmen', 'consent.status', outside.id), 'consent_student_not_found')
+  assert.equal(decide('veli', 'consent.read', 's1'), 'allowed')
+  assert.equal(decide('veli', 'consent.read', outside.id), 'consent_student_not_found')
+  assert.equal(decide('ogrenci', 'consent.status', 's2'), 'consent_student_not_found')
+  // Öğrenci kimliği yoksa aktörün kendi hesap rızaları okunur.
+  assert.equal(
+    code(authorize(actors.ogrenci, 'consent.read', { studentId: undefined }, state)),
+    'allowed',
+  )
+  // Platform yeteneğidir: modüller kapalıyken de açıktır.
+  const closed = seed()
+  for (const key of Object.keys(closed.modules))
+    closed.modules[key as keyof typeof closed.modules] = false
+  assert.equal(code(authorize(actors.veli, 'consent.withdraw', {}, closed)), 'allowed')
+  assert.equal(code(authorize(actors.ogretmen, 'notice.acknowledge', {}, closed)), 'allowed')
+})
+
+test('DOM-DIL-031: deneme sonucunu yalnız dersin grubunun öğretmeni yazar; kapsam dışı grup 404, okulda 404', () => {
+  const state = seed()
+  const language = { institutionType: 'language_school' } as const
+  const target = { classId: 'c1' }
+  assert.equal(
+    code(authorize(actors.ogretmen, 'prospect.trialResult', target, state, language)),
+    'allowed',
+  )
+  // Dersi vermeyen öğretmen adayın varlığını öğrenmez: izinsiz rol 403, kapsam dışı öğretmen 404.
+  const outsider = state.teachers.find(
+    (teacher) =>
+      authorize(
+        { role: 'ogretmen', links: [{ kind: 'teacher', recordId: teacher.id }] },
+        'prospect.trialResult',
+        target,
+        state,
+        language,
+      ).allowed === false,
+  )
+  assert.ok(outsider, 'c1 dışında ders veren bir öğretmen bekleniyordu')
+  const denied = authorize(
+    { role: 'ogretmen', links: [{ kind: 'teacher', recordId: outsider.id }] },
+    'prospect.trialResult',
+    target,
+    state,
+    language,
+  )
+  assert.equal(denied.allowed, false)
+  assert.equal(denied.allowed ? '' : denied.kind, 'not_found')
+  for (const role of ['yonetici', 'onburo', 'ogrenci', 'veli'] as const)
+    assert.equal(
+      code(authorize(actors[role], 'prospect.trialResult', target, state, language)),
+      'permission_denied',
+      role,
+    )
+  // Okul kurumunda işlem yoktur; rol denetiminden önce 404.
+  for (const role of roles)
+    assert.equal(
+      code(authorize(actors[role], 'prospect.trialResult', target, state)),
+      'trial_lesson_unavailable',
+      role,
+    )
+})

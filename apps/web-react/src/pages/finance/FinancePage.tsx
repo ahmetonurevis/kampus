@@ -1,0 +1,798 @@
+import { lazy, Suspense } from 'react'
+import { useFinanceTotals } from '@kampus/react-shared/use-finance-exports.ts'
+import { useMaintenancePlans } from '@kampus/react-shared/use-finance-maintenance-plans.ts'
+import { useSearchParams } from 'react-router'
+import { useAuth } from '@/auth/use-auth.ts'
+import { dayKey, money } from '@kampus/school-core/lib/format.ts'
+import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
+import { PageHeading } from '@/components/PageHeading.tsx'
+import { Button } from '@/components/ui/button'
+import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
+import { useDocumentTitle } from '@/hooks/use-document-title.ts'
+import type { NavPage } from '@/lib/navigation.ts'
+import { BOARD_REPORT_VIEW } from './finance-board-report.ts'
+import { OPENING_WATCH_VIEW } from './finance-opening-watch.ts'
+import { REFUND_INVOICES_VIEW } from './finance-refund-invoices.ts'
+import { InstallmentImportSection } from './InstallmentImportSection.tsx'
+import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
+import { InvoicesSection } from './InvoicesSection.tsx'
+import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
+import { PaymentPanel } from './PaymentPanel.tsx'
+import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
+import { SummaryLoading } from '../management/SummaryParts.tsx'
+
+// Taksitler dışındaki her sekme ayrı parçadır: Finans rota parçası 100 KB bütçesinin altında kalır.
+const CorporateCustomersSection = lazy(async () => ({
+  default: (await import('./CorporateCustomersSection.tsx')).CorporateCustomersSection,
+}))
+const FinanceBoardReportSection = lazy(async () => ({
+  default: (await import('./FinanceBoardReportSection.tsx')).FinanceBoardReportSection,
+}))
+const CourseOffersSection = lazy(async () => ({
+  default: (await import('./CourseOffersSection.tsx')).CourseOffersSection,
+}))
+const EOzelSection = lazy(async () => ({
+  default: (await import('./EOzelSection.tsx')).EOzelSection,
+}))
+const FinanceBankMatchingSection = lazy(async () => ({
+  default: (await import('./FinanceBankMatchingSection.tsx')).FinanceBankMatchingSection,
+}))
+const FinanceBudgetSection = lazy(async () => ({
+  default: (await import('./FinanceBudgetSection.tsx')).FinanceBudgetSection,
+}))
+const FinanceCostReportsSection = lazy(async () => ({
+  default: (await import('./FinanceCostReportsSection.tsx')).FinanceCostReportsSection,
+}))
+const FeeTariffsSection = lazy(async () => ({
+  default: (await import('./FeeTariffsSection.tsx')).FeeTariffsSection,
+}))
+const ReferralRewardsSection = lazy(async () => ({
+  default: (await import('./ReferralRewardsSection.tsx')).ReferralRewardsSection,
+}))
+const FinanceDayClosingSection = lazy(async () => ({
+  default: (await import('./FinanceDayClosingSection.tsx')).FinanceDayClosingSection,
+}))
+const FinanceOpeningWatchSection = lazy(async () => ({
+  default: (await import('./FinanceOpeningWatchSection.tsx')).FinanceOpeningWatchSection,
+}))
+const ScholarshipFundsSection = lazy(async () => ({
+  default: (await import('./ScholarshipFundsSection.tsx')).ScholarshipFundsSection,
+}))
+const ScholarshipsSection = lazy(async () => ({
+  default: (await import('./ScholarshipsSection.tsx')).ScholarshipsSection,
+}))
+const FinanceExportSection = lazy(async () => ({
+  default: (await import('./FinanceExportSection.tsx')).FinanceExportSection,
+}))
+const FinanceForecastSection = lazy(async () => ({
+  default: (await import('./FinanceForecastSection.tsx')).FinanceForecastSection,
+}))
+const FinanceReconciliationSection = lazy(async () => ({
+  default: (await import('./FinanceReconciliationSection.tsx')).FinanceReconciliationSection,
+}))
+const PackagesSection = lazy(async () => ({
+  default: (await import('./PackagesSection.tsx')).PackagesSection,
+}))
+const PaymentsSection = lazy(async () => ({
+  default: (await import('./PaymentsSection.tsx')).PaymentsSection,
+}))
+const ContractsSection = lazy(async () => ({
+  default: (await import('./ContractsSection.tsx')).ContractsSection,
+}))
+const WithdrawalsSection = lazy(async () => ({
+  default: (await import('./WithdrawalsSection.tsx')).WithdrawalsSection,
+}))
+const FinanceSuppliersSection = lazy(async () => ({
+  default: (await import('./FinanceSuppliersSection.tsx')).FinanceSuppliersSection,
+}))
+const FinancePurchaseRequestsSection = lazy(async () => ({
+  default: (await import('./FinancePurchaseRequestsSection.tsx')).FinancePurchaseRequestsSection,
+}))
+const FinancePurchaseOrdersSection = lazy(async () => ({
+  default: (await import('./FinancePurchaseOrdersSection.tsx')).FinancePurchaseOrdersSection,
+}))
+const FinancePurchaseReportSection = lazy(async () => ({
+  default: (await import('./FinancePurchaseReportSection.tsx')).FinancePurchaseReportSection,
+}))
+const FinanceSupplierLedgerSection = lazy(async () => ({
+  default: (await import('./FinanceSupplierLedgerSection.tsx')).FinanceSupplierLedgerSection,
+}))
+const FinanceInventorySection = lazy(async () => ({
+  default: (await import('./FinanceInventorySection.tsx')).FinanceInventorySection,
+}))
+const FinanceSupplyRequestsSection = lazy(async () => ({
+  default: (await import('./FinanceSupplyRequestsSection.tsx')).FinanceSupplyRequestsSection,
+}))
+const FinanceFixedAssetsSection = lazy(async () => ({
+  default: (await import('./FinanceFixedAssetsSection.tsx')).FinanceFixedAssetsSection,
+}))
+const FinanceMaintenanceSection = lazy(async () => ({
+  default: (await import('./FinanceMaintenanceSection.tsx')).FinanceMaintenanceSection,
+}))
+const FinanceMaintenancePlansSection = lazy(async () => ({
+  default: (await import('./FinanceMaintenancePlansSection.tsx')).FinanceMaintenancePlansSection,
+}))
+const FinanceBudgetDraftsSection = lazy(async () => ({
+  default: (await import('./FinanceBudgetDraftsSection.tsx')).FinanceBudgetDraftsSection,
+}))
+const FinanceMaterialSetsSection = lazy(async () => ({
+  default: (await import('./FinanceMaterialSetsSection.tsx')).FinanceMaterialSetsSection,
+}))
+const FinanceSeveranceSection = lazy(async () => ({
+  default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
+}))
+const FinanceRefundInvoicesSection = lazy(async () => ({
+  default: (await import('./FinanceRefundInvoicesSection.tsx')).FinanceRefundInvoicesSection,
+}))
+const FinancePayrollParametersSection = lazy(async () => ({
+  default: (await import('./FinancePayrollParametersSection.tsx')).FinancePayrollParametersSection,
+}))
+const DonationsSection = lazy(async () => ({
+  default: (await import('./DonationsSection.tsx')).DonationsSection,
+}))
+const FinanceStakeholdersSection = lazy(async () => ({
+  default: (await import('./FinanceStakeholdersSection.tsx')).FinanceStakeholdersSection,
+}))
+const FinancePayRatesSection = lazy(async () => ({
+  default: (await import('./FinancePayRatesSection.tsx')).FinancePayRatesSection,
+}))
+const FinanceStaffCostsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffCostsSection.tsx')).FinanceStaffCostsSection,
+}))
+const FinancePaidActivitiesSection = lazy(async () => ({
+  default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
+}))
+const FinanceEventTicketsSection = lazy(async () => ({
+  default: (await import('./FinanceEventTicketsSection.tsx')).FinanceEventTicketsSection,
+}))
+const FinanceStaffDeductionsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDeductionsSection.tsx')).FinanceStaffDeductionsSection,
+}))
+const FinanceStaffCertificatesSection = lazy(async () => ({
+  default: (await import('./FinanceStaffCertificatesSection.tsx')).FinanceStaffCertificatesSection,
+}))
+const FinancePayrollExportSection = lazy(async () => ({
+  default: (await import('./FinancePayrollExportSection.tsx')).FinancePayrollExportSection,
+}))
+const FinanceMedicalReportsSection = lazy(async () => ({
+  default: (await import('./FinanceMedicalReportsSection.tsx')).FinanceMedicalReportsSection,
+}))
+const FinancePayrollPeriodsSection = lazy(async () => ({
+  default: (await import('./FinancePayrollPeriodsSection.tsx')).FinancePayrollPeriodsSection,
+}))
+const FinanceStaffLeaveSection = lazy(async () => ({
+  default: (await import('./FinanceStaffLeaveSection.tsx')).FinanceStaffLeaveSection,
+}))
+const FinanceLeaveRequestsSection = lazy(async () => ({
+  default: (await import('./FinanceLeaveRequestsSection.tsx')).FinanceLeaveRequestsSection,
+}))
+const FinanceSgkPreparationSection = lazy(async () => ({
+  default: (await import('./FinanceSgkPreparationSection.tsx')).FinanceSgkPreparationSection,
+}))
+const FinanceWorkPermitsSection = lazy(async () => ({
+  default: (await import('./FinanceWorkPermitsSection.tsx')).FinanceWorkPermitsSection,
+}))
+const FinanceTripPlansSection = lazy(async () => ({
+  default: (await import('./FinanceTripPlansSection.tsx')).FinanceTripPlansSection,
+}))
+const FinanceStaffDocumentsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDocumentsSection.tsx')).FinanceStaffDocumentsSection,
+}))
+const FinancePayrollCalculationSection = lazy(async () => ({
+  default: (await import('./FinancePayrollCalculationSection.tsx'))
+    .FinancePayrollCalculationSection,
+}))
+const FinanceHrReportsSection = lazy(async () => ({
+  default: (await import('./FinanceHrReportsSection.tsx')).FinanceHrReportsSection,
+}))
+const FinanceStaffSeparationsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffSeparationsSection.tsx')).FinanceStaffSeparationsSection,
+}))
+const FinanceStaffRetentionSection = lazy(async () => ({
+  default: (await import('./FinanceStaffRetentionSection.tsx')).FinanceStaffRetentionSection,
+}))
+const FinanceStaffOnboardingSection = lazy(async () => ({
+  default: (await import('./FinanceStaffOnboardingSection.tsx')).FinanceStaffOnboardingSection,
+}))
+const FinancePerformanceSection = lazy(async () => ({
+  default: (await import('./FinancePerformanceSection.tsx')).FinancePerformanceSection,
+}))
+const FinancePolicyAcknowledgementsSection = lazy(async () => ({
+  default: (await import('./FinancePolicyAcknowledgementsSection.tsx'))
+    .FinancePolicyAcknowledgementsSection,
+}))
+const FinanceStaffingPlanSection = lazy(async () => ({
+  default: (await import('./FinanceStaffingPlanSection.tsx')).FinanceStaffingPlanSection,
+}))
+const FinanceProfessionalDevelopmentSection = lazy(async () => ({
+  default: (await import('./FinanceProfessionalDevelopmentSection.tsx'))
+    .FinanceProfessionalDevelopmentSection,
+}))
+const FinanceOrgChartSection = lazy(async () => ({
+  default: (await import('./FinanceOrgChartSection.tsx')).FinanceOrgChartSection,
+}))
+const FinanceJobPostingsSection = lazy(async () => ({
+  default: (await import('./FinanceJobPostingsSection.tsx')).FinanceJobPostingsSection,
+}))
+const FinanceDepartmentMeetingsSection = lazy(async () => ({
+  default: (await import('./FinanceDepartmentMeetingsSection.tsx'))
+    .FinanceDepartmentMeetingsSection,
+}))
+const FinanceLessonObservationsSection = lazy(async () => ({
+  default: (await import('./FinanceLessonObservationsSection.tsx'))
+    .FinanceLessonObservationsSection,
+}))
+const FinanceDevelopmentGoalsSection = lazy(async () => ({
+  default: (await import('./FinanceDevelopmentGoalsSection.tsx')).FinanceDevelopmentGoalsSection,
+}))
+const FinanceTeacherMentorshipsSection = lazy(async () => ({
+  default: (await import('./FinanceTeacherMentorshipsSection.tsx'))
+    .FinanceTeacherMentorshipsSection,
+}))
+const FinancePersonnelFilesSection = lazy(async () => ({
+  default: (await import('./FinancePersonnelFilesSection.tsx')).FinancePersonnelFilesSection,
+}))
+const FinanceVisitorsSection = lazy(async () => ({
+  default: (await import('./FinanceVisitorsSection.tsx')).FinanceVisitorsSection,
+}))
+const FinanceStaffSurveysSection = lazy(async () => ({
+  default: (await import('./FinanceStaffSurveysSection.tsx')).FinanceStaffSurveysSection,
+}))
+const FinanceIncidentsSection = lazy(async () => ({
+  default: (await import('./FinanceIncidentsSection.tsx')).FinanceIncidentsSection,
+}))
+const FinanceLostItemsSection = lazy(async () => ({
+  default: (await import('./FinanceLostItemsSection.tsx')).FinanceLostItemsSection,
+}))
+const FinanceTransportSection = lazy(async () => ({
+  default: (await import('./FinanceTransportSection.tsx')).FinanceTransportSection,
+}))
+const FinanceClubsSection = lazy(async () => ({
+  default: (await import('./FinanceClubsSection.tsx')).FinanceClubsSection,
+}))
+const FinanceMealMenusSection = lazy(async () => ({
+  default: (await import('./FinanceMealMenusSection.tsx')).FinanceMealMenusSection,
+}))
+const FinanceMealAllergySection = lazy(async () => ({
+  default: (await import('./FinanceMealAllergySection.tsx')).FinanceMealAllergySection,
+}))
+const FinanceMealSubscriptionsSection = lazy(async () => ({
+  default: (await import('./FinanceMealSubscriptionsSection.tsx')).FinanceMealSubscriptionsSection,
+}))
+const FinanceInfirmarySection = lazy(async () => ({
+  default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
+}))
+const FinanceEmergencySummariesSection = lazy(async () => ({
+  default: (await import('./FinanceEmergencySummariesSection.tsx'))
+    .FinanceEmergencySummariesSection,
+}))
+const FinanceHealthAccessLogSection = lazy(async () => ({
+  default: (await import('./FinanceHealthAccessLogSection.tsx')).FinanceHealthAccessLogSection,
+}))
+const FinanceHealthScreeningsSection = lazy(async () => ({
+  default: (await import('./FinanceHealthScreeningsSection.tsx')).FinanceHealthScreeningsSection,
+}))
+const FinanceTeacherFeedbackSection = lazy(async () => ({
+  default: (await import('./FinanceTeacherFeedbackSection.tsx')).FinanceTeacherFeedbackSection,
+}))
+const FinanceSocialActivitiesSection = lazy(async () => ({
+  default: (await import('./FinanceSocialActivitiesSection.tsx')).FinanceSocialActivitiesSection,
+}))
+const FinanceEarlyDismissalsSection = lazy(async () => ({
+  default: (await import('./FinanceEarlyDismissalsSection.tsx')).FinanceEarlyDismissalsSection,
+}))
+const FinanceTripReportsSection = lazy(async () => ({
+  default: (await import('./FinanceTripReportsSection.tsx')).FinanceTripReportsSection,
+}))
+const FinanceSchoolCalendarSection = lazy(async () => ({
+  default: (await import('./FinanceSchoolCalendarSection.tsx')).FinanceSchoolCalendarSection,
+}))
+const FreeTuitionSection = lazy(async () => ({
+  default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
+}))
+const FinanceHourlyLessonPayoutsSection = lazy(async () => ({
+  default: (await import('./FinanceHourlyLessonPayoutsSection.tsx'))
+    .FinanceHourlyLessonPayoutsSection,
+}))
+const StaffSelfServiceView = lazy(async () => ({
+  default: (await import('./FinanceStaffSelfServiceSection.tsx')).StaffSelfServiceView,
+}))
+const FinanceStaffChangeRequestsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffChangeRequestsSection.tsx'))
+    .FinanceStaffChangeRequestsSection,
+}))
+
+const VIEW_PARAM = 'gorunum'
+const VIEWS = {
+  invoices: { label: 'Taksitler', param: '' },
+  openingWatch: { label: 'Açılış nöbeti', param: OPENING_WATCH_VIEW },
+  payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
+  dayClosing: { label: 'Gün sonu', param: 'gunsonu' },
+  bankMatching: { label: 'Banka eşleştirme', param: 'banka' },
+  contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
+  tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
+  packages: { label: 'Paketler', param: 'paket' },
+  courseOffers: { label: 'Kur yenileme', param: 'kur-yenileme' },
+  corporate: { label: 'Kurumsal müşteriler', param: 'kurumsal' },
+  scholarships: { label: 'Burslar', param: 'burs' },
+  scholarshipFunds: { label: 'Burs fonları', param: 'burs-fonu' },
+  freeTuition: { label: 'Ücretsiz okutma', param: 'ucretsiz' },
+  referrals: { label: 'Referans hakları', param: 'referans' },
+  withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
+  refundInvoices: { label: 'İade belgeleri', param: REFUND_INVOICES_VIEW },
+  exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
+  budget: { label: 'Bütçe', param: 'butce' },
+  budgetDrafts: { label: 'Bütçe taslakları', param: 'butce-taslak' },
+  costs: { label: 'Maliyet', param: 'maliyet' },
+  suppliers: { label: 'Tedarikçiler', param: 'tedarikci' },
+  purchaseRequests: { label: 'Satın alma talepleri', param: 'satin-alma' },
+  purchaseOrders: { label: 'Siparişler', param: 'siparis' },
+  purchaseReport: { label: 'Satın alma raporu', param: 'satin-alma-raporu' },
+  supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
+  inventory: { label: 'Stok', param: 'stok' },
+  materialSets: { label: 'Materyal setleri', param: 'materyal-seti' },
+  supplyRequests: { label: 'Sarf talepleri', param: 'sarf' },
+  fixedAssets: { label: 'Demirbaşlar', param: 'demirbas' },
+  maintenance: { label: 'Arıza ve bakım', param: 'ariza' },
+  maintenancePlans: { label: 'Periyodik bakım', param: 'bakim-plani' },
+  eOzel: { label: 'e-Özel işlem listesi', param: 'e-ozel' },
+  forecast: { label: 'Tahmin', param: 'tahmin' },
+  boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
+  severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
+  payrollParameters: { label: 'Bordro parametreleri', param: 'bordro-parametreleri' },
+  donations: { label: 'Bağışlar', param: 'bagis' },
+  stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
+  payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
+  staffCosts: { label: 'Personel maliyeti', param: 'personel-maliyeti' },
+  paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
+  eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
+  staffDeductions: { label: 'Avans ve kesintiler', param: 'avans-kesinti' },
+  staffCertificates: { label: 'Personel belgeleri', param: 'personel-belgesi' },
+  payrollExport: { label: 'Bordro aktarımı', param: 'bordro-aktarim' },
+  medicalReports: { label: 'Sağlık raporları', param: 'saglik-raporu' },
+  payrollPeriods: { label: 'Bordro dönemleri', param: 'bordro-donemleri' },
+  staffLeave: { label: 'Personel izinleri', param: 'personel-izin' },
+  leaveRequests: { label: 'İzin talepleri', param: 'izin-talep' },
+  sgkPreparation: { label: 'SGK hazırlık listesi', param: 'sgk-hazirlik' },
+  workPermits: { label: 'Çalışma onayları', param: 'calisma-onayi' },
+  tripPlans: { label: 'Gezi planları', param: 'gezi-plani' },
+  staffDocuments: { label: 'Özlük belgeleri', param: 'ozluk-belgeleri' },
+  payrollCalculation: { label: 'Bordro hesabı', param: 'bordro-hesabi' },
+  hrReports: { label: 'İK raporları', param: 'ik-raporlari' },
+  staffSeparations: { label: 'İşten ayrılış', param: 'isten-ayrilis' },
+  staffRetention: { label: 'Özlük saklama ve imha', param: 'ozluk-imha' },
+  staffOnboarding: { label: 'İşe başlama', param: 'ise-baslama' },
+  performance: { label: 'Performans', param: 'performans' },
+  policyAcknowledgements: { label: 'Politika onayları', param: 'politika-onaylari' },
+  staffingPlan: { label: 'Kadro planı', param: 'kadro-plani' },
+  professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
+  orgChart: { label: 'Organizasyon', param: 'organizasyon' },
+  jobPostings: { label: 'İş ilanları', param: 'is-ilanlari' },
+  departmentMeetings: { label: 'Kurul ve zümre toplantıları', param: 'kurul-toplantilari' },
+  lessonObservations: { label: 'Ders gözlemleri', param: 'ders-gozlemleri' },
+  developmentGoals: { label: 'Gelişim hedefleri', param: 'gelisim-hedefleri' },
+  teacherMentorships: { label: 'Mentorluk', param: 'mentorluk' },
+  personnelFiles: { label: 'Özlük kartları', param: 'ozluk-kartlari' },
+  visitors: { label: 'Ziyaretçiler', param: 'ziyaretciler' },
+  staffSurveys: { label: 'Personel anketleri', param: 'personel-anketleri' },
+  incidents: { label: 'Kaza tutanakları', param: 'kaza-tutanaklari' },
+  lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
+  transport: { label: 'Servis', param: 'servis' },
+  clubs: { label: 'Kulüpler', param: 'kulupler' },
+  mealMenus: { label: 'Yemek menüsü', param: 'yemek-menusu' },
+  mealAllergy: { label: 'Yemekhane alerji uyarısı', param: 'yemekhane-alerji' },
+  mealSubscriptions: { label: 'Yemek aboneliği', param: 'yemek-aboneligi' },
+  infirmary: { label: 'Revir', param: 'revir' },
+  emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
+  healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
+  healthScreenings: { label: 'Sağlık taramaları', param: 'saglik-taramalari' },
+  teacherFeedback: { label: 'Öğretmen geri bildirimi', param: 'ogretmen-geri-bildirimi' },
+  socialActivities: { label: 'Sosyal etkinlik saatleri', param: 'sosyal-etkinlik' },
+  earlyDismissals: { label: 'Erken çıkış', param: 'erken-cikis' },
+  tripReports: { label: 'Gezi raporları', param: 'gezi-raporlari' },
+  schoolCalendar: { label: 'Okul takvimi', param: 'okul-takvimi' },
+  selfService: { label: 'Bilgilerim', param: 'bilgilerim' },
+  staffChangeRequests: { label: 'Değişiklik talepleri', param: 'degisiklik-talepleri' },
+  hourlyPayouts: { label: 'Ders saati hakedişi', param: 'ders-saati-hakedis' },
+} as const
+type FinanceView = keyof typeof VIEWS
+const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
+  value: value as FinanceView,
+  label: view.label,
+}))
+/**
+ * Paket satışı, kur yenileme teklifi ve kurumsal müşteri yalnız dil okulundadır (IST-078, IST-088,
+ * IST-089), e-Özel listesi okulda yoktur (IST-085, ADR 0008); bütçe (DOM-FIN-062, K-60), maliyet
+ * raporları (DOM-FIN-065), gelir ve nakit akışı tahmini (DOM-FIN-063) ile yönetim kurulu raporu
+ * (DOM-FIN-064, K-80) ve banka eşleştirme (DOM-FIN-069, K-105) yalnız yöneticidedir: kapalı sekme gizlenir, adresi taksitlere düşer.
+ * Tedarikçiler (DOM-FIN-070) ve satın alma talepleri (DOM-FIN-071) yönetici ve ön büroya açıktır;
+ * ön büro tedarikçiyi salt okur (K-126), yalnız kendi talebini değiştirir (K-128).
+ * Siparişler (DOM-FIN-073) de ikisine açıktır; siparişi yönetici açar ve iptal eder (K-141).
+ * Satın alma raporu (DOM-FIN-075) yalnız yöneticidedir; ön büro görmez (K-155).
+ * Tedarikçi carisi (DOM-FIN-076) yalnız yöneticidedir; ön büro görmez (K-160).
+ * Stok (DOM-FIN-077, DOM-FIN-078) ikisine açıktır; ön büro okur ve çıkış yazar (K-180).
+ * Materyal setleri (DOM-FIN-080) ikisine açıktır; ön büro teslim eder ve imzayı işler (K-205).
+ * Sarf talepleri (DOM-FIN-091) ikisine açıktır; ön büro karşılar ve dönüştürür, onay yöneticide (K-244).
+ * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
+ * Arıza ve bakım (DOM-FIN-089) ikisine açıktır; ön büro bildirir, iş emrini yönetici yürütür (K-237).
+ * Kıdem/ihbar hesaplayıcı (DOM-FIN-094) yalnız yöneticidedir (K-272).
+ * Periyodik bakım (DOM-FIN-092) ikisine açıktır; ön büro okur, planı ve denetimi yönetici yazar
+ * (K-255). Sekme rozeti geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş plan sayısıdır (K-253).
+ * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
+ * onay yöneticide (K-256, K-257).
+ * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * İade belgeleri (DOM-FIN-096) yalnız yöneticidedir; faturayı muhasebe düzeltir (K-295).
+ * Bordro parametreleri (DOM-FIN-100) ikisine açıktır; kurum kopyasını yönetici yazar (K-309).
+ * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
+ * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
+ * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
+ * Personel maliyeti (DOM-FIN-104) yalnız yöneticidedir; rapor ücret içerir (K-334).
+ * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
+ * etkinliği ve iadeyi yönetici yönetir (K-300).
+ * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
+ * Avans ve kesintiler (DOM-FIN-101) yalnız yöneticidedir; icra bilgisi hassastır (K-315).
+ * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
+ * Sağlık raporları (DOM-FIN-110) yalnız yöneticidedir; sağlık verisi özel niteliklidir (K-363).
+ * Bordro dönemleri (DOM-FIN-108) yalnız yöneticidedir; ücret verisiyle aynı (K-359).
+ * Personel izinleri (DOM-FIN-109) yalnız yöneticidedir; personel kişisel verisidir.
+ * İzin talepleri (DOM-FIN-116) yöneticidedir; ön büro sekmede yalnız izin takvimini okur
+ * (DOM-FIN-123, K-420: onaylı izinler, türsüz).
+ * SGK hazırlık listesi (DOM-FIN-107) yalnız yöneticidedir; liste ücret taşır (K-355).
+ * Çalışma onayları (DOM-FIN-114) yalnız yöneticidedir; öğretmen özlük verisidir (K-377).
+ * Gezi planları (DOM-FIN-111) ikisine açıktır; ön büro taslak yazar, yönetici onaylar (K-367).
+ * Özlük belgeleri (DOM-FIN-113) ikisine açıktır; tür ayarı ve özel nitelikli belge yöneticide (K-374).
+ * Bordro hesabı (DOM-FIN-115) yalnız yöneticidedir; ücret ve icra taşır (K-391).
+ * İK raporları (DOM-FIN-117) yalnız yöneticidedir; personel verisi toplamıdır (K-401).
+ * İşten ayrılış (DOM-FIN-118) yalnız yöneticidedir; dosya avans, icra ve izin bilgisi taşır (K-403).
+ * Özlük saklama ve imha (DOM-FIN-122) yalnız yöneticidedir; imha geri alınamaz (K-417).
+ * İşe başlama (DOM-FIN-121) yalnız yöneticidedir; aday verisi ve ücret önerisi taşır (K-412).
+ * Performans (DOM-FIN-124) yalnız yöneticidedir; performans verisi kişiseldir (K-429).
+ * Politika onayları (DOM-FIN-127) ikisine açıktır; ön büro personel adına onay kaydeder, belgeyi
+ * yönetici yayımlar (K-437).
+ * Kadro planı (DOM-FIN-126) yalnız yöneticidedir; ücret türünden kapasite hesaplar (K-434).
+ * Organizasyon şeması (DOM-FIN-129) yalnız yöneticidedir; atama personel verisidir (K-444).
+ * İş ilanları (DOM-FIN-128) yalnız yöneticidedir; aday verisi kişiseldir, ön büro başvuruyu
+ * yalnız API'den girer (K-440).
+ * Kurul ve zümre toplantıları (DOM-FIN-132, DOM-FIN-135) yalnız yöneticidedir (K-451).
+ * Ders gözlemleri (DOM-FIN-130) yalnız yöneticidedir; gözlem kişisel veridir (K-447).
+ * Gelişim hedefleri (DOM-FIN-133) yalnız yöneticidedir; hedef kişisel veridir (K-456).
+ * Mentorluk (DOM-FIN-136) yalnız yöneticidedir; görüşme notu kişisel veridir (K-465).
+ * Özlük kartları (DOM-FIN-140) yalnız yöneticidedir (muhasebe rolü açılınca o da); alanlar role
+ * göre sunucuda süzülür (K-475).
+ * Ziyaretçiler (DOM-FIN-141) ikisine açıktır; ayar ve saklama yöneticide (K-478, K-480).
+ * Personel anketleri (DOM-FIN-143) ikisine açıktır: personel kendi anketini yanıtlar, anketi ve
+ * sonucu yalnız yönetici yönetir (K-484…K-486).
+ * Kaza tutanakları (DOM-FIN-146) ikisine açıktır; ön büro yalnız açtığını görür, sağlık bilgisi,
+ * ek not ve PDF yöneticidedir (K-494).
+ * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
+ * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
+ * Yemek menüsü (DOM-FIN-157) ikisine açıktır; geçmiş gün düzeltmesi ve öğün ayarı yöneticide
+ * (K-526, K-527).
+ * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
+ * Acil durum özetleri (DOM-FIN-155) ikisine açıktır; ön büro sınıf kartlarını okur, özeti yönetici
+ * yazar ve onaylar (K-520, K-521).
+ * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
+ * Sağlık taramaları (DOM-FIN-153) ikisine açıktır; sağlık personeli rolü yoktur (K-516).
+ * Öğretmen geri bildirimi (DOM-FIN-159) yalnız yöneticidedir; öğretmen kendi sonucunu rol
+ * kabuğundaki görünümde, öğrenci ve veli yanıtını kendi ekranında görür (K-532).
+ * Sosyal etkinlik saatleri (DOM-FIN-160) yalnız yöneticide ve yalnız okulda; öğretmen ekranı
+ * platform kabuğundadır (K-535).
+ * Erken çıkış (DOM-FIN-161) ikisine açıktır; ön büro onaylar ve teslim eder (K-538, K-539).
+ * Gezi raporları (DOM-FIN-158) ikisine açıktır; ön büro okur, raporu görevli öğretmen ya da
+ * yönetici yazar, onay yöneticide (K-529).
+ * Okul takvimi (DOM-FIN-163) ikisine açıktır; etkinliği ikisi de yazar, yayımlar ve iptal eder
+ * (K-544).
+ * Yemek aboneliği (DOM-FIN-164) ikisine açıktır; kesim ayarı yöneticide, gün iptalini ikisi de
+ * yapar (K-547, K-548).
+ * Bilgilerim (DOM-FIN-166) ikisine açıktır: personel kendi özlük özetini, belgelerini, iznini ve
+ * pusulalarını görür, değişiklik talep eder; değişiklik talepleri kuyruğu yalnız yöneticidedir
+ * (K-553). Öğretmen aynı görünümü rol kabuğundan açar.
+ */
+const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
+  VIEW_OPTIONS.filter(({ value }) => {
+    if (
+      value === 'budget' ||
+      value === 'costs' ||
+      value === 'forecast' ||
+      value === 'boardReport' ||
+      value === 'bankMatching' ||
+      value === 'purchaseReport' ||
+      value === 'supplierLedger' ||
+      value === 'fixedAssets' ||
+      value === 'severance' ||
+      value === 'freeTuition' ||
+      value === 'personnelFiles' ||
+      value === 'teacherMentorships' ||
+      value === 'lessonObservations' ||
+      value === 'developmentGoals' ||
+      value === 'departmentMeetings' ||
+      value === 'jobPostings' ||
+      value === 'staffingPlan' ||
+      value === 'orgChart' ||
+      value === 'staffOnboarding' ||
+      value === 'performance' ||
+      value === 'staffRetention' ||
+      value === 'staffSeparations' ||
+      value === 'hrReports' ||
+      value === 'payrollCalculation' ||
+      value === 'workPermits' ||
+      value === 'sgkPreparation' ||
+      value === 'staffLeave' ||
+      value === 'payrollPeriods' ||
+      value === 'medicalReports' ||
+      value === 'payrollExport' ||
+      value === 'staffCertificates' ||
+      value === 'staffDeductions' ||
+      value === 'payRates' ||
+      value === 'staffCosts' ||
+      value === 'stakeholders' ||
+      value === 'donations' ||
+      value === 'refundInvoices' ||
+      value === 'healthAccessLog' ||
+      value === 'teacherFeedback' ||
+      value === 'staffChangeRequests' ||
+      value === 'hourlyPayouts'
+    )
+      return isManager
+    if (value === 'socialActivities') return isManager && institutionType === 'school'
+    if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
+      return institutionType === 'language_school'
+    if (value === 'eOzel') return institutionType !== 'school'
+    return true
+  })
+const ATTENTION_QUERY = { page: 1, pageSize: 1, due: 'attention' } as const
+
+/** Periyodik bakım sekmesinin rozeti: uyarıdaki plan sayısı; sıfırsa rozet yok. */
+function withMaintenanceBadge(options: typeof VIEW_OPTIONS, attention: number) {
+  return options.map((option) =>
+    option.value === 'maintenancePlans' && attention > 0 ? { ...option, count: attention } : option,
+  )
+}
+const viewOf = (param: string | null, options: typeof VIEW_OPTIONS): FinanceView =>
+  options.find(({ value }) => param !== null && VIEWS[value].param === param)?.value ?? 'invoices'
+
+/**
+ * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): görünümler
+ * `?gorunum=` sekmeleridir; her görünüm kendi liste durumunu yalnız açıkken bağlar (taksitler
+ * `InvoicesSection`). Toplam kartları kurum geneli `GET /finance/totals` yanıtından gelir; kısmi
+ * ödemeleri sayar (liste araması ve durumundan bağımsız). Taksit ve tahsilat panelleri adresle
+ * (`?detay=`, `?tahsilat=`) açılır.
+ */
+export function FinancePage({ page }: { page: NavPage }) {
+  useDocumentTitle(page.title)
+  const { session } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const isManager = session?.role === 'yonetici'
+  const canReadPlans = isManager || session?.role === 'onburo'
+  const attentionPlans = useMaintenancePlans(ATTENTION_QUERY, canReadPlans)
+  const viewOptions = withMaintenanceBadge(
+    viewOptionsFor(session?.institution?.type, isManager),
+    attentionPlans.data?.meta.total ?? 0,
+  )
+  const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
+  const totalsQuery = useFinanceTotals()
+  const totals = totalsQuery.data?.data
+
+  const today = dayKey()
+  const panel = useDetailPanel('detay')
+  const openInvoice = panel.open
+  const payment = useDetailPanel('tahsilat')
+  const openPayment = payment.open
+  return (
+    <>
+      <PageHeading title={page.title} description={page.description} />
+      {totalsQuery.error ? (
+        <LookupError error={totalsQuery.error} onRetry={() => void totalsQuery.refetch()} />
+      ) : null}
+      {totals ? (
+        <StatGrid
+          label="Kurum geneli ödeme toplamları"
+          items={[
+            {
+              label: 'Toplam eğitim bedeli',
+              value: money(totals.totalCents),
+              note: 'Tüm ödeme planları',
+            },
+            {
+              label: 'Tahsil edilen',
+              // Dosyadan aktarılan geçmiş ödeme borcu kapatır, tahsilat değildir (DOM-FIN-014).
+              value: money(totals.paidCents - totals.openingImportCents),
+              ...(totals.openingImportCents > 0
+                ? { note: `Ayrıca ${money(totals.openingImportCents)} açılış aktarımı` }
+                : {}),
+            },
+            {
+              label: 'Kalan bakiye',
+              value: money(totals.remainingCents),
+              note: 'Gelecek ve gecikmiş taksitler',
+            },
+            { label: 'Gecikmiş tutar', value: money(totals.overdueCents) },
+          ]}
+        />
+      ) : null}
+      <LineTabs
+        label="Finans görünümü"
+        value={tab}
+        options={viewOptions}
+        onChange={(next) =>
+          setParams(
+            next === 'invoices' ? new URLSearchParams() : { [VIEW_PARAM]: VIEWS[next].param },
+          )
+        }
+      />
+      <Suspense fallback={<SummaryLoading />}>
+        {tab === 'openingWatch' ? <FinanceOpeningWatchSection onOpenInvoice={openInvoice} /> : null}
+        {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
+        {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
+        {tab === 'bankMatching' ? <FinanceBankMatchingSection /> : null}
+        {tab === 'contracts' ? <ContractsSection /> : null}
+        {tab === 'tariffs' ? (
+          <FeeTariffsSection
+            canManage={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'packages' ? (
+          <PackagesSection
+            canManage={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'courseOffers' ? (
+          <CourseOffersSection
+            canApproveCapException={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'scholarships' ? (
+          <ScholarshipsSection
+            canManage={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'scholarshipFunds' ? <ScholarshipFundsSection canManage={isManager} /> : null}
+        {tab === 'freeTuition' ? (
+          <FreeTuitionSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
+        {tab === 'referrals' ? <ReferralRewardsSection /> : null}
+        {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
+        {tab === 'refundInvoices' ? <FinanceRefundInvoicesSection /> : null}
+        {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
+        {tab === 'exports' && isManager ? (
+          <FinanceReconciliationSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'forecast' && session?.institution ? (
+          <FinanceForecastSection
+            enrollmentYear={session.institution.academicYear ?? Number(today.slice(0, 4))}
+            institutionType={session.institution.type}
+          />
+        ) : null}
+        {tab === 'budget' ? (
+          <FinanceBudgetSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+            institutionType={session?.institution?.type ?? 'school'}
+          />
+        ) : null}
+        {tab === 'costs' ? <FinanceCostReportsSection /> : null}
+        {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
+        {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
+        {tab === 'purchaseOrders' ? <FinancePurchaseOrdersSection /> : null}
+        {tab === 'purchaseReport' ? <FinancePurchaseReportSection /> : null}
+        {tab === 'supplierLedger' ? <FinanceSupplierLedgerSection /> : null}
+        {tab === 'inventory' ? <FinanceInventorySection role={session?.role ?? ''} /> : null}
+        {tab === 'materialSets' ? (
+          <FinanceMaterialSetsSection
+            role={session?.role ?? ''}
+            institutionType={session?.institution?.type ?? 'school'}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'supplyRequests' ? (
+          <FinanceSupplyRequestsSection role={session?.role ?? ''} />
+        ) : null}
+        {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
+        {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
+        {tab === 'severance' ? <FinanceSeveranceSection /> : null}
+        {tab === 'maintenancePlans' ? (
+          <FinanceMaintenancePlansSection role={session?.role ?? ''} />
+        ) : null}
+        {tab === 'budgetDrafts' ? <FinanceBudgetDraftsSection isManager={isManager} /> : null}
+        {tab === 'boardReport' ? (
+          <FinanceBoardReportSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'eOzel' ? (
+          <EOzelSection academicEnabled={session?.modules.academic === true} />
+        ) : null}
+        {tab === 'invoices' ? (
+          <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />
+        ) : null}
+        {tab === 'invoices' && isManager ? <InstallmentImportSection /> : null}
+        {tab === 'payrollParameters' ? (
+          <FinancePayrollParametersSection canManage={isManager} />
+        ) : null}
+        {tab === 'donations' ? <DonationsSection /> : null}
+        {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
+        {tab === 'payRates' ? <FinancePayRatesSection /> : null}
+        {tab === 'staffCosts' ? <FinanceStaffCostsSection /> : null}
+        {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
+        {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
+        {tab === 'staffDeductions' ? <FinanceStaffDeductionsSection /> : null}
+        {tab === 'staffCertificates' ? <FinanceStaffCertificatesSection /> : null}
+        {tab === 'payrollExport' ? <FinancePayrollExportSection /> : null}
+        {tab === 'medicalReports' ? <FinanceMedicalReportsSection /> : null}
+        {tab === 'payrollPeriods' ? <FinancePayrollPeriodsSection /> : null}
+        {tab === 'staffLeave' ? <FinanceStaffLeaveSection /> : null}
+        {tab === 'leaveRequests' ? <FinanceLeaveRequestsSection canManage={isManager} /> : null}
+        {tab === 'sgkPreparation' ? <FinanceSgkPreparationSection /> : null}
+        {tab === 'workPermits' ? <FinanceWorkPermitsSection /> : null}
+        {tab === 'tripPlans' ? <FinanceTripPlansSection /> : null}
+        {tab === 'staffDocuments' ? <FinanceStaffDocumentsSection isManager={isManager} /> : null}
+        {tab === 'payrollCalculation' ? <FinancePayrollCalculationSection /> : null}
+        {tab === 'hrReports' ? <FinanceHrReportsSection /> : null}
+        {tab === 'staffSeparations' ? <FinanceStaffSeparationsSection /> : null}
+        {tab === 'staffRetention' ? <FinanceStaffRetentionSection /> : null}
+        {tab === 'staffOnboarding' ? <FinanceStaffOnboardingSection /> : null}
+        {tab === 'performance' ? <FinancePerformanceSection /> : null}
+        {tab === 'policyAcknowledgements' ? (
+          <FinancePolicyAcknowledgementsSection isManager={isManager} />
+        ) : null}
+        {tab === 'staffingPlan' ? <FinanceStaffingPlanSection /> : null}
+        {tab === 'professionalDevelopment' ? (
+          <FinanceProfessionalDevelopmentSection canManage={isManager} />
+        ) : null}
+        {tab === 'orgChart' ? <FinanceOrgChartSection /> : null}
+        {tab === 'jobPostings' ? <FinanceJobPostingsSection /> : null}
+        {tab === 'departmentMeetings' ? <FinanceDepartmentMeetingsSection /> : null}
+        {tab === 'lessonObservations' ? <FinanceLessonObservationsSection /> : null}
+        {tab === 'developmentGoals' ? <FinanceDevelopmentGoalsSection /> : null}
+        {tab === 'teacherMentorships' ? <FinanceTeacherMentorshipsSection /> : null}
+        {tab === 'personnelFiles' ? <FinancePersonnelFilesSection /> : null}
+        {tab === 'visitors' ? <FinanceVisitorsSection isManager={isManager} /> : null}
+        {tab === 'staffSurveys' ? <FinanceStaffSurveysSection isManager={isManager} /> : null}
+        {tab === 'incidents' ? <FinanceIncidentsSection isManager={isManager} /> : null}
+        {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
+        {tab === 'transport' ? <FinanceTransportSection /> : null}
+        {tab === 'clubs' ? <FinanceClubsSection /> : null}
+        {tab === 'mealMenus' ? <FinanceMealMenusSection /> : null}
+        {tab === 'mealAllergy' ? <FinanceMealAllergySection /> : null}
+        {tab === 'mealSubscriptions' ? <FinanceMealSubscriptionsSection /> : null}
+        {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
+        {tab === 'emergencySummaries' ? (
+          <FinanceEmergencySummariesSection isManager={isManager} />
+        ) : null}
+        {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
+        {tab === 'healthScreenings' ? <FinanceHealthScreeningsSection /> : null}
+        {tab === 'teacherFeedback' ? <FinanceTeacherFeedbackSection /> : null}
+        {tab === 'socialActivities' ? <FinanceSocialActivitiesSection /> : null}
+        {tab === 'earlyDismissals' ? <FinanceEarlyDismissalsSection /> : null}
+        {tab === 'tripReports' ? <FinanceTripReportsSection /> : null}
+        {tab === 'schoolCalendar' ? <FinanceSchoolCalendarSection /> : null}
+        {tab === 'selfService' ? <StaffSelfServiceView /> : null}
+        {tab === 'hourlyPayouts' ? <FinanceHourlyLessonPayoutsSection /> : null}
+        {tab === 'staffChangeRequests' ? <FinanceStaffChangeRequestsSection /> : null}
+      </Suspense>
+      <InvoiceSummaryPanel
+        invoiceId={panel.selectedId}
+        onClose={panel.close}
+        actions={(row) => (
+          <>
+            <Button onClick={() => openPayment(row.id)}>
+              <Icon name="Wallet" size={17} aria-hidden="true" />
+              Tahsil et
+            </Button>
+            <InvoiceRemindButton row={row} />
+          </>
+        )}
+      />
+      <PaymentPanel invoiceId={payment.selectedId} onClose={payment.close} />
+    </>
+  )
+}

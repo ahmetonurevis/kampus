@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/lib/school-management.js'
+export * from '@kampus/school-core/lib/school-management.ts'

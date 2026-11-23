@@ -1,0 +1,2 @@
+DROP INDEX "student_identities_number_key";--> statement-breakpoint
+CREATE UNIQUE INDEX "student_identities_number_key" ON "student_identities" USING btree ("institution_id","identity_number") WHERE "student_identities"."archived_at" is null;

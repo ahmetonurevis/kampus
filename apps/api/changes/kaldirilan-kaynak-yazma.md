@@ -1,0 +1,5 @@
+---
+etki: minor
+---
+
+Görev yazma uçları içerik kuralına uyar (OG-070; DOM-KYN-021, 025, 051; IST-036). `POST /api/v1/task-assignments/:assignmentId/attempts`, `PATCH /api/v1/task-attempts/:attemptId`, `POST /api/v1/task-attempts/:attemptId/submit`, `PATCH /api/v1/task-assignments/:assignmentId/draft` ve `POST /api/v1/task-assignments/:assignmentId/submissions` görev içeriğinin okuma kuralını kullanır (`services/learner-content.ts`; `learnerContentGate` buraya taşındı). Yeni hata kodu 422 `content_unavailable`: içerik (sabitlenen sürüm, puanlama sürümü veya bir sorusu) kaldırılmışsa süren iş dahil, kitap sahibiyle sınırlı lisansta öğrenci kitap sahibi değilse ve telif bildirimiyle incelemedeki içerikte süren işi yoksa. Süren iş tamamlanır: süren deneme kaydedilir ve teslim edilir, taslağı ya da teslimi olan öğrenci teslim eder. Lisansı dolmuş içerikte taslağı ve teslimi olmayan öğrenci artık taslak açamaz ve teslim edemez (409 `resource_license_expired`; önce yalnız deneme başlatma reddediliyordu, mesaj "yeni deneme veya teslim" oldu). Kaldırılan içerikte deneme başlatma 404 yerine 422 döner. Ret hiçbir kaydı değiştirmez.

@@ -10,7 +10,7 @@ import {
   currentEvaluations,
   runAssessment,
   exampleOpticalFile,
-} from '@kampus/school-core/lib/assessment-automation.js'
+} from '@kampus/school-core/lib/assessment-automation.ts'
 import { dateLabel } from '../lib/format.js'
 import { exportCsv, saveTextFile } from '../lib/download.js'
 import { useFormErrors } from '../lib/use-form-errors.js'
@@ -116,7 +116,7 @@ function showError(value) {
   logError(value, 'optical', 'warn')
   error.value =
     value.issues?.[0]?.message ||
-    (value.name === 'Error'
+    (value.name === 'Error' || value.name === 'DomainError'
       ? value.message
       : 'Dosya işlenemedi. Biçimini ve karakter kodlamasını kontrol edin.')
   notify(error.value, 'error')

@@ -1,0 +1,9 @@
+ALTER TABLE "lesson_package_hour_entries" DROP CONSTRAINT "lesson_package_hour_entries_source_check";--> statement-breakpoint
+ALTER TABLE "lesson_package_hour_entries" DROP CONSTRAINT "lesson_package_hour_entries_hours_check";--> statement-breakpoint
+ALTER TABLE "lesson_package_hour_entries" ADD CONSTRAINT "lesson_package_hour_entries_source_check" CHECK ("lesson_package_hour_entries"."source_type" in ('lesson', 'withdrawal', 'manual'));--> statement-breakpoint
+ALTER TABLE "lesson_package_hour_entries" ADD CONSTRAINT "lesson_package_hour_entries_hours_check" CHECK (("lesson_package_hour_entries"."hours" between 1 and 2000) or ("lesson_package_hour_entries"."source_type" = 'manual' and "lesson_package_hour_entries"."hours" = 0));--> statement-breakpoint
+COMMENT ON COLUMN "lesson_package_hour_entries"."hours" IS 'Ders saati; sıfırdan büyük, bakiyeyi aşamaz (kurum kilidi altında core denetler). Sıfır yalnız manual kaynakta geçerlidir: "kullanılmadı" bilgisi "girilmedi"den ayrılır (K-21).';--> statement-breakpoint
+COMMENT ON COLUMN "lesson_package_hour_entries"."occurred_date" IS 'Dersin ya da iadenin günü; gelecekte olamaz. manual kaynakta girişin günüdür, dersin değil: ayrılış hesabında bu güne göre elenmez (K-21).';--> statement-breakpoint
+COMMENT ON COLUMN "lesson_package_hour_entries"."source_type" IS 'Kaynak türü: lesson (ders), withdrawal (ayrılış), manual (personelin elle girdiği kullanılan saat; yoklama bağı gelene kadar, K-21).';--> statement-breakpoint
+COMMENT ON COLUMN "lesson_package_hour_entries"."source_id" IS 'Kaynak kaydın kimliği; tekrar yazımı önler. manual kaynakta satış kimliğidir: satış başına tek etkin satır, yeni giriş eskisini arşivler.';--> statement-breakpoint
+COMMENT ON COLUMN "lesson_package_sales"."version" IS 'İyimser kilit sürümü (If-Match); süre uzatmada ve kullanılan saat girişinde artar.';

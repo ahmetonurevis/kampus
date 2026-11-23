@@ -1,0 +1,1029 @@
+import {
+  ANNOUNCEMENT_STATUSES,
+  type AnnouncementStatus,
+} from '@kampus/school-core/lib/communication.ts'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  isQuizStaff,
+  isScoredAttempt,
+  QUIZ_SUBMIT_GRACE_SECONDS,
+  withheldAttemptFields,
+} from '@kampus/school-core/lib/quiz.ts'
+import type { Scope } from '@kampus/school-core/lib/scope.ts'
+
+import type { CollectionName, RecordData } from '../db/collections.ts'
+import { allocatedForInvoices } from '../db/payments.ts'
+import {
+  findRecord,
+  INVOICE_STATUS_LABELS,
+  loadRecordPage,
+  loadRecords,
+  loadRecordsByIds,
+  type InvoiceStatusLabel,
+  type RecordFilter,
+  type SearchMatch,
+  type SetMatch,
+  type StoredRecord,
+} from '../db/records.ts'
+import { NotFoundError, ValidationError } from '../errors.ts'
+import type { ServiceContext } from '../plugins/authenticate.ts'
+import { moduleOfCollection, readableCollection } from './collection-access.ts'
+import {
+  isJoinedField,
+  joinedFieldsOf,
+  JOINED_FIELDS,
+  loadJoiner,
+  loadPageNames,
+  type JoinedField,
+  type JoinedNames,
+  type JoinedValues,
+  type Joiner,
+} from './collection-joins.ts'
+import {
+  announcementStatusFilter,
+  candidateMatchesRecordFilter,
+  dayRange,
+  invoiceStatusFilter,
+  invoiceStatusOf,
+  matchesRecordFilter,
+  monthOf,
+  rootField,
+  valueAtPath,
+} from './list-filters.ts'
+import {
+  assertReadable,
+  readScope,
+  scopePrefilter,
+  studentClasses,
+  studentsOfClasses,
+} from './read-scope.ts'
+
+/**
+ * Koleksiyon okuma servisi (geçiş köprüsü: modüller kendi kaynak uçlarına geçene kadar). Kayıtlar
+ * kurum kapsamlı depodan yüklenir; core kapsamı (`scopeFor`) satırları süzüp alanları ayıkladıktan
+ * sonra arama, filtre, sıralama ve sayfalama bellekte, ayıklanmış alanlar üzerinde yapılır: rolün
+ * göremediği alan aramada da eşleşmez. Varsayılan sıra deponun döndürdüğü sıradır.
+ *
+ * Arama ve sıralama bağlı adlarda da çalışır (`collection-joins.ts`: sınıfta kampüs adı; taksit,
+ * not, yoklamada öğrenci adı/numarası ve sınıf adı); bağlı kayıt da aktörün kapsamından ve
+ * ayıklanmış biçiminden okunur. Taksit `status`'u türetilmiş alandır (`DERIVED_STATUS`).
+ *
+ * Veritabanı yalnız aday satırları döndürür: eşitlik filtreleri ve büyük kişisel koleksiyonlarda
+ * kapsam kimlikleri SQL ön süzgecidir (`FieldMatch`, `scopePrefilter`); karar yine bellekte,
+ * core kapsamı ve ayıklanmış alanlarla verilir.
+ * TODO(collection-sql): sayfalama ve sıralama SQL'e inmedi; yönetici büyük koleksiyonu tümüyle
+ * yükler (`read-scope.ts` `TODO(perf)`; veritabani.md §4).
+ */
+
+/** Eşitlik filtresi kabul edilen veri alanları (beyaz liste; bilinmeyen sorgu parametresi 400). */
+export const FILTER_FIELDS = [
+  'studentId',
+  'classId',
+  'teacherId',
+  'subjectId',
+  'branchId',
+  'parentId',
+  'examId',
+  'clubId',
+  'routeId',
+  'quizId',
+  'homeworkId',
+  'videoId',
+  'status',
+  'stage',
+  'source',
+  'category',
+  'type',
+  'grade',
+  'level',
+] as const
+export type FilterField = (typeof FILTER_FIELDS)[number]
+
+/**
+ * Kaydında `classId` olmayan, öğrenciye bağlı koleksiyonlar: `classId` süzgeci öğrencinin
+ * güncel sınıfından (`students.classId`, kapsam kaynağı) öğrenci kimliklerine çevrilir; istemci
+ * sınıfın öğrencilerini tek tek göndermez. Çözüm yalnız aktörün kapsamındaki öğrencilerle
+ * yapılır (`read-scope.ts` `studentsOfClasses`): kapsam dışı öğrencinin güncel sınıfı sızmaz.
+ * Diğer koleksiyonlarda `classId` kaydın alanıdır: `contracts` (sözleşmenin sınıfı) ve
+ * `enrollmentHistory` (biten dönemin sınıfı) bilerek dışındadır; `grades` için `CLASS_OWN_OR_VIA`.
+ */
+const CLASS_VIA_STUDENT: ReadonlySet<CollectionName> = new Set<CollectionName>([
+  'invoices',
+  'absences',
+  'submissions',
+  'quizAttempts',
+  'mockResults',
+  'studentGoals',
+  'guidanceCases',
+  'studyTasks',
+  'appointments',
+  'requests',
+  'renewals',
+  'eventConsents',
+  'transportAssignments',
+  'clubMemberships',
+  'socialAchievements',
+  'clubAttendance',
+  'opticalEvaluations',
+  'videoProgress',
+])
+
+/**
+ * Kaydında `classId` bazen olan koleksiyonlar: not, verildiği sınıfı (`classId`, not girişi
+ * komutu yazar) saklar; öğrenci sonradan sınıf değiştirse de not o sınıfındır (DOM-YTK-022
+ * `gradeReader` de buna bakar). Örnek veri ve eski kayıtlar sınıf taşımaz: onlarda `classId`
+ * öğrencinin güncel sınıfıdır. Süzgeç ve gruplama önce kaydın alanını, yoksa öğrencinin
+ * (kapsamdaki) güncel sınıfını kullanır.
+ */
+const CLASS_OWN_OR_VIA: ReadonlySet<CollectionName> = new Set<CollectionName>(['grades'])
+
+/**
+ * Saklanmayan, istekte türetilen alanlar: taksitin `status`'u core `invoiceStatus` ile `paidAt`,
+ * vade ve isteğin saatinden (`ctx.now`) hesaplanır. Süzgeç, sıralama ve gruplama bu değeri
+ * kullanır; kayıttaki aynı adlı alan yok sayılır.
+ */
+const DERIVED_STATUS: ReadonlySet<CollectionName> = new Set<CollectionName>(['invoices'])
+
+function isAnnouncementStatus(value: string): value is AnnouncementStatus {
+  return ANNOUNCEMENT_STATUSES.some((status) => status === value)
+}
+
+function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
+  return INVOICE_STATUS_LABELS.some((label) => label === value)
+}
+
+/**
+ * Durum süzgeçleri (`cancelled`, `graded`, `answered`, `withdrawn`; `true|false`): alanın dolu
+ * olup olmadığı.
+ * Her süzgeç tek koleksiyona bağlıdır; başka koleksiyonda 400. Kural core'la aynıdır: iptal
+ * `cancelledAt` doğruluk değeridir (`!lesson.cancelledAt`), notlanma `score` boş olmamasıdır
+ * (`score == null` notlanmamış; `0` puandır).
+ */
+export const STATE_FILTERS = {
+  cancelled: {
+    collection: 'schedule',
+    field: 'cancelledAt',
+    rule: 'truthy',
+    where: 'ders programında',
+  },
+  graded: { collection: 'submissions', field: 'score', rule: 'nonNull', where: 'teslimlerde' },
+  // Soru durumu saklanmaz (core `questionStatus`): yanıt bekleyen soru `answered=false` ve
+  // `withdrawn=false` birlikte verilerek süzülür (DOM-ILT-091, DOM-ILT-093).
+  answered: { collection: 'questions', field: 'answeredAt', rule: 'truthy', where: 'sorularda' },
+  withdrawn: { collection: 'questions', field: 'withdrawnAt', rule: 'truthy', where: 'sorularda' },
+} as const satisfies Record<
+  string,
+  { collection: CollectionName; field: string; rule: 'truthy' | 'nonNull'; where: string }
+>
+export type StateFilter = keyof typeof STATE_FILTERS
+export const STATE_FILTER_NAMES = Object.keys(STATE_FILTERS) as [StateFilter, ...StateFilter[]]
+
+function stateFiltersOf(
+  collection: CollectionName,
+  states: CollectionReadQuery['states'],
+): SetMatch[] {
+  const filters: SetMatch[] = []
+  for (const name of STATE_FILTER_NAMES) {
+    const set = states?.[name]
+    if (set === undefined) continue
+    const state = STATE_FILTERS[name]
+    if (state.collection !== collection)
+      throw new ValidationError([
+        {
+          path: [name],
+          code: 'invalid_value',
+          message: `Bu süzgeç yalnız ${state.where} kullanılır.`,
+        },
+      ])
+    filters.push({ kind: 'set', field: state.field, set, rule: state.rule })
+  }
+  return filters
+}
+
+/**
+ * Gün aralığı süzgecinin (`dateFrom`/`dateTo`) seçilebilir tarih alanları, koleksiyon başına
+ * izin listesi; ilki `dateField` verilmezse kullanılan varsayılandır. Listede olmayan koleksiyonda
+ * tek alan `date`'tir (eski davranış). Alan adı sorguya yalnız bu listeden girer.
+ */
+const DATE_FIELDS: Partial<Record<CollectionName, readonly string[]>> = {
+  students: ['joinedAt'],
+  invoices: ['dueDate', 'paidAt'],
+  prospects: ['createdAt', 'trialAt', 'trialLesson.date'],
+  quizzes: ['createdAt'],
+  homework: ['dueDate', 'createdAt'],
+  submissions: ['submittedAt'],
+  questions: ['createdAt', 'answeredAt'],
+  materials: ['createdAt'],
+  guidanceCases: ['followUp', 'createdAt'],
+  mockExams: ['date', 'createdAt'],
+  mockResults: ['createdAt'],
+  studentGoals: ['deadline', 'reviewedAt', 'createdAt'],
+  studyTasks: ['dueDate', 'createdAt'],
+  schoolEvents: ['date', 'endDate', 'consentDeadline', 'createdAt'],
+}
+const DEFAULT_DATE_FIELD = 'date'
+
+/** Sorgu şemasındaki `dateField` değerleri: bütün koleksiyonlarda geçen alanların birleşimi. */
+export const DATE_FIELD_NAMES = [
+  ...new Set([DEFAULT_DATE_FIELD, ...Object.values(DATE_FIELDS).flat()]),
+] as [string, ...string[]]
+
+export function dateFieldsOf(collection: CollectionName): readonly string[] {
+  return DATE_FIELDS[collection] ?? [DEFAULT_DATE_FIELD]
+}
+
+/** İstenen alanın koleksiyonda izinli olduğunu denetler; verilmezse koleksiyonun varsayılanı. */
+function dateFieldOf(collection: CollectionName, requested: string | undefined): string {
+  const allowed = dateFieldsOf(collection)
+  if (requested === undefined) return allowed[0] ?? DEFAULT_DATE_FIELD
+  if (!allowed.includes(requested))
+    throw new ValidationError([
+      {
+        path: ['dateField'],
+        code: 'invalid_value',
+        message: `Bu listede tarih aralığı ${allowed.join(', ')} alanlarından biriyle süzülür.`,
+      },
+    ])
+  return requested
+}
+
+/**
+ * Yoklama geçmişi için en uzun gün aralığı (IST-093): bir takvim yılı. Başlangıçtan bir yıl sonraki
+ * gün dahildir; ondan sonrası 400. Yalnız iki uç da verilmişse denetlenir: tek uçlu ve aralıksız
+ * liste sınırsızdır, liste sayfalı olduğundan yük sınırlıdır (DOM-AKD-036; sıra denetimi sorgu
+ * şemasındadır). Diğer koleksiyonlarda aralık sınırı yoktur.
+ */
+const ATTENDANCE_RANGE_TOO_LONG = 'Tarih aralığı en fazla 1 yıl olabilir.'
+
+function checkAttendanceRange(collection: CollectionName, query: CollectionReadQuery): void {
+  if (collection !== 'attendance' || !query.dateFrom || !query.dateTo) return
+  const limit = new Date(`${query.dateFrom}T00:00:00Z`)
+  limit.setUTCFullYear(limit.getUTCFullYear() + 1)
+  if (query.dateTo > limit.toISOString().slice(0, 10))
+    throw new ValidationError([
+      { path: ['dateTo'], code: 'too_big', message: ATTENDANCE_RANGE_TOO_LONG },
+    ])
+}
+
+/**
+ * Sıralama alanları. `createdAt`/`updatedAt` kayıt kolonudur; bağlı alanlar (`JOINED_FIELDS`)
+ * yalnız tanımlı oldukları koleksiyonda geçerlidir (başkasında 400); diğerleri veri alanıdır.
+ */
+export const SORT_FIELDS = [
+  'id',
+  'createdAt',
+  'updatedAt',
+  'name',
+  'title',
+  'date',
+  'dueDate',
+  'deadline',
+  'followUp',
+  'status',
+  'stage',
+  'grade',
+  'score',
+  'amount',
+  'installment',
+  'number',
+  ...JOINED_FIELDS,
+] as const
+export type SortField = (typeof SORT_FIELDS)[number]
+
+export const ARCHIVED_MODES = ['include', 'only'] as const
+export type ArchivedMode = (typeof ARCHIVED_MODES)[number]
+
+export interface SortKey {
+  field: SortField
+  descending: boolean
+}
+
+/** Liste ve sayım uçlarının ortak süzgeçleri. */
+export interface CollectionReadQuery {
+  q?: string | undefined
+  archived?: ArchivedMode | undefined
+  filters?: Partial<Record<FilterField, readonly string[]>> | undefined
+  /** `isActive` süzgeci; verilmezse etkin ve pasif kayıtlar birlikte döner. */
+  isActive?: boolean | undefined
+  /** Durum süzgeçleri (`STATE_FILTERS`): `true` alan dolu, `false` boş olanı getirir. */
+  states?: Partial<Record<StateFilter, boolean>> | undefined
+  /** Aralığın tarih alanı (`DATE_FIELDS` izin listesi); verilmezse koleksiyonun varsayılanı. */
+  dateField?: string | undefined
+  /** Tarih alanının Europe/Istanbul günü aralığı (`YYYY-MM-DD`, iki uç dahil). */
+  dateFrom?: string | undefined
+  dateTo?: string | undefined
+}
+
+export interface CollectionListQuery extends CollectionReadQuery {
+  page: number
+  pageSize: number
+  sort?: readonly SortKey[] | undefined
+}
+
+/** Yanıt kaydı: üst alanlar kolondan, `record` school-core kaydının role göre görünen alanları. */
+export interface CollectionItem {
+  id: string
+  version: number
+  createdAt: string
+  updatedAt: string
+  archivedAt: string | null
+  record: RecordData
+  /** Bağlı adlar (`collection-joins.ts`); koleksiyonda bağlı ad tanımlı değilse yok. */
+  joined?: JoinedNames
+}
+
+function isSortField(value: string): value is SortField {
+  return SORT_FIELDS.some((field) => field === value)
+}
+
+/** `-createdAt,name` → sıralama anahtarları. Şema biçimi doğrular; burada yalnız ayrıştırılır. */
+export function parseSort(raw: string | undefined): SortKey[] {
+  if (!raw) return []
+  return raw.split(',').flatMap((part) => {
+    const descending = part.startsWith('-')
+    const field = descending ? part.slice(1) : part
+    return isSortField(field) ? [{ field, descending }] : []
+  })
+}
+
+/**
+ * Genel okumada hiçbir role dönmeyen geçici satır: süresi işleyen quiz denemesi (DOM-AKD-077,
+ * -078). Kayıttaki sonuç alanları başlatmada yazılan boş cevaplı yer tutucudur (0); koleksiyondan
+ * okuyan eski görünüm onu sonuç ve ortalamaya (DOM-AKD-079) katar. Süren deneme quiz uçlarından
+ * `in_progress` olarak, sonuçsuz okunur (`GET /quizzes/:quizId`); süresi dolmuş deneme 0 ile
+ * görünür, o gerçek sonuçtur. Satır zamana bağlıdır (`ctx.now`), kapsam kuralı statik olduğu
+ * için kapsamda değil burada süzülür; liste, sayım, toplam ve tekil okuma aynı kararı verir.
+ * Koşul SQL'de de uygulanır (`settledFilters`); bellekteki karar core `isScoredAttempt`'tir.
+ */
+function transientRow(ctx: ServiceContext, collection: CollectionName, record: RecordData) {
+  if (collection !== 'quizAttempts') return false
+  const status = record.status === 'started' ? 'started' : undefined
+  const expiresAt = typeof record.expiresAt === 'string' ? record.expiresAt : undefined
+  return !isScoredAttempt(
+    { ...(status ? { status } : {}), ...(expiresAt ? { expiresAt } : {}) },
+    ctx.now.toISOString(),
+  )
+}
+
+/**
+ * Geçici satırı (`transientRow`) dışlayan SQL koşulu: sayfa ve toplam veritabanında doğru olur,
+ * bellek yolu da süren denemeleri yüklemez. Kesin koşuldur (`SettledMatch`).
+ */
+function settledFilters(ctx: ServiceContext, collection: CollectionName): RecordFilter[] {
+  if (collection !== 'quizAttempts') return []
+  const expiredBefore = new Date(ctx.now.getTime() - QUIZ_SUBMIT_GRACE_SECONDS * 1000)
+  return [{ kind: 'settled', expiredBefore: expiredBefore.toISOString() }]
+}
+
+/** Satırın yanıt kaydı: kapsam ayıklaması ve gerekirse zamana bağlı alan çıkarma. */
+type Redactor = (row: StoredRecord) => RecordData
+
+/**
+ * Satırların ayıklayıcısı. Öğrenci ve veli quiz denemesinde kendi cevaplarını ve konu yüzdelerini
+ * quizin son tarihi geçene ya da quiz kapanana (arşiv) kadar görmez (core
+ * `withheldAttemptFields`, DOM-AKD-078); alan yanıtta, aramada ve sayımda yoktur. Satırların
+ * quizleri (arşivliler dahil) bir kez yüklenir; quizi bulunamayan denemede alanlar kapalı kalır.
+ * Diğer koleksiyon ve rollerde yalnız kapsam ayıklamasıdır (`scope.redact`).
+ */
+async function redactorFor(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  rows: readonly StoredRecord[],
+): Promise<Redactor> {
+  const redact: Redactor = (row) => scope.redact(collection, row.data)
+  const role = scope.actor.role
+  if (collection !== 'quizAttempts' || isQuizStaff(role)) return redact
+  const quizIds = [
+    ...new Set(
+      rows.flatMap((row) => (typeof row.data.quizId === 'string' ? [row.data.quizId] : [])),
+    ),
+  ]
+  const quizzes = new Map(
+    (
+      await loadRecordsByIds(ctx.db, ctx.institutionId, 'quizzes', quizIds, {
+        includeArchived: true,
+      })
+    ).map((row) => [row.id, row]),
+  )
+  const now = ctx.now.toISOString()
+  return (row) => {
+    const record = redact(row)
+    const quiz = typeof row.data.quizId === 'string' ? quizzes.get(row.data.quizId) : undefined
+    const dueDate = typeof quiz?.data.dueDate === 'string' ? quiz.data.dueDate : undefined
+    const withheld = quiz
+      ? withheldAttemptFields(role, { dueDate, archived: quiz.archivedAt !== null }, now)
+      : withheldAttemptFields(role, {}, now)
+    return withheld.length === 0
+      ? record
+      : Object.fromEntries(Object.entries(record).filter(([key]) => !withheld.includes(key)))
+  }
+}
+
+/** Kapsamdan geçmiş satır ve rolün görebildiği alanları (ayıklanmış kopya). */
+interface VisibleRow {
+  row: StoredRecord
+  record: RecordData
+  /** İstenen bağlı alanların değerleri (arama veya sıralama istediyse). */
+  joined?: JoinedValues
+}
+
+function toItem({ row, record }: VisibleRow, names?: JoinedNames): CollectionItem {
+  return {
+    id: row.id,
+    version: row.version,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
+    record,
+    ...(names ? { joined: names } : {}),
+  }
+}
+
+/**
+ * Sayfanın satırları yanıt kaydına çevrilir; bağlı adlar yalnız sayfadaki kimliklerden çözülür
+ * (aktörün kapsamından ve ayıklanmış kimlikten, `loadPageNames`).
+ */
+/**
+ * Açık taksite iptal edilmemiş tahsilatlardan dağıtılan tutar (DOM-FIN-030). Saklanmaz, okunurken
+ * eklenir; kapsam taksitin kendisine uygulandığı için ayrıca süzülmez.
+ */
+async function withPaidAmounts(
+  ctx: ServiceContext,
+  items: CollectionItem[],
+): Promise<CollectionItem[]> {
+  const allocated = await allocatedForInvoices(
+    ctx.db,
+    ctx.institutionId,
+    items.map((item) => item.id),
+  )
+  return items.map((item) => {
+    const paidCents = allocated.get(item.id)
+    return paidCents === undefined || item.record.paidAt
+      ? item
+      : { ...item, record: { ...item.record, paidCents } }
+  })
+}
+
+async function toItems(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  page: readonly VisibleRow[],
+): Promise<CollectionItem[]> {
+  const names = await loadPageNames(
+    ctx,
+    scope,
+    collection,
+    page.map((item) => item.record),
+  )
+  const items = page.map((item, index) => toItem(item, names?.[index]))
+  return collection === 'invoices' ? withPaidAmounts(ctx, items) : items
+}
+
+/** Türkçe büyük/küçük harf ve aksan duyarsız karşılaştırma biçimi (api-tasarimi.md §3). */
+export function searchKey(value: string): string {
+  return value.toLocaleLowerCase('tr-TR').replace(/ı/g, 'i').normalize('NFD').replace(/\p{M}/gu, '')
+}
+
+function searchable(value: unknown): string[] {
+  if (typeof value === 'string') return [value]
+  if (typeof value === 'number') return [String(value)]
+  if (Array.isArray(value)) return value.flatMap((item) => (typeof item === 'string' ? [item] : []))
+  return []
+}
+
+/** `exclude` aramaya girmeyen üst düzey alanlardır (core `scope.searchExcludedFields`). */
+export function matchesSearch(
+  record: RecordData,
+  needle: string,
+  exclude: readonly string[] = [],
+): boolean {
+  return Object.entries(record).some(
+    ([field, value]) =>
+      !exclude.includes(field) &&
+      searchable(value).some((text) => searchKey(text).includes(needle)),
+  )
+}
+
+/**
+ * Sorgunun süzgeçleri; `null` sonucun boş olduğunu bildirir (öğrencisiz sınıf, ayıklanan alan).
+ * Rolün göremediği (ayıklanan) alana göre süzülemez: alan o rol için yoktur.
+ */
+async function listFilters(
+  ctx: ServiceContext,
+  scope: Scope,
+  collection: CollectionName,
+  query: CollectionReadQuery,
+): Promise<RecordFilter[] | null> {
+  // Alan izin listesinden geçer (aralık yoksa etkisizdir ama geçersiz alan yine 400'dür).
+  const dateField = dateFieldOf(collection, query.dateField)
+  checkAttendanceRange(collection, query)
+  const stateFilters = stateFiltersOf(collection, query.states)
+  const filters: RecordFilter[] = []
+  for (const field of FILTER_FIELDS) {
+    const values = query.filters?.[field]
+    if (!values || values.length === 0) continue
+    if (field === 'classId' && CLASS_VIA_STUDENT.has(collection)) {
+      const students = await studentsOfClasses(ctx, values)
+      if (students.length === 0) return null
+      filters.push({ field: 'studentId', values: students })
+    } else if (field === 'classId' && CLASS_OWN_OR_VIA.has(collection)) {
+      // Kendi alanı eşleşen not kapsam dışı öğrenci sınıfı olmadan da döner; boş çözüm sonucu boşaltmaz.
+      const students = await studentsOfClasses(ctx, values)
+      filters.push({
+        kind: 'ownOrVia',
+        field: 'classId',
+        values,
+        viaField: 'studentId',
+        viaValues: students,
+      })
+    } else if (field === 'status' && collection === 'announcements') {
+      // Durum okuyucuya göre türetilir (`myReadAt`); SQL yalnız aday, karar ayıklanmış kayıtta.
+      // TODO(duyuru-sql-suzgec): karar bellekte verildiği için durum süzgecinde (liste ve sayım)
+      // kapsamdaki tüm duyurular okunup ayıklanır; kurum başına duyuru sayısı büyürse `reads`
+      // ve `recipients`'tan okuyucuya göre SQL koşulu üretilip aday kümesi daraltılmalıdır.
+      const statuses = values.filter(isAnnouncementStatus)
+      if (statuses.length !== values.length)
+        throw new ValidationError([
+          {
+            path: ['status'],
+            code: 'invalid_value',
+            message: `Duyuru durumu ${ANNOUNCEMENT_STATUSES.join(', ')} değerlerinden biri olmalıdır.`,
+          },
+        ])
+      filters.push(announcementStatusFilter(statuses))
+    } else if (field === 'status' && DERIVED_STATUS.has(collection)) {
+      const statuses = values.filter(isInvoiceStatus)
+      if (statuses.length !== values.length)
+        throw new ValidationError([
+          {
+            path: ['status'],
+            code: 'invalid_value',
+            message: `Taksit durumu ${INVOICE_STATUS_LABELS.join(', ')} değerlerinden biri olmalıdır.`,
+          },
+        ])
+      filters.push(invoiceStatusFilter(statuses, ctx.now))
+    } else filters.push({ field, values })
+  }
+  if (query.isActive !== undefined)
+    filters.push({ kind: 'active', field: 'isActive', active: query.isActive })
+  filters.push(...stateFilters)
+  const range = dayRange(dateField, query.dateFrom, query.dateTo)
+  if (range) filters.push(range)
+  const hidden = scope.hiddenFields(collection)
+  const fieldOf = (filter: RecordFilter): string[] => {
+    if (filter.kind === 'invoiceStatus') return ['paidAt', 'dueDate']
+    if (filter.kind === 'announcementStatus') return ['withdrawnAt', 'revisedAt']
+    if (filter.kind === 'any') return filter.matches.map((match) => match.field)
+    if (filter.kind === 'ownOrVia') return [filter.field, filter.viaField]
+    if (filter.kind === 'settled') return ['status', 'expiresAt']
+    return [filter.field]
+  }
+  // İç içe alanın (`trialLesson.date`) gizliliği en üst düzey alana bağlıdır.
+  return filters.some((filter) =>
+    fieldOf(filter).some((field) => hidden.includes(rootField(field))),
+  )
+    ? null
+    : filters
+}
+
+/** İsteğe göre alan değeri: türetilmiş alanlar (`DERIVED_STATUS`) burada hesaplanır. */
+interface FieldResolver {
+  collection: CollectionName
+  /** İsteğin Europe/Istanbul günü (`dayKey(ctx.now)`). */
+  today: string
+}
+
+function fieldResolver(ctx: ServiceContext, collection: CollectionName): FieldResolver {
+  return { collection, today: dayKey(ctx.now) }
+}
+
+function recordValue(resolver: FieldResolver, record: RecordData, field: string): unknown {
+  if (field === 'status' && DERIVED_STATUS.has(resolver.collection))
+    return invoiceStatusOf(record, resolver.today)
+  return record[field]
+}
+
+function sortValue(resolver: FieldResolver, item: VisibleRow, field: SortField): unknown {
+  if (isJoinedField(field)) return item.joined?.[field]
+  // Kolon zamanları ISO metni olarak karşılaştırılır (yanıttaki biçimle aynı sıra).
+  if (field === 'id') return item.row.id
+  if (field === 'createdAt') return item.row.createdAt.toISOString()
+  if (field === 'updatedAt') return item.row.updatedAt.toISOString()
+  return recordValue(resolver, item.record, field)
+}
+
+const collator = new Intl.Collator('tr-TR', { numeric: true })
+
+/** Sayı < metin; boş değer yöne bakmadan sonda. */
+function compareValues(a: unknown, b: unknown, descending: boolean): number {
+  const aEmpty = a === undefined || a === null || a === ''
+  const bEmpty = b === undefined || b === null || b === ''
+  if (aEmpty || bEmpty) return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1
+  let result: number
+  if (typeof a === 'number' && typeof b === 'number') result = a - b
+  else if (typeof a === 'number') result = -1
+  else if (typeof b === 'number') result = 1
+  else result = collator.compare(String(a), String(b))
+  return descending ? -result : result
+}
+
+function sorted(
+  resolver: FieldResolver,
+  items: VisibleRow[],
+  keys: readonly SortKey[],
+): VisibleRow[] {
+  if (keys.length === 0) return items
+  // Eşitlikte deponun sırası korunur (kararlı sıralama); aynı sorgu aynı sırayı verir.
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => {
+      for (const key of keys) {
+        const result = compareValues(
+          sortValue(resolver, left.item, key.field),
+          sortValue(resolver, right.item, key.field),
+          key.descending,
+        )
+        if (result !== 0) return result
+      }
+      return left.index - right.index
+    })
+    .map((entry) => entry.item)
+}
+
+/**
+ * SQL arama adayının (`SearchMatch`, `db/records.ts`) bellekteki sonucun üst kümesi olduğu
+ * aranan metinler: yazdırılabilir ASCII, JSON'da kaçışlanan `"` ve `\\` yok. Diğer metinler
+ * yalnız bellekte aranır. Ön süzgeç her rolde kullanılır ve yalnız adayları daraltır: rolün
+ * ayıklanan alanları aday metinden çıkarılır, kapsam ve son karar yine core'undur (ayıklanmış
+ * kayıtta `matches`). Ayıklama alan çıkarır veya daraltır, eklemez; bu yüzden ham kayıttaki
+ * aday bellekteki sonucu kapsar.
+ */
+export const SQL_SAFE_NEEDLE = /^[\x20-\x21\x23-\x5b\x5d-\x7e]+$/
+
+/**
+ * Bağlı adı eşleşen kimliklerin SQL'e taşınan en fazla sayısı; aşılırsa (ör. `q=9` bütün
+ * sınıfları tutar) aday süzgeci kullanılmaz, arama bellekte yapılır.
+ */
+const MAX_SQL_SEARCH_KEYS = 1000
+
+/** Kapsamdan ve süzgeçlerden geçen satırlar; karar ayıklanmış kayıtta verilir. */
+interface ReadResult {
+  collection: CollectionName
+  scope: Scope
+  /** Kapsamdan geçmiş satırlar; `narrowed` ise süzgeç/arama da ham kayıtta adaydan geçmiştir. */
+  rows: StoredRecord[]
+  narrowed: boolean
+  /** Ayıklanmış kayıtta süzgeç ve arama kararı (bağlı alanlar dahil). */
+  matches: (item: VisibleRow) => boolean
+  /** Bağlı alan istendiyse değerleri veren işlev. */
+  joiner: Joiner | null
+  /** Satırın yanıt kaydı (`redactorFor`). */
+  redact: Redactor
+}
+
+interface ReadOptions {
+  /** Kapsam bilindikten sonra, süzgeçlerden önce sorgu alanlarının denetimi. */
+  check?: (scope: Scope, collection: CollectionName) => void
+  /** Sıralamada istenen bağlı alanlar. */
+  joined?: readonly JoinedField[]
+}
+
+function invalidSort(): ValidationError {
+  return new ValidationError([
+    {
+      path: ['sort'],
+      code: 'invalid_value',
+      message: 'Bu listede bu alana göre sıralama yapılamaz.',
+    },
+  ])
+}
+
+async function readRows(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionReadQuery,
+  options: ReadOptions = {},
+): Promise<ReadResult | null> {
+  const collection = readableCollection(name)
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, collection)
+  const joinable = joinedFieldsOf(collection)
+  if (options.joined?.some((field) => !joinable.includes(field))) throw invalidSort()
+  options.check?.(scope, collection)
+  const filters = await listFilters(ctx, scope, collection, query)
+  if (filters === null) return null
+  const needle = query.q ? searchKey(query.q) : null
+  // Ayıklanan ve kişisel kimlik alanları (kimlik no, doğum tarihi) aramaya girmez.
+  const unsearchable = scope.searchExcludedFields(collection)
+  const narrowed = filters.length > 0 || needle !== null
+  // Arama bağlı alanlarda da çalışır (`collection-joins.ts`).
+  const joinedSearch = needle !== null && joinable.length > 0
+  const wanted = new Set<JoinedField>([
+    ...(options.joined ?? []),
+    ...(joinedSearch ? joinable : []),
+  ])
+  const joiner = wanted.size > 0 ? await loadJoiner(ctx, scope, [...wanted]) : null
+  const passes = (record: RecordData) =>
+    filters.every((filter) => matchesRecordFilter(record, filter))
+  // Bağlı adlar az sayıda farklı değerdir; arama biçimi değer başına bir kez hesaplanır.
+  const keys = new Map<string, string>()
+  const keyOf = (value: string) => {
+    let key = keys.get(value)
+    if (key === undefined) keys.set(value, (key = searchKey(value)))
+    return key
+  }
+  const joinedMatch = (joined: JoinedValues) =>
+    needle !== null && Object.values(joined).some((value) => keyOf(value).includes(needle))
+  const matches = (item: VisibleRow) =>
+    passes(item.record) &&
+    (needle === null ||
+      matchesSearch(item.record, needle, unsearchable) ||
+      (joinedSearch && joinedMatch(item.joined ?? {})))
+  const prefilter = scopePrefilter(scope, collection)
+  const search = sqlSearch()
+  function sqlSearch(): SearchMatch | undefined {
+    if (needle === null || !SQL_SAFE_NEEDLE.test(needle)) return undefined
+    const keys =
+      joinedSearch && joiner ? joiner.relatedKeys((value) => keyOf(value).includes(needle)) : []
+    if (keys.reduce((total, key) => total + key.values.length, 0) > MAX_SQL_SEARCH_KEYS)
+      return undefined
+    return { needle, exclude: unsearchable, keys }
+  }
+  const loaded = await loadRecords(ctx.db, ctx.institutionId, [collection], {
+    includeArchived: query.archived !== undefined,
+    match: [...(prefilter ? [prefilter] : []), ...filters, ...settledFilters(ctx, collection)],
+    ...(search ? { search } : {}),
+  })
+  // Ayıklama alan çıkarır veya daraltır, eklemez: ham kayıtta eşleşmeyen ayıklanmışta da
+  // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
+  // Bağlı kimlik alanları ayıklanmaz; ham kayıttaki bağlı eşleşme de yalnız adaydır.
+  const candidate = (record: RecordData) =>
+    filters.every((filter) => candidateMatchesRecordFilter(record, filter)) &&
+    (needle === null ||
+      matchesSearch(record, needle, unsearchable) ||
+      (joinedSearch && joiner !== null && joinedMatch(joiner.values(record))))
+  const rows = loaded.filter(
+    (row) =>
+      (query.archived !== 'only' || row.archivedAt !== null) &&
+      scope.canRead(collection, row.data) &&
+      !transientRow(ctx, collection, row.data) &&
+      (!narrowed || candidate(row.data)),
+  )
+  const redact = await redactorFor(ctx, scope, collection, rows)
+  return { collection, scope, rows, narrowed, matches, joiner, redact }
+}
+
+/** Ayıklanmış kayıtlar; daraltılmış sorguda son karar burada verilir. */
+function visibleRows({ rows, narrowed, matches, joiner, redact }: ReadResult): VisibleRow[] {
+  const items = rows.map((row): VisibleRow => {
+    const record = redact(row)
+    // Bağlı kaydın kimliği de ayıklanmış kayıttan okunur.
+    return joiner ? { row, record, joined: joiner.values(record) } : { row, record }
+  })
+  return narrowed ? items.filter(matches) : items
+}
+
+/**
+ * Süzgeçsiz, aramasız, sıralamasız listede koleksiyonun tamamını okuyan aktör
+ * (core `scope.readsWhole`) için sayfa ve toplam SQL'dendir; yalnız sayfanın satırları yüklenip
+ * ayıklanır. Sayfada kapsamdan geçmeyen satır çıkarsa (core kuralı değişti) loglanır ve bellek
+ * yoluna dönülür (`null`).
+ */
+async function sqlPage(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionListQuery,
+): Promise<{ items: CollectionItem[]; total: number } | null> {
+  const plain =
+    !query.q &&
+    (query.sort ?? []).length === 0 &&
+    query.isActive === undefined &&
+    Object.values(query.states ?? {}).every((value) => value === undefined) &&
+    query.dateField === undefined &&
+    query.dateFrom === undefined &&
+    query.dateTo === undefined &&
+    Object.values(query.filters ?? {}).every((values) => !values || values.length === 0)
+  if (!plain) return null
+  const collection = readableCollection(name)
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, collection)
+  if (!scope.readsWhole(collection)) return null
+  // Süren quiz denemesi (`transientRow`) sayfada ve toplamda yoktur: koşul SQL'dedir.
+  const { rows, total } = await loadRecordPage(ctx.db, ctx.institutionId, collection, {
+    archived: query.archived,
+    offset: (query.page - 1) * query.pageSize,
+    limit: query.pageSize,
+    match: settledFilters(ctx, collection),
+  })
+  if (
+    !rows.every(
+      (row) => scope.canRead(collection, row.data) && !transientRow(ctx, collection, row.data),
+    )
+  ) {
+    ctx.log.warn({ event: 'collection.sql_page_scope_mismatch', collection })
+    return null
+  }
+  const redact = await redactorFor(ctx, scope, collection, rows)
+  return {
+    items: await toItems(
+      ctx,
+      scope,
+      collection,
+      rows.map((row) => ({ row, record: redact(row) })),
+    ),
+    total,
+  }
+}
+
+export async function listCollection(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionListQuery,
+): Promise<{ items: CollectionItem[]; total: number }> {
+  const sort = query.sort ?? []
+  const page = await sqlPage(ctx, name, query)
+  if (page) return page
+  const result = await readRows(ctx, name, query, {
+    joined: sort.flatMap((key) => (isJoinedField(key.field) ? [key.field] : [])),
+  })
+  if (result === null) return { items: [], total: 0 }
+  const { collection, scope, rows, narrowed, redact } = result
+  const start = (query.page - 1) * query.pageSize
+  if (!narrowed && sort.length === 0)
+    // Arama ve sıralama yoksa yalnız istenen sayfa ayıklanır.
+    return {
+      items: await toItems(
+        ctx,
+        scope,
+        collection,
+        rows.slice(start, start + query.pageSize).map((row) => ({ row, record: redact(row) })),
+      ),
+      total: rows.length,
+    }
+  const items = sorted(fieldResolver(ctx, collection), visibleRows(result), sort)
+  return {
+    items: await toItems(ctx, scope, collection, items.slice(start, start + query.pageSize)),
+    total: items.length,
+  }
+}
+
+/** Gruplanabilen alanlar (beyaz liste): eşitlik süzgeci alanları ve `isActive`. */
+export const GROUP_FIELDS = [...FILTER_FIELDS, 'isActive'] as const
+export type GroupField = (typeof GROUP_FIELDS)[number]
+
+const MONTH_SUFFIX = ':month'
+
+/**
+ * `groupBy` değerleri: gruplanabilir alanlar ve tarih alanının aylık gruplaması
+ * (`<tarih alanı>:month`, değer `YYYY-MM` Europe/Istanbul ayı). Tarih alanı koleksiyonun izin
+ * listesindedir (`DATE_FIELDS`).
+ */
+export const GROUP_BY_VALUES = [
+  ...GROUP_FIELDS,
+  ...DATE_FIELD_NAMES.map((field) => `${field}${MONTH_SUFFIX}`),
+] as [string, ...string[]]
+
+/** `paidAt:month` → `paidAt`; aylık gruplama değilse `null`. */
+function monthGroupField(groupBy: string): string | null {
+  return groupBy.endsWith(MONTH_SUFFIX) ? groupBy.slice(0, -MONTH_SUFFIX.length) : null
+}
+
+/** Grup başına toplanabilen sayısal alanlar (beyaz liste; para alanı kuruş). */
+export const SUM_FIELDS = [
+  'amount',
+  'capacity',
+  'score',
+  'progress',
+  'attendanceRate',
+  'homeworkRate',
+] as const
+export type SumField = (typeof SUM_FIELDS)[number]
+
+export interface CollectionCountQuery extends CollectionReadQuery {
+  /** `GROUP_BY_VALUES`: alan adı ya da `<tarih alanı>:month`. */
+  groupBy: string
+  sum?: SumField | undefined
+}
+
+/** Grup değeri: kaydın skaler değeri; dizi, nesne veya eksik değer `null` grubudur. */
+export type GroupValue = string | number | boolean | null
+
+export interface CountGroup {
+  value: GroupValue
+  count: number
+  /** Yalnız `sum` istendiğinde: gruptaki sonlu sayı değerlerinin toplamı. */
+  sum?: number
+}
+
+function groupValue(value: unknown): GroupValue {
+  if (typeof value === 'string' || typeof value === 'boolean') return value
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  return null
+}
+
+function hiddenFieldError(field: 'groupBy' | 'sum'): ValidationError {
+  return new ValidationError([
+    {
+      path: [field],
+      code: 'invalid_value',
+      message: field === 'groupBy' ? 'Bu alana göre gruplama yapılamaz.' : 'Bu alan toplanamaz.',
+    },
+  ])
+}
+
+/**
+ * Toplu sayım (`GET /collections/:c/counts`): liste ucuyla aynı kapsam, süzgeç ve arama; sonuç
+ * grup başına sayı ve istenirse toplam. Rolün göremediği (ayıklanan) alanla gruplama veya toplama
+ * 400'dür: alan o rol için yoktur. Değer ayıklanmış kayıttan okunur; taksit `status`'u türetilir,
+ * `isActive` alanı olmayan kayıt etkindir, kaydında sınıf olmayan öğrenci koleksiyonlarında
+ * `classId` kapsamdaki öğrencinin güncel sınıfıdır, notta önce kaydın `classId`'si (süzgeçle aynı). Gruplar değere göre sıralıdır, `null` sonda.
+ */
+export async function countCollection(
+  ctx: ServiceContext,
+  name: string,
+  query: CollectionCountQuery,
+): Promise<{ groups: CountGroup[]; total: number; sum?: number }> {
+  const month = monthGroupField(query.groupBy)
+  const result = await readRows(ctx, name, query, {
+    check(scope, collection) {
+      const hidden = scope.hiddenFields(collection)
+      // Aylık gruplama tarih alanının izin listesinden geçer; ayıklanan alanla gruplama 400.
+      if (month !== null && !dateFieldsOf(collection).includes(month))
+        throw hiddenFieldError('groupBy')
+      if (hidden.includes(rootField(month ?? query.groupBy))) throw hiddenFieldError('groupBy')
+      if (query.sum && hidden.includes(query.sum)) throw hiddenFieldError('sum')
+    },
+  })
+  const withSum = query.sum !== undefined
+  if (result === null) return { groups: [], total: 0, ...(withSum ? { sum: 0 } : {}) }
+  const { collection } = result
+  const resolver = fieldResolver(ctx, collection)
+  const classOf =
+    query.groupBy === 'classId' &&
+    (CLASS_VIA_STUDENT.has(collection) || CLASS_OWN_OR_VIA.has(collection))
+      ? await studentClasses(ctx)
+      : null
+  const valueOf = (record: RecordData): GroupValue => {
+    if (month !== null) return monthOf(valueAtPath(record, month))
+    if (classOf) {
+      // Kaydın kendi sınıfı varsa o (`CLASS_OWN_OR_VIA`); yoksa kapsamdaki öğrencinin güncel sınıfı.
+      const own = CLASS_OWN_OR_VIA.has(collection) ? record.classId : undefined
+      if (typeof own === 'string') return own
+      const student = record.studentId
+      return typeof student === 'string' ? (classOf.get(student) ?? null) : null
+    }
+    if (query.groupBy === 'isActive') return record.isActive !== false
+    return groupValue(recordValue(resolver, record, query.groupBy))
+  }
+  const groups = new Map<string, CountGroup>()
+  let total = 0
+  let sum = 0
+  for (const { record } of visibleRows(result)) {
+    const value = valueOf(record)
+    const key = JSON.stringify(value)
+    const group = groups.get(key) ?? { value, count: 0, ...(withSum ? { sum: 0 } : {}) }
+    group.count += 1
+    total += 1
+    if (query.sum) {
+      const amount = record[query.sum]
+      if (typeof amount === 'number' && Number.isFinite(amount)) {
+        group.sum = (group.sum ?? 0) + amount
+        sum += amount
+      }
+    }
+    groups.set(key, group)
+  }
+  return {
+    groups: [...groups.values()].sort((a, b) => compareValues(a.value, b.value, false)),
+    total,
+    ...(withSum ? { sum } : {}),
+  }
+}
+
+/** Tek kayıt. Yok, arşivde, başka kurumda veya aktörün kapsamı dışında: aynı 404 (DOM-YTK-011). */
+export async function getCollectionItem(
+  ctx: ServiceContext,
+  name: string,
+  id: string,
+  options: { archived?: 'include' | undefined } = {},
+): Promise<CollectionItem> {
+  const collection = readableCollection(name)
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, collection)
+  const row = await findRecord(ctx.db, ctx.institutionId, collection, id, {
+    includeArchived: options.archived === 'include',
+  })
+  if (!row || !scope.canRead(collection, row.data) || transientRow(ctx, collection, row.data))
+    throw new NotFoundError()
+  const redact = await redactorFor(ctx, scope, collection, [row])
+  const [item] = await toItems(ctx, scope, collection, [{ row, record: redact(row) }])
+  if (!item) throw new NotFoundError()
+  return item
+}
+
+/** `requireModule` çözücüsü: koleksiyonun core modülü; bilinmeyen koleksiyon 404. */
+export function collectionModule(name: string): string | null {
+  return moduleOfCollection(readableCollection(name))
+}

@@ -1,0 +1,63 @@
+import { Icon } from '@/components/Icon.tsx'
+import { useTheme } from '@/hooks/use-theme.ts'
+import type { Session } from '@/auth/auth-port.ts'
+import { getRole } from '@/lib/navigation.ts'
+import { AccountMenu } from './AccountMenu.tsx'
+import { NotificationBell } from './NotificationBell.tsx'
+import { notificationBellVisible } from './notification-model.ts'
+
+type TopbarProps = {
+  session: Session
+  title: string
+  narrow: boolean
+  menuOpen: boolean
+  onOpenMenu: () => void
+  onSignOut: () => void
+}
+
+const iconButton =
+  'grid size-9 place-items-center rounded-2xl text-muted-foreground hover:bg-surface hover:text-foreground max-[860px]:size-11'
+
+export function Topbar({ session, title, narrow, menuOpen, onOpenMenu, onSignOut }: TopbarProps) {
+  const { theme, toggleTheme } = useTheme()
+  return (
+    // Dar ekranda çubuk tek satırda kalır; uzun başlık iki satıra kırılır (sayfa başlığı h1'de tamdır).
+    // Yatay telefonda çubuk yapışmaz: 360 px yükseklikte içeriğin dörtte birini kapatırdı.
+    <header className="topbar glass sticky top-shell z-20 mx-3 mt-shell flex min-h-topbar items-center justify-between gap-3 rounded-card px-5 py-2.5 max-[860px]:px-3 short:static">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {narrow ? (
+          <button
+            type="button"
+            aria-label="Menüyü aç"
+            aria-expanded={menuOpen}
+            onClick={onOpenMenu}
+            className={iconButton}
+          >
+            <Icon name="Menu" size={20} />
+          </button>
+        ) : null}
+        <span className="breadcrumb flex min-w-0 items-center gap-[13px] text-sm text-muted-foreground">
+          <span className="max-[650px]:hidden">{getRole(session.role).label} Paneli</span>
+          <Icon name="ChevronRight" size={14} className="max-[650px]:hidden" />
+          <strong className="truncate font-medium text-foreground max-[650px]:line-clamp-2 max-[650px]:whitespace-normal">
+            {title}
+          </strong>
+        </span>
+      </div>
+      <div className="topbar-actions flex items-center gap-1.5 rounded-[14px] border border-topbar-border bg-topbar p-[5px]">
+        <button
+          type="button"
+          aria-label={theme === 'light' ? 'Koyu temaya geç' : 'Açık temaya geç'}
+          onClick={toggleTheme}
+          className={iconButton}
+        >
+          <Icon name={theme === 'light' ? 'Moon' : 'Sun'} size={19} />
+        </button>
+        {notificationBellVisible(session.role, session.modules) ? (
+          <NotificationBell session={session} />
+        ) : null}
+        <AccountMenu session={session} onSignOut={onSignOut} />
+      </div>
+    </header>
+  )
+}

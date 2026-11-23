@@ -353,7 +353,8 @@ const lessonEndMs = (lesson: SuggestionLesson) =>
   Date.parse(lesson.date) +
   (lesson.duration > 0 ? lesson.duration : LESSON_HOUR_MINUTES) * MINUTE_MS
 
-const inRanges = <T extends { startDate: string; endDate: string }>(
+/** Günü kapsayan ilk aralık (başlangıç ve bitiş dahil); tatil ve izin denetimi. */
+export const dayInRanges = <T extends { startDate: string; endDate: string }>(
   day: string,
   ranges: readonly T[],
 ): T | undefined => ranges.find((range) => range.startDate <= day && day <= range.endDate)
@@ -427,10 +428,19 @@ const KIND_TOTAL = {
   makeup: 'makeupHours',
 } as const satisfies Record<LessonItemKind, keyof SuggestionTotals>
 
-/** Öğretmenin dersleri durumlarıyla (aralığın tamamı; hafta hesabı ay dışını da okur). */
-function teacherItems(
-  teacher: SuggestionTeacher,
-  input: SuggestionInput,
+/** Ders durumunu belirleyen girdi (öneri ve saat ücreti dökümü ortak kullanır, DOM-FIN-167). */
+export type LessonItemInput = Pick<
+  SuggestionInput,
+  'now' | 'lessons' | 'holidays' | 'absences' | 'attendanceDays'
+>
+
+/**
+ * Öğretmenin dersleri durumlarıyla (aralığın tamamı; hafta hesabı ay dışını da okur). Sayım kuralı
+ * K-550'dir; saat ücreti dökümü (DOM-FIN-167, K-556) aynı durumları kullanır.
+ */
+export function lessonItemsFor(
+  teacher: Pick<SuggestionTeacher, 'membershipId' | 'teacherIds'>,
+  input: LessonItemInput,
   makeups: ReadonlyMap<string, string>,
 ): LessonItem[] {
   const ids = new Set(teacher.teacherIds)
@@ -445,7 +455,7 @@ function teacherItems(
       !ids.has(lesson.teacherId)
     if (!current && !original) continue
     const day = dayKey(lesson.date)
-    const holiday = inRanges(day, input.holidays)
+    const holiday = dayInRanges(day, input.holidays)
     const makeupFor = makeups.get(lesson.id) ?? null
     const substitute =
       lesson.originalTeacherId !== null && !ids.has(lesson.originalTeacherId) && current
@@ -455,7 +465,7 @@ function teacherItems(
         ? 'cancelled'
         : holiday !== undefined
           ? 'holiday'
-          : inRanges(day, absences) !== undefined
+          : dayInRanges(day, absences) !== undefined
             ? 'leave'
             : lessonEndMs(lesson) > now
               ? 'upcoming'
@@ -527,7 +537,7 @@ function teacherSuggestion(
   const range = payrollMonthRange(input.month)
   const inMonth = (day: string) => range.from <= day && day <= range.to
   const applicable = teacher.payBasis !== 'hourly'
-  const items = teacherItems(teacher, input, makeups)
+  const items = lessonItemsFor(teacher, input, makeups)
   const byWeek = allocate(items, input.params, applicable)
   const totals = emptyTotals()
   const days = new Map<string, LessonItem[]>()
@@ -609,7 +619,7 @@ export function lessonHourSuggestion(input: SuggestionInput): LessonSuggestion {
     if (linked.has(lesson.teacherId) || day < month.from || day > month.to) continue
     const counted =
       lesson.cancelledAt === null &&
-      inRanges(day, input.holidays) === undefined &&
+      dayInRanges(day, input.holidays) === undefined &&
       lessonEndMs(lesson) <= now
     unlinked.set(
       lesson.teacherId,

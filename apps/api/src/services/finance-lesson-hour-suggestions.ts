@@ -84,6 +84,42 @@ interface Sources {
   entries: StoredLessonHours[]
 }
 
+/**
+ * Ders durumlarının girdileri (DOM-FIN-165 ve saat ücreti dökümü DOM-FIN-167 ortak kullanır):
+ * aralığın ders programı, kullanılmış izin ve rapor aralıkları, kurum tatilleri, sınıf günü
+ * yoklaması (yalnız `academic` açıkken) ve üyelik başına bağlı öğretmen kayıtları.
+ */
+export async function loadLessonInputs(
+  db: Database,
+  institutionId: string,
+  range: { from: string; to: string },
+  academic: boolean,
+) {
+  const match = dayRange('date', range.from, range.to)
+  if (match === null) throw new Error('lesson range is empty')
+  const links = await teacherLinks(db, institutionId)
+  const teacherIds = new Map<string, string[]>()
+  for (const link of links)
+    teacherIds.set(link.membershipId, [
+      ...(teacherIds.get(link.membershipId) ?? []),
+      link.teacherId,
+    ])
+  const [lessons, absences, attendanceDays, holidays] = await Promise.all([
+    loadSuggestionLessons(db, institutionId, match),
+    loadLeaveAbsences(db, institutionId, { startDate: range.from, endDate: range.to }),
+    academic ? loadAttendanceClassDays(db, institutionId, match) : Promise.resolve(null),
+    institutionHolidaysFor(db, institutionId, range),
+  ])
+  return {
+    teacherIds,
+    lessons,
+    // Talep (bekleyen ya da onaylı) değil, kullanılmış izin ve rapor: ders fiilen yapılmadı.
+    absences: absences.filter((item) => item.source !== 'request'),
+    attendanceDays,
+    holidays,
+  }
+}
+
 /** Hesabın girdileri ve sonucu (okuma ve aktarım aynı kaynağı kullanır). */
 async function compute(
   db: Database,
@@ -93,28 +129,19 @@ async function compute(
 ): Promise<Sources> {
   const institution = await requireSchool(db, ctx.institutionId)
   const range = lessonSuggestionRange(month)
-  const match = dayRange('date', range.from, range.to)
-  if (match === null) throw new Error('lesson suggestion range is empty')
-  const links = await teacherLinks(db, ctx.institutionId)
-  const teacherIds = new Map<string, string[]>()
-  for (const link of links)
-    teacherIds.set(link.membershipId, [
-      ...(teacherIds.get(link.membershipId) ?? []),
-      link.teacherId,
-    ])
+  const { teacherIds, lessons, absences, attendanceDays, holidays } = await loadLessonInputs(
+    db,
+    ctx.institutionId,
+    range,
+    institution.modules.academic === true,
+  )
   const membershipIds = [...teacherIds.keys()]
-  const [lessons, absences, attendanceDays, staff, rates, records, entries] = await Promise.all([
-    loadSuggestionLessons(db, ctx.institutionId, match),
-    loadLeaveAbsences(db, ctx.institutionId, { startDate: range.from, endDate: range.to }),
-    institution.modules.academic === true
-      ? loadAttendanceClassDays(db, ctx.institutionId, match)
-      : Promise.resolve(null),
+  const [staff, rates, records, entries] = await Promise.all([
     loadPayrollStaff(db, ctx.institutionId, membershipIds),
     loadStaffPayRates(db, ctx.institutionId, membershipIds),
     loadTeachers(db, ctx.institutionId),
     loadMonthLessonHours(db, ctx.institutionId, monthStartOf(month)),
   ])
-  const holidays = await institutionHolidaysFor(db, ctx.institutionId, range)
   const people = new Map(staff.map((person) => [person.membershipId, person]))
   const teachers: SuggestionTeacher[] = membershipIds
     .filter((membershipId) => people.has(membershipId))
@@ -133,8 +160,7 @@ async function compute(
     lessons,
     teachers,
     holidays,
-    // Talep (bekleyen ya da onaylı) değil, kullanılmış izin ve rapor: ders fiilen yapılmadı.
-    absences: absences.filter((item) => item.source !== 'request'),
+    absences,
     attendanceDays,
   })
   return {

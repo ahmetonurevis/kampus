@@ -153,6 +153,7 @@ import { registerFinanceSchoolCalendarRoutes } from './routes/finance-school-cal
 import { registerFinanceMealSubscriptionRoutes } from './routes/finance-meal-subscriptions.ts'
 import { registerFinanceLessonHourSuggestionRoutes } from './routes/finance-lesson-hour-suggestions.ts'
 import { registerFinanceStaffSelfServiceRoutes } from './routes/finance-staff-self-service.ts'
+import { registerFinanceHourlyLessonPayoutRoutes } from './routes/finance-hourly-lesson-payouts.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -765,6 +766,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceMealSubscriptionRoutes(app)
   registerFinanceLessonHourSuggestionRoutes(app)
   registerFinanceStaffSelfServiceRoutes(app, storage)
+  registerFinanceHourlyLessonPayoutRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

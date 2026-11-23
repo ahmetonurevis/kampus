@@ -17872,6 +17872,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/hourly-lesson-payouts/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayın ders saati hakediş dökümü
+         * @description Saat ücretli öğretmenlerin ay dökümü (DOM-FIN-167, IST-087): öğretmen başına verilen ders ve saat, iptal, telafi, yedek ve yedeğe devredilen ders sayıları, ücret tanımı kırılımı ve tutar; kurum toplamı. Kaynak ders programıdır (iki kurum türünde de); ders durumu programdan ek ders önerisiyle aynı kuraldır: iptal, kurum tatili, öğretmenin kullanılmış izin ya da rapor günü, yedeğe devredilen ve henüz bitmemiş ders verilmemiş sayılır; yedek ders yedeğe, telafi dersi kendi kaydıyla verilmiş sayılır (DOM-FIN-165, K-550). Dil okulunda ayrıca açılmış grupların haftalık kalıbından oturum üretilir (plandan; grup iptal edildiyse iptal anından sonraki oturum iptal, öğretmenin aynı saatte programda dersi varsa oturum sayılmaz; K-557). Yalnız verilen ders ödenir: satır dersin gününde yürürlükteki ana ücretle fiyatlanır, ders saati ücreti × ders saati, saatlik ücret × dakika ÷ 60 (kuruşa yuvarlanır); o gün tanım yoksa ya da aylıksa tutar boş ve uyarılı (K-556). Kapsam: ayda dersi olan, ayla kesişen ana ücretlerinden biri saatlik ya da ders saati olan ya da hiç ana ücreti olmayan personel. Ekran okuması `finance.hourly_lesson_payout.read` denetimine düşer (tutar ve izin günü taşır). Her PDF verisi (`purpose=pdf`) ve CSV (`Accept: text/csv`; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, ders başına satır ve öğretmen toplamı) `finance.hourly_lesson_payout.export` denetimine düşer (yalnız alan adları), taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Döküm bordroya aktarılmaz (K-558). Rol: yalnız `yonetici` (K-558; muhasebe rolü yok). Modül `finance`.
+         */
+        get: operations["getHourlyLessonPayouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/hourly-lesson-payouts/{month}/teachers/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmenin gün gün ders saati hakediş dökümü
+         * @description Öğretmenin ay dökümü: gün gün her ders (sınıf ya da grup, ders, dakika, ders saati, durum, tür, telafi bağı, tatil adı, yoklama işareti), birim ücret ve tutar. Kaynak ders programıdır (iki kurum türünde de); ders durumu programdan ek ders önerisiyle aynı kuraldır: iptal, kurum tatili, öğretmenin kullanılmış izin ya da rapor günü, yedeğe devredilen ve henüz bitmemiş ders verilmemiş sayılır; yedek ders yedeğe, telafi dersi kendi kaydıyla verilmiş sayılır (DOM-FIN-165, K-550). Dil okulunda ayrıca açılmış grupların haftalık kalıbından oturum üretilir (plandan; grup iptal edildiyse iptal anından sonraki oturum iptal, öğretmenin aynı saatte programda dersi varsa oturum sayılmaz; K-557). Yalnız verilen ders ödenir: satır dersin gününde yürürlükteki ana ücretle fiyatlanır, ders saati ücreti × ders saati, saatlik ücret × dakika ÷ 60 (kuruşa yuvarlanır); o gün tanım yoksa ya da aylıksa tutar boş ve uyarılı (K-556). Kapsam: ayda dersi olan, ayla kesişen ana ücretlerinden biri saatlik ya da ders saati olan ya da hiç ana ücreti olmayan personel. Dökümde olmayan (aylık ücretli, ayda dersi yok) ya da başka kurumun üyeliği 404. Ekran okuması `finance.hourly_lesson_payout.read` denetimine düşer. Her PDF verisi (`purpose=pdf`) ve CSV (`Accept: text/csv`; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, ders başına satır ve öğretmen toplamı) `finance.hourly_lesson_payout.export` denetimine düşer (yalnız alan adları), taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-558; muhasebe rolü yok). Modül `finance`.
+         */
+        get: operations["getHourlyLessonPayoutDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/my-hourly-lesson-payouts/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ders saati hakediş dökümüm
+         * @description Oturumdaki personelin ay dökümü (self-servis, DOM-FIN-166): yönetici dökümüyle aynı içerik. İstekte personel kimliği yoktur. Dökümü yoksa (aylık ücretli ya da ayda dersi yok) `payout: null`; PDF ve CSV istenirse 404. Kaynak ders programıdır (iki kurum türünde de); ders durumu programdan ek ders önerisiyle aynı kuraldır: iptal, kurum tatili, öğretmenin kullanılmış izin ya da rapor günü, yedeğe devredilen ve henüz bitmemiş ders verilmemiş sayılır; yedek ders yedeğe, telafi dersi kendi kaydıyla verilmiş sayılır (DOM-FIN-165, K-550). Dil okulunda ayrıca açılmış grupların haftalık kalıbından oturum üretilir (plandan; grup iptal edildiyse iptal anından sonraki oturum iptal, öğretmenin aynı saatte programda dersi varsa oturum sayılmaz; K-557). Yalnız verilen ders ödenir: satır dersin gününde yürürlükteki ana ücretle fiyatlanır, ders saati ücreti × ders saati, saatlik ücret × dakika ÷ 60 (kuruşa yuvarlanır); o gün tanım yoksa ya da aylıksa tutar boş ve uyarılı (K-556). Kapsam: ayda dersi olan, ayla kesişen ana ücretlerinden biri saatlik ya da ders saati olan ya da hiç ana ücreti olmayan personel. Ekran okuması denetime düşmez. Her PDF verisi (`purpose=pdf`) ve CSV (`Accept: text/csv`; `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, ders başına satır ve öğretmen toplamı) `finance.hourly_lesson_payout.export` denetimine düşer (yalnız alan adları), taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Rol: personel (`yonetici`, `ogretmen`, `onburo`), yalnız kendi dökümü; öğrenci ve veli 403. Modül `finance`.
+         */
+        get: operations["getOwnHourlyLessonPayout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -187265,6 +187325,653 @@ export interface operations {
                             url: string;
                             /** @description Bağlantının geçerlilik sonu */
                             expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getHourlyLessonPayouts: {
+        parameters: {
+            query?: {
+                /** @description `view` ekran, `pdf` PDF verisi (taze oturum, `finance.hourly_lesson_payout.export` denetimi) */
+                purpose?: "view" | "pdf";
+            };
+            header?: never;
+            path: {
+                /** @description Döküm ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            monthComplete: boolean;
+                            attendanceKnown: boolean;
+                            /** @description Ayda dersi olan saat ücretli ya da ücret tanımsız öğretmenler, ada göre */
+                            teachers: {
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `hourly` saat ya da ders saati ücretli, `mixed` ay içinde aylık ve saat ücreti, `unknown` ayda ana ücret tanımı yok
+                                 * @enum {string}
+                                 */
+                                payBasis: "hourly" | "mixed" | "unknown";
+                                totals: {
+                                    /** @description Ayın bütün ders satırları */
+                                    lessons: number;
+                                    /** @description Verilen ders sayısı */
+                                    givenLessons: number;
+                                    /** @description Verilen ders saati */
+                                    givenHours: number;
+                                    /** @description Verilen dersin dakikası */
+                                    givenMinutes: number;
+                                    /** @description Kendi dersi (verilen) */
+                                    ownHours: number;
+                                    /** @description Yedek girdiği ders (verilen) */
+                                    substituteHours: number;
+                                    /** @description Verilen telafi dersi sayısı */
+                                    makeupLessons: number;
+                                    /** @description Verilen telafi ders saati */
+                                    makeupHours: number;
+                                    /** @description Plandan grup dersi (verilen) */
+                                    groupHours: number;
+                                    /** @description İptal edilen ders sayısı */
+                                    cancelledLessons: number;
+                                    /** @description İptal edilen ders saati */
+                                    cancelledHours: number;
+                                    /** @description Yedeğe devredilen ders sayısı */
+                                    substitutedOutLessons: number;
+                                    /** @description Tatile denk gelen ders sayısı */
+                                    holidayLessons: number;
+                                    /** @description Öğretmenin izinli ya da raporlu olduğu gündeki ders sayısı */
+                                    leaveLessons: number;
+                                    /** @description Henüz yapılmamış ders sayısı */
+                                    upcomingLessons: number;
+                                    /** @description Programla çakıştığı için sayılmayan grup oturumu */
+                                    duplicateLessons: number;
+                                    /** @description Sınıfın o günü yoklaması alınmamış verilen ders */
+                                    attendanceMissingLessons: number;
+                                    /** @description Fiyatlanan derslerin toplamı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Verilip tutarı hesaplanamayan ders saati */
+                                    unpricedHours: number;
+                                };
+                                /** @description Ay içinde uygulanan ücret tanımları (değişirse birden çok) */
+                                rates: {
+                                    /**
+                                     * @description `hourly` saatlik (dakikadan), `lesson_hour` ders saati ücreti
+                                     * @enum {string}
+                                     */
+                                    rateType: "hourly" | "lesson_hour";
+                                    /** @description Birim ücret (kuruş) */
+                                    rateCents: number;
+                                    startDate: string;
+                                    endDate: string | null;
+                                    /** @description Bu ücretle fiyatlanan ders */
+                                    lessons: number;
+                                    /** @description Ders saati */
+                                    hours: number;
+                                    /** @description Dakika */
+                                    minutes: number;
+                                    /** @description Tutar (kuruş) */
+                                    amountCents: number;
+                                }[];
+                                /** @description `no_pay_rate` ana ücret yok, `rate_gap` bazı günlerde tanım yok, `monthly_days` bazı günlerde aylık ücret, `attendance_missing` yoklama alınmamış gün, `group_plan` grup dersleri plandan, `duplicate` programla çakışan grup oturumu */
+                                warnings: ("no_pay_rate" | "rate_gap" | "monthly_days" | "attendance_missing" | "group_plan" | "duplicate")[];
+                            }[];
+                            totals: {
+                                /** @description Öğretmen */
+                                teacherCount: number;
+                                /** @description Verilen ders */
+                                givenLessons: number;
+                                /** @description Verilen ders saati */
+                                givenHours: number;
+                                /** @description İptal edilen ders */
+                                cancelledLessons: number;
+                                /** @description Verilen telafi dersi */
+                                makeupLessons: number;
+                                /** @description Toplam tutar (kuruş) */
+                                amountCents: number;
+                                /** @description Tutarı eksik kalan öğretmen */
+                                unpricedTeacherCount: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getHourlyLessonPayoutDetail: {
+        parameters: {
+            query?: {
+                /** @description `view` ekran, `pdf` PDF verisi (taze oturum, `finance.hourly_lesson_payout.export` denetimi) */
+                purpose?: "view" | "pdf";
+            };
+            header?: never;
+            path: {
+                /** @description Döküm ayı (YYYY-AA) */
+                month: string;
+                /** @description Öğretmenin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            staffActive: boolean;
+                            /**
+                             * @description `hourly` saat ya da ders saati ücretli, `mixed` ay içinde aylık ve saat ücreti, `unknown` ayda ana ücret tanımı yok
+                             * @enum {string}
+                             */
+                            payBasis: "hourly" | "mixed" | "unknown";
+                            totals: {
+                                /** @description Ayın bütün ders satırları */
+                                lessons: number;
+                                /** @description Verilen ders sayısı */
+                                givenLessons: number;
+                                /** @description Verilen ders saati */
+                                givenHours: number;
+                                /** @description Verilen dersin dakikası */
+                                givenMinutes: number;
+                                /** @description Kendi dersi (verilen) */
+                                ownHours: number;
+                                /** @description Yedek girdiği ders (verilen) */
+                                substituteHours: number;
+                                /** @description Verilen telafi dersi sayısı */
+                                makeupLessons: number;
+                                /** @description Verilen telafi ders saati */
+                                makeupHours: number;
+                                /** @description Plandan grup dersi (verilen) */
+                                groupHours: number;
+                                /** @description İptal edilen ders sayısı */
+                                cancelledLessons: number;
+                                /** @description İptal edilen ders saati */
+                                cancelledHours: number;
+                                /** @description Yedeğe devredilen ders sayısı */
+                                substitutedOutLessons: number;
+                                /** @description Tatile denk gelen ders sayısı */
+                                holidayLessons: number;
+                                /** @description Öğretmenin izinli ya da raporlu olduğu gündeki ders sayısı */
+                                leaveLessons: number;
+                                /** @description Henüz yapılmamış ders sayısı */
+                                upcomingLessons: number;
+                                /** @description Programla çakıştığı için sayılmayan grup oturumu */
+                                duplicateLessons: number;
+                                /** @description Sınıfın o günü yoklaması alınmamış verilen ders */
+                                attendanceMissingLessons: number;
+                                /** @description Fiyatlanan derslerin toplamı (kuruş) */
+                                amountCents: number;
+                                /** @description Verilip tutarı hesaplanamayan ders saati */
+                                unpricedHours: number;
+                            };
+                            /** @description Ay içinde uygulanan ücret tanımları (değişirse birden çok) */
+                            rates: {
+                                /**
+                                 * @description `hourly` saatlik (dakikadan), `lesson_hour` ders saati ücreti
+                                 * @enum {string}
+                                 */
+                                rateType: "hourly" | "lesson_hour";
+                                /** @description Birim ücret (kuruş) */
+                                rateCents: number;
+                                startDate: string;
+                                endDate: string | null;
+                                /** @description Bu ücretle fiyatlanan ders */
+                                lessons: number;
+                                /** @description Ders saati */
+                                hours: number;
+                                /** @description Dakika */
+                                minutes: number;
+                                /** @description Tutar (kuruş) */
+                                amountCents: number;
+                            }[];
+                            /** @description `no_pay_rate` ana ücret yok, `rate_gap` bazı günlerde tanım yok, `monthly_days` bazı günlerde aylık ücret, `attendance_missing` yoklama alınmamış gün, `group_plan` grup dersleri plandan, `duplicate` programla çakışan grup oturumu */
+                            warnings: ("no_pay_rate" | "rate_gap" | "monthly_days" | "attendance_missing" | "group_plan" | "duplicate")[];
+                            month: string;
+                            /** @description Ay bitti mi; bitmediyse gelecek dersler sayılmaz */
+                            monthComplete: boolean;
+                            /** @description Yoklama okunabildi mi (`academic` modülü açık) */
+                            attendanceKnown: boolean;
+                            /** @description Ayın dersi olan günleri ve dersleri */
+                            days: {
+                                day: string;
+                                lines: {
+                                    /** @description Ders programı kaydı ya da `group:<grup>:<gün>:<saat>` */
+                                    lessonId: string;
+                                    /**
+                                     * @description `schedule` ders programı, `group` grup planı
+                                     * @enum {string}
+                                     */
+                                    source: "schedule" | "group";
+                                    day: string;
+                                    startsAt: string;
+                                    /** @description Dakika */
+                                    minutes: number;
+                                    /** @description Ders saati (programda 40, grupta 45 dakika; en az 1) */
+                                    hours: number;
+                                    classId: string | null;
+                                    groupId: string | null;
+                                    subjectId: string | null;
+                                    /** @description Ders ya da kur adı */
+                                    title: string | null;
+                                    /** @description Sınıf ya da grup adı; kayıt yoksa boş */
+                                    placeName: string | null;
+                                    /**
+                                     * @description `counted` verildi, `cancelled` iptal, `holiday` tatil, `leave` öğretmen izinli, `substituted_out` yedeğe devredildi, `upcoming` henüz yapılmadı, `duplicate` programla çakışan grup oturumu
+                                     * @enum {string}
+                                     */
+                                    status: "counted" | "cancelled" | "holiday" | "leave" | "substituted_out" | "upcoming" | "duplicate";
+                                    /**
+                                     * @description `own` kendi dersi, `substitute` yedek, `makeup` telafi, `group` grup dersi
+                                     * @enum {string}
+                                     */
+                                    kind: "own" | "substitute" | "makeup" | "group";
+                                    makeupForLessonId: string | null;
+                                    holidayTitle: string | null;
+                                    attendanceMissing: boolean | null;
+                                    rateType: ("hourly" | "lesson_hour") | null;
+                                    rateCents: number | null;
+                                    /** @description Satır tutarı (kuruş); fiyatlanamadıysa boş */
+                                    amountCents: number | null;
+                                    /** @description Verilen dersin tutarı neden boş: `no_rate` tanım yok, `monthly` aylık ücret */
+                                    unpriced: ("no_rate" | "monthly") | null;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOwnHourlyLessonPayout: {
+        parameters: {
+            query?: {
+                /** @description `view` ekran, `pdf` PDF verisi (taze oturum, `finance.hourly_lesson_payout.export` denetimi) */
+                purpose?: "view" | "pdf";
+            };
+            header?: never;
+            path: {
+                /** @description Döküm ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /** @description Dökümün yoksa (aylık ücretli ya da dersin yok) boş */
+                            payout: {
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `hourly` saat ya da ders saati ücretli, `mixed` ay içinde aylık ve saat ücreti, `unknown` ayda ana ücret tanımı yok
+                                 * @enum {string}
+                                 */
+                                payBasis: "hourly" | "mixed" | "unknown";
+                                totals: {
+                                    /** @description Ayın bütün ders satırları */
+                                    lessons: number;
+                                    /** @description Verilen ders sayısı */
+                                    givenLessons: number;
+                                    /** @description Verilen ders saati */
+                                    givenHours: number;
+                                    /** @description Verilen dersin dakikası */
+                                    givenMinutes: number;
+                                    /** @description Kendi dersi (verilen) */
+                                    ownHours: number;
+                                    /** @description Yedek girdiği ders (verilen) */
+                                    substituteHours: number;
+                                    /** @description Verilen telafi dersi sayısı */
+                                    makeupLessons: number;
+                                    /** @description Verilen telafi ders saati */
+                                    makeupHours: number;
+                                    /** @description Plandan grup dersi (verilen) */
+                                    groupHours: number;
+                                    /** @description İptal edilen ders sayısı */
+                                    cancelledLessons: number;
+                                    /** @description İptal edilen ders saati */
+                                    cancelledHours: number;
+                                    /** @description Yedeğe devredilen ders sayısı */
+                                    substitutedOutLessons: number;
+                                    /** @description Tatile denk gelen ders sayısı */
+                                    holidayLessons: number;
+                                    /** @description Öğretmenin izinli ya da raporlu olduğu gündeki ders sayısı */
+                                    leaveLessons: number;
+                                    /** @description Henüz yapılmamış ders sayısı */
+                                    upcomingLessons: number;
+                                    /** @description Programla çakıştığı için sayılmayan grup oturumu */
+                                    duplicateLessons: number;
+                                    /** @description Sınıfın o günü yoklaması alınmamış verilen ders */
+                                    attendanceMissingLessons: number;
+                                    /** @description Fiyatlanan derslerin toplamı (kuruş) */
+                                    amountCents: number;
+                                    /** @description Verilip tutarı hesaplanamayan ders saati */
+                                    unpricedHours: number;
+                                };
+                                /** @description Ay içinde uygulanan ücret tanımları (değişirse birden çok) */
+                                rates: {
+                                    /**
+                                     * @description `hourly` saatlik (dakikadan), `lesson_hour` ders saati ücreti
+                                     * @enum {string}
+                                     */
+                                    rateType: "hourly" | "lesson_hour";
+                                    /** @description Birim ücret (kuruş) */
+                                    rateCents: number;
+                                    startDate: string;
+                                    endDate: string | null;
+                                    /** @description Bu ücretle fiyatlanan ders */
+                                    lessons: number;
+                                    /** @description Ders saati */
+                                    hours: number;
+                                    /** @description Dakika */
+                                    minutes: number;
+                                    /** @description Tutar (kuruş) */
+                                    amountCents: number;
+                                }[];
+                                /** @description `no_pay_rate` ana ücret yok, `rate_gap` bazı günlerde tanım yok, `monthly_days` bazı günlerde aylık ücret, `attendance_missing` yoklama alınmamış gün, `group_plan` grup dersleri plandan, `duplicate` programla çakışan grup oturumu */
+                                warnings: ("no_pay_rate" | "rate_gap" | "monthly_days" | "attendance_missing" | "group_plan" | "duplicate")[];
+                                month: string;
+                                /** @description Ay bitti mi; bitmediyse gelecek dersler sayılmaz */
+                                monthComplete: boolean;
+                                /** @description Yoklama okunabildi mi (`academic` modülü açık) */
+                                attendanceKnown: boolean;
+                                /** @description Ayın dersi olan günleri ve dersleri */
+                                days: {
+                                    day: string;
+                                    lines: {
+                                        /** @description Ders programı kaydı ya da `group:<grup>:<gün>:<saat>` */
+                                        lessonId: string;
+                                        /**
+                                         * @description `schedule` ders programı, `group` grup planı
+                                         * @enum {string}
+                                         */
+                                        source: "schedule" | "group";
+                                        day: string;
+                                        startsAt: string;
+                                        /** @description Dakika */
+                                        minutes: number;
+                                        /** @description Ders saati (programda 40, grupta 45 dakika; en az 1) */
+                                        hours: number;
+                                        classId: string | null;
+                                        groupId: string | null;
+                                        subjectId: string | null;
+                                        /** @description Ders ya da kur adı */
+                                        title: string | null;
+                                        /** @description Sınıf ya da grup adı; kayıt yoksa boş */
+                                        placeName: string | null;
+                                        /**
+                                         * @description `counted` verildi, `cancelled` iptal, `holiday` tatil, `leave` öğretmen izinli, `substituted_out` yedeğe devredildi, `upcoming` henüz yapılmadı, `duplicate` programla çakışan grup oturumu
+                                         * @enum {string}
+                                         */
+                                        status: "counted" | "cancelled" | "holiday" | "leave" | "substituted_out" | "upcoming" | "duplicate";
+                                        /**
+                                         * @description `own` kendi dersi, `substitute` yedek, `makeup` telafi, `group` grup dersi
+                                         * @enum {string}
+                                         */
+                                        kind: "own" | "substitute" | "makeup" | "group";
+                                        makeupForLessonId: string | null;
+                                        holidayTitle: string | null;
+                                        attendanceMissing: boolean | null;
+                                        rateType: ("hourly" | "lesson_hour") | null;
+                                        rateCents: number | null;
+                                        /** @description Satır tutarı (kuruş); fiyatlanamadıysa boş */
+                                        amountCents: number | null;
+                                        /** @description Verilen dersin tutarı neden boş: `no_rate` tanım yok, `monthly` aylık ücret */
+                                        unpriced: ("no_rate" | "monthly") | null;
+                                    }[];
+                                }[];
+                            } | null;
                         };
                     };
                 };

@@ -395172,6 +395172,2029 @@
         }
       }
     },
+    "/api/v1/finance/lesson-hour-suggestions/{month}": {
+      "get": {
+        "operationId": "getLessonHourSuggestions",
+        "summary": "Ayın programdan ek ders önerisi",
+        "tags": [
+          "finance-lesson-hour-suggestions"
+        ],
+        "description": "Ayın ek ders saati önerisi (DOM-FIN-165): ayda dersi olan, personel üyeliğine bağlı her öğretmen için önerilen ek ders saati, sayım özeti, haftalar, ayın elle girilen ek ders saatiyle fark ve son aktarım. Ders programındaki her ders 40 dakikalık ders saati sayısı kadar (en az 1) sayılır; iptal, kurum tatili (okul takvimi), öğretmenin izinli ya da raporlu olduğu gün ve henüz bitmemiş ders sayılmaz; yedek atanan ders yedeğe sayılır; telafi kendi kaydıyla sayılır (K-550). Hafta hafta (pazartesi–pazar) ilk `weeklyLoad` saat maaş karşılığı, `weeklyCap` saate kadarı ek derstir, üstü sayılmaz; ay sonunu kesen haftada ek ders dersin gününün ayına yazılır; saat ya da ders saati ücretli öğretmene öneri verilmez (K-551). Öneri saklanmaz. Dersi olup üyeliğe bağlı olmayan öğretmen kaydı `unlinked`'tedir. `transferable` aktarımın yapılabildiğini gösterir. Tutar dönmez; okuma denetime düşmez. Rol: yalnız `yonetici` (K-552). Modül `finance`; yalnız okul türünde kurum.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 15,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 40
+            },
+            "in": "query",
+            "name": "weeklyLoad",
+            "required": false,
+            "description": "Maaş karşılığı haftalık ders saati (0–40, varsayılan 15)"
+          },
+          {
+            "schema": {
+              "default": 30,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "in": "query",
+            "name": "weeklyCap",
+            "required": false,
+            "description": "Maaş karşılığı dahil haftalık toplam ders üst sınırı (1–60, varsayılan 30)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Öneri ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "weeklyLoad": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "weeklyCap": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "rangeFrom": {
+                          "type": "string",
+                          "description": "Okunan aralığın ilk günü (ayın ilk haftasının pazartesisi)"
+                        },
+                        "rangeTo": {
+                          "type": "string",
+                          "description": "Okunan aralığın son günü (ayın son haftasının pazarı)"
+                        },
+                        "monthComplete": {
+                          "type": "boolean",
+                          "description": "Ay bitti mi; bitmediyse gelecek dersler sayılmaz"
+                        },
+                        "attendanceKnown": {
+                          "type": "boolean",
+                          "description": "Yoklama okunabildi mi (`academic` modülü açık)"
+                        },
+                        "sheetStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "Ayın ek ders çizelgesi durumu"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean"
+                        },
+                        "transferable": {
+                          "type": "boolean",
+                          "description": "Aktarım yapılabilir mi (çizelge onaylı ve dönem kilitli değil, ay gelecekte değil)"
+                        },
+                        "teachers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "payBasis": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly",
+                                  "hourly",
+                                  "unknown"
+                                ],
+                                "description": "`monthly` aylık ücretli, `hourly` saat ya da ders saati ücretli (öneri yok), `unknown` ana ücret tanımı yok (aylık sayıldı)"
+                              },
+                              "applicable": {
+                                "type": "boolean",
+                                "description": "Öneri verilir mi"
+                              },
+                              "suggestedHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Önerilen ek ders saati; öneri yoksa boş"
+                              },
+                              "currentHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Ayın elle girilen ek ders (`extra`) saati; kayıt yoksa boş"
+                              },
+                              "currentEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "difference": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Elle giriş eksi öneri (kayıt yoksa 0 sayılır); öneri yoksa boş"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "countedHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ayda sayılan ders saati (kendi, yedek ve telafi)"
+                                  },
+                                  "ownHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kendi dersi"
+                                  },
+                                  "substituteHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yedek girdiği ders"
+                                  },
+                                  "makeupHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Telafi dersi"
+                                  },
+                                  "loadHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Maaş karşılığına sayılan saat"
+                                  },
+                                  "extraHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ek ders sayılan saat (öneri)"
+                                  },
+                                  "overCapHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Haftalık üst sınırı aşan, sayılmayan saat"
+                                  },
+                                  "cancelledHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İptal edilen ders"
+                                  },
+                                  "holidayHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tatile denk gelen ders"
+                                  },
+                                  "leaveHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğretmenin izinli ya da raporlu olduğu gündeki dersi"
+                                  },
+                                  "substitutedOutHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yedeğe devredilen ders"
+                                  },
+                                  "upcomingHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Henüz yapılmamış ders"
+                                  },
+                                  "attendanceMissingLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Sınıfın o günü yoklaması alınmamış sayılan ders sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "countedHours",
+                                  "ownHours",
+                                  "substituteHours",
+                                  "makeupHours",
+                                  "loadHours",
+                                  "extraHours",
+                                  "overCapHours",
+                                  "cancelledHours",
+                                  "holidayHours",
+                                  "leaveHours",
+                                  "substitutedOutHours",
+                                  "upcomingHours",
+                                  "attendanceMissingLessons"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "weeks": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "startDate": {
+                                      "type": "string",
+                                      "description": "Hafta pazartesisi"
+                                    },
+                                    "endDate": {
+                                      "type": "string",
+                                      "description": "Hafta pazarı"
+                                    },
+                                    "monthFrom": {
+                                      "type": "string",
+                                      "description": "Haftanın bu aya düşen ilk günü"
+                                    },
+                                    "monthTo": {
+                                      "type": "string",
+                                      "description": "Haftanın bu aya düşen son günü"
+                                    },
+                                    "countedHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Haftanın sayılan saati (ay dışı günler dahil)"
+                                    },
+                                    "loadHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Maaş karşılığı"
+                                    },
+                                    "extraHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ek ders"
+                                    },
+                                    "overCapHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Üst sınır üstü"
+                                    },
+                                    "extraInMonth": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ek dersin bu aya düşen kısmı"
+                                    }
+                                  },
+                                  "required": [
+                                    "startDate",
+                                    "endDate",
+                                    "monthFrom",
+                                    "monthTo",
+                                    "countedHours",
+                                    "loadHours",
+                                    "extraHours",
+                                    "overCapHours",
+                                    "extraInMonth"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Ayla kesişen haftalar (sayılan dersi olanlar)"
+                              },
+                              "warnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "no_pay_rate",
+                                    "over_cap",
+                                    "attendance_missing"
+                                  ]
+                                },
+                                "description": "`no_pay_rate` ücret tanımı yok, `over_cap` üst sınır aşıldı, `attendance_missing` yoklaması alınmamış ders günü"
+                              },
+                              "lastTransfer": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "suggestedHours": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Aktarım anındaki öneri"
+                                      },
+                                      "previousHours": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Aktarımdan önceki elle giriş; yoksa boş"
+                                      },
+                                      "hours": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Yazılan saat"
+                                      },
+                                      "reason": {
+                                        "description": "Öneriden farkın gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "weeklyLoad": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "weeklyCap": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "createdByName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "createdAt": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "suggestedHours",
+                                      "previousHours",
+                                      "hours",
+                                      "reason",
+                                      "weeklyLoad",
+                                      "weeklyCap",
+                                      "createdByName",
+                                      "createdAt"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bu ayın son aktarımı"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "payBasis",
+                              "applicable",
+                              "suggestedHours",
+                              "currentHours",
+                              "currentEntryId",
+                              "difference",
+                              "totals",
+                              "weeks",
+                              "warnings",
+                              "lastTransfer"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayda dersi olan öğretmenler, ada göre"
+                        },
+                        "unlinked": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "teacherId": {
+                                "type": "string"
+                              },
+                              "teacherName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "countedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "teacherId",
+                              "teacherName",
+                              "countedHours"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Dersi olup personel üyeliğine bağlı olmayan öğretmen kayıtları (aktarılamaz)"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "teacherCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "suggestedHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "currentHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "teacherCount",
+                            "suggestedHours",
+                            "currentHours"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "weeklyLoad",
+                        "weeklyCap",
+                        "rangeFrom",
+                        "rangeTo",
+                        "monthComplete",
+                        "attendanceKnown",
+                        "sheetStatus",
+                        "payrollLocked",
+                        "transferable",
+                        "teachers",
+                        "unlinked",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-suggestions/{month}/teachers/{membershipId}": {
+      "get": {
+        "operationId": "getLessonHourSuggestionDetail",
+        "summary": "Öğretmenin gün gün ek ders dökümü",
+        "tags": [
+          "finance-lesson-hour-suggestions"
+        ],
+        "description": "Öğretmenin ay dökümü (K-550): gün gün hangi ders, hangi sınıf, kaç ders saati, sayıldı mı ve neden (`counted`, `cancelled`, `holiday`, `leave`, `substituted_out`, `upcoming`), yedek ve telafi, maaş karşılığı/ek ders/üst sınır üstü dağılımı, yoklama işareti; ayın aktarımları. İzin ve rapor ayrılmaz. Ayda dersi olmayan, üyeliğe bağlı olmayan ya da başka kurumun üyeliği 404. Rol: yalnız `yonetici` (K-552). Modül `finance`; yalnız okul türünde kurum.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 15,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 40
+            },
+            "in": "query",
+            "name": "weeklyLoad",
+            "required": false,
+            "description": "Maaş karşılığı haftalık ders saati (0–40, varsayılan 15)"
+          },
+          {
+            "schema": {
+              "default": 30,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60
+            },
+            "in": "query",
+            "name": "weeklyCap",
+            "required": false,
+            "description": "Maaş karşılığı dahil haftalık toplam ders üst sınırı (1–60, varsayılan 30)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Öneri ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Öğretmenin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "staffName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean"
+                        },
+                        "payBasis": {
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "hourly",
+                            "unknown"
+                          ],
+                          "description": "`monthly` aylık ücretli, `hourly` saat ya da ders saati ücretli (öneri yok), `unknown` ana ücret tanımı yok (aylık sayıldı)"
+                        },
+                        "applicable": {
+                          "type": "boolean",
+                          "description": "Öneri verilir mi"
+                        },
+                        "suggestedHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Önerilen ek ders saati; öneri yoksa boş"
+                        },
+                        "currentHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ayın elle girilen ek ders (`extra`) saati; kayıt yoksa boş"
+                        },
+                        "currentEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "difference": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Elle giriş eksi öneri (kayıt yoksa 0 sayılır); öneri yoksa boş"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "countedHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayda sayılan ders saati (kendi, yedek ve telafi)"
+                            },
+                            "ownHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kendi dersi"
+                            },
+                            "substituteHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yedek girdiği ders"
+                            },
+                            "makeupHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Telafi dersi"
+                            },
+                            "loadHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Maaş karşılığına sayılan saat"
+                            },
+                            "extraHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ek ders sayılan saat (öneri)"
+                            },
+                            "overCapHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Haftalık üst sınırı aşan, sayılmayan saat"
+                            },
+                            "cancelledHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal edilen ders"
+                            },
+                            "holidayHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tatile denk gelen ders"
+                            },
+                            "leaveHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Öğretmenin izinli ya da raporlu olduğu gündeki dersi"
+                            },
+                            "substitutedOutHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yedeğe devredilen ders"
+                            },
+                            "upcomingHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Henüz yapılmamış ders"
+                            },
+                            "attendanceMissingLessons": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Sınıfın o günü yoklaması alınmamış sayılan ders sayısı"
+                            }
+                          },
+                          "required": [
+                            "countedHours",
+                            "ownHours",
+                            "substituteHours",
+                            "makeupHours",
+                            "loadHours",
+                            "extraHours",
+                            "overCapHours",
+                            "cancelledHours",
+                            "holidayHours",
+                            "leaveHours",
+                            "substitutedOutHours",
+                            "upcomingHours",
+                            "attendanceMissingLessons"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "weeks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "startDate": {
+                                "type": "string",
+                                "description": "Hafta pazartesisi"
+                              },
+                              "endDate": {
+                                "type": "string",
+                                "description": "Hafta pazarı"
+                              },
+                              "monthFrom": {
+                                "type": "string",
+                                "description": "Haftanın bu aya düşen ilk günü"
+                              },
+                              "monthTo": {
+                                "type": "string",
+                                "description": "Haftanın bu aya düşen son günü"
+                              },
+                              "countedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Haftanın sayılan saati (ay dışı günler dahil)"
+                              },
+                              "loadHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Maaş karşılığı"
+                              },
+                              "extraHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ek ders"
+                              },
+                              "overCapHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Üst sınır üstü"
+                              },
+                              "extraInMonth": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ek dersin bu aya düşen kısmı"
+                              }
+                            },
+                            "required": [
+                              "startDate",
+                              "endDate",
+                              "monthFrom",
+                              "monthTo",
+                              "countedHours",
+                              "loadHours",
+                              "extraHours",
+                              "overCapHours",
+                              "extraInMonth"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayla kesişen haftalar (sayılan dersi olanlar)"
+                        },
+                        "warnings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "no_pay_rate",
+                              "over_cap",
+                              "attendance_missing"
+                            ]
+                          },
+                          "description": "`no_pay_rate` ücret tanımı yok, `over_cap` üst sınır aşıldı, `attendance_missing` yoklaması alınmamış ders günü"
+                        },
+                        "lastTransfer": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "suggestedHours": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Aktarım anındaki öneri"
+                                },
+                                "previousHours": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Aktarımdan önceki elle giriş; yoksa boş"
+                                },
+                                "hours": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yazılan saat"
+                                },
+                                "reason": {
+                                  "description": "Öneriden farkın gerekçesi",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "weeklyLoad": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "weeklyCap": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "createdByName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "suggestedHours",
+                                "previousHours",
+                                "hours",
+                                "reason",
+                                "weeklyLoad",
+                                "weeklyCap",
+                                "createdByName",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bu ayın son aktarımı"
+                        },
+                        "month": {
+                          "type": "string"
+                        },
+                        "weeklyLoad": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "weeklyCap": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "days": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "string"
+                              },
+                              "items": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "lessonId": {
+                                      "type": "string"
+                                    },
+                                    "day": {
+                                      "type": "string"
+                                    },
+                                    "startsAt": {
+                                      "type": "string"
+                                    },
+                                    "classId": {
+                                      "type": "string"
+                                    },
+                                    "subjectId": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "hours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Dersin ders saati sayısı (40 dakika, en az 1)"
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "counted",
+                                        "cancelled",
+                                        "holiday",
+                                        "leave",
+                                        "substituted_out",
+                                        "upcoming"
+                                      ],
+                                      "description": "`counted` sayıldı, `cancelled` iptal, `holiday` tatil, `leave` öğretmen izinli, `substituted_out` yedeğe devredildi, `upcoming` henüz yapılmadı"
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "own",
+                                        "substitute",
+                                        "makeup"
+                                      ],
+                                      "description": "`own` kendi dersi, `substitute` yedek, `makeup` telafi"
+                                    },
+                                    "loadHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "extraHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "overCapHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "attendanceMissing": {
+                                      "description": "Sınıfın o günü yoklaması alınmadı; yoklama okunamadıysa ya da ders sayılmadıysa boş",
+                                      "type": [
+                                        "boolean",
+                                        "null"
+                                      ]
+                                    },
+                                    "makeupForLessonId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "holidayTitle": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "lessonId",
+                                    "day",
+                                    "startsAt",
+                                    "classId",
+                                    "subjectId",
+                                    "title",
+                                    "hours",
+                                    "status",
+                                    "kind",
+                                    "loadHours",
+                                    "extraHours",
+                                    "overCapHours",
+                                    "attendanceMissing",
+                                    "makeupForLessonId",
+                                    "holidayTitle"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "items"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayın dersi olan günleri ve dersleri"
+                        },
+                        "transfers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "suggestedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Aktarım anındaki öneri"
+                              },
+                              "previousHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Aktarımdan önceki elle giriş; yoksa boş"
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yazılan saat"
+                              },
+                              "reason": {
+                                "description": "Öneriden farkın gerekçesi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weeklyLoad": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "weeklyCap": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "suggestedHours",
+                              "previousHours",
+                              "hours",
+                              "reason",
+                              "weeklyLoad",
+                              "weeklyCap",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bu ayın aktarımları, yeniden eskiye"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "staffName",
+                        "role",
+                        "staffActive",
+                        "payBasis",
+                        "applicable",
+                        "suggestedHours",
+                        "currentHours",
+                        "currentEntryId",
+                        "difference",
+                        "totals",
+                        "weeks",
+                        "warnings",
+                        "lastTransfer",
+                        "month",
+                        "weeklyLoad",
+                        "weeklyCap",
+                        "days",
+                        "transfers"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-suggestions/{month}/transfers": {
+      "post": {
+        "operationId": "transferLessonHourSuggestions",
+        "summary": "Öneriyi elle ek ders girişine aktar",
+        "tags": [
+          "finance-lesson-hour-suggestions"
+        ],
+        "description": "Öğretmen başına öneri (ya da düzeltilmiş saat) ayın elle girilen ek ders (`extra`) saatine yazılır; kayıt yoksa açılır, varsa saati düzeltilir (notu korunur). Tek ya da toplu (en çok 200) aktarım tek işlemdir: biri reddedilirse hiçbiri yazılmaz (K-552). `suggestedHours` ekrandaki öneridir; sunucunun öneriyle aynı değilse 409 `lesson_suggestion_changed`. Öneriden farklı saat gerekçe ister (5–500; yoksa 422 `lesson_suggestion_reason_required`); elle giriş zaten bu saatteyse 422 `lesson_suggestion_unchanged`; öneri yoksa (dersi yok, saat ücretli, başka kurumun üyeliği) 422 `lesson_suggestion_not_found`; gelecek ay 422 `payroll_lesson_hours_future_month`. Müdür onaylı ayda 409 `lesson_hours_locked`, bordro dönemi kilitli ayda 409 `payroll_period_locked` (K-410). Her satır değişmez aktarım kaydı (önerilen, önceki ve yazılan saat, gerekçe, parametreler) ve denetim kaydı yazar; denetime saat ve gerekçe yazılmaz. Teyit alınmış personelin teyidi saat değişince yeniden istenir (DOM-FIN-120). Yanıt güncel öneridir. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-552). Modül `finance`; yalnız okul türünde kurum.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "weeklyLoad": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 40,
+                    "description": "Maaş karşılığı haftalık ders saati (0–40, varsayılan 15)"
+                  },
+                  "weeklyCap": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60,
+                    "description": "Maaş karşılığı dahil haftalık toplam ders üst sınırı (1–60, varsayılan 30)"
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "description": "Öğretmenin kurum üyeliği"
+                        },
+                        "suggestedHours": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 400,
+                          "description": "Ekranda görülen öneri; sunucudaki öneriyle aynı olmalıdır"
+                        },
+                        "hours": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 400,
+                          "description": "Elle girişe yazılacak saat (öneri ya da düzeltilmiş saat)"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Öneriden farklı saatte zorunlu gerekçe (5–500)"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "suggestedHours",
+                        "hours"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "weeklyLoad",
+                  "weeklyCap",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Öneri ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "weeklyLoad": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "weeklyCap": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "rangeFrom": {
+                          "type": "string",
+                          "description": "Okunan aralığın ilk günü (ayın ilk haftasının pazartesisi)"
+                        },
+                        "rangeTo": {
+                          "type": "string",
+                          "description": "Okunan aralığın son günü (ayın son haftasının pazarı)"
+                        },
+                        "monthComplete": {
+                          "type": "boolean",
+                          "description": "Ay bitti mi; bitmediyse gelecek dersler sayılmaz"
+                        },
+                        "attendanceKnown": {
+                          "type": "boolean",
+                          "description": "Yoklama okunabildi mi (`academic` modülü açık)"
+                        },
+                        "sheetStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "Ayın ek ders çizelgesi durumu"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean"
+                        },
+                        "transferable": {
+                          "type": "boolean",
+                          "description": "Aktarım yapılabilir mi (çizelge onaylı ve dönem kilitli değil, ay gelecekte değil)"
+                        },
+                        "teachers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "payBasis": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly",
+                                  "hourly",
+                                  "unknown"
+                                ],
+                                "description": "`monthly` aylık ücretli, `hourly` saat ya da ders saati ücretli (öneri yok), `unknown` ana ücret tanımı yok (aylık sayıldı)"
+                              },
+                              "applicable": {
+                                "type": "boolean",
+                                "description": "Öneri verilir mi"
+                              },
+                              "suggestedHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Önerilen ek ders saati; öneri yoksa boş"
+                              },
+                              "currentHours": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Ayın elle girilen ek ders (`extra`) saati; kayıt yoksa boş"
+                              },
+                              "currentEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "difference": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Elle giriş eksi öneri (kayıt yoksa 0 sayılır); öneri yoksa boş"
+                              },
+                              "totals": {
+                                "type": "object",
+                                "properties": {
+                                  "countedHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ayda sayılan ders saati (kendi, yedek ve telafi)"
+                                  },
+                                  "ownHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kendi dersi"
+                                  },
+                                  "substituteHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yedek girdiği ders"
+                                  },
+                                  "makeupHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Telafi dersi"
+                                  },
+                                  "loadHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Maaş karşılığına sayılan saat"
+                                  },
+                                  "extraHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ek ders sayılan saat (öneri)"
+                                  },
+                                  "overCapHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Haftalık üst sınırı aşan, sayılmayan saat"
+                                  },
+                                  "cancelledHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "İptal edilen ders"
+                                  },
+                                  "holidayHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tatile denk gelen ders"
+                                  },
+                                  "leaveHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğretmenin izinli ya da raporlu olduğu gündeki dersi"
+                                  },
+                                  "substitutedOutHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yedeğe devredilen ders"
+                                  },
+                                  "upcomingHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Henüz yapılmamış ders"
+                                  },
+                                  "attendanceMissingLessons": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Sınıfın o günü yoklaması alınmamış sayılan ders sayısı"
+                                  }
+                                },
+                                "required": [
+                                  "countedHours",
+                                  "ownHours",
+                                  "substituteHours",
+                                  "makeupHours",
+                                  "loadHours",
+                                  "extraHours",
+                                  "overCapHours",
+                                  "cancelledHours",
+                                  "holidayHours",
+                                  "leaveHours",
+                                  "substitutedOutHours",
+                                  "upcomingHours",
+                                  "attendanceMissingLessons"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "weeks": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "startDate": {
+                                      "type": "string",
+                                      "description": "Hafta pazartesisi"
+                                    },
+                                    "endDate": {
+                                      "type": "string",
+                                      "description": "Hafta pazarı"
+                                    },
+                                    "monthFrom": {
+                                      "type": "string",
+                                      "description": "Haftanın bu aya düşen ilk günü"
+                                    },
+                                    "monthTo": {
+                                      "type": "string",
+                                      "description": "Haftanın bu aya düşen son günü"
+                                    },
+                                    "countedHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Haftanın sayılan saati (ay dışı günler dahil)"
+                                    },
+                                    "loadHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Maaş karşılığı"
+                                    },
+                                    "extraHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ek ders"
+                                    },
+                                    "overCapHours": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Üst sınır üstü"
+                                    },
+                                    "extraInMonth": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ek dersin bu aya düşen kısmı"
+                                    }
+                                  },
+                                  "required": [
+                                    "startDate",
+                                    "endDate",
+                                    "monthFrom",
+                                    "monthTo",
+                                    "countedHours",
+                                    "loadHours",
+                                    "extraHours",
+                                    "overCapHours",
+                                    "extraInMonth"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Ayla kesişen haftalar (sayılan dersi olanlar)"
+                              },
+                              "warnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "no_pay_rate",
+                                    "over_cap",
+                                    "attendance_missing"
+                                  ]
+                                },
+                                "description": "`no_pay_rate` ücret tanımı yok, `over_cap` üst sınır aşıldı, `attendance_missing` yoklaması alınmamış ders günü"
+                              },
+                              "lastTransfer": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "suggestedHours": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Aktarım anındaki öneri"
+                                      },
+                                      "previousHours": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Aktarımdan önceki elle giriş; yoksa boş"
+                                      },
+                                      "hours": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Yazılan saat"
+                                      },
+                                      "reason": {
+                                        "description": "Öneriden farkın gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "weeklyLoad": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "weeklyCap": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "createdByName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "createdAt": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "suggestedHours",
+                                      "previousHours",
+                                      "hours",
+                                      "reason",
+                                      "weeklyLoad",
+                                      "weeklyCap",
+                                      "createdByName",
+                                      "createdAt"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bu ayın son aktarımı"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "payBasis",
+                              "applicable",
+                              "suggestedHours",
+                              "currentHours",
+                              "currentEntryId",
+                              "difference",
+                              "totals",
+                              "weeks",
+                              "warnings",
+                              "lastTransfer"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayda dersi olan öğretmenler, ada göre"
+                        },
+                        "unlinked": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "teacherId": {
+                                "type": "string"
+                              },
+                              "teacherName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "countedHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "teacherId",
+                              "teacherName",
+                              "countedHours"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Dersi olup personel üyeliğine bağlı olmayan öğretmen kayıtları (aktarılamaz)"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "teacherCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "suggestedHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "currentHours": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "teacherCount",
+                            "suggestedHours",
+                            "currentHours"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "weeklyLoad",
+                        "weeklyCap",
+                        "rangeFrom",
+                        "rangeTo",
+                        "monthComplete",
+                        "attendanceKnown",
+                        "sheetStatus",
+                        "payrollLocked",
+                        "transferable",
+                        "teachers",
+                        "unlinked",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

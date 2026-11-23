@@ -282,4 +282,48 @@ describe('guvenlik-kvkk: kayıt ve finans alanları logda gizlenir', () => {
       await app.close()
     }
   })
+
+  test('DOM-FIN-166, K-554: self-servis talebinin IBAN, iletişim, acil durum kişileri ve ret gerekçesi yazılmaz', async () => {
+    const logs: string[] = []
+    const texts = {
+      iban: 'TR330006100519786457841326',
+      holder: 'Gizli Hesap Sahibi',
+      address: 'Gizli Adres Sokak No 1',
+      phone: '05329990011',
+      contact: 'Gizli Acil Kisi',
+      reason: 'Gizli ret gerekcesi',
+      masked: 'TR**gizli**1326',
+    }
+    const app = await buildTestApp(db, { logs })
+    try {
+      app.log.info(
+        {
+          kind: 'bank',
+          iban: texts.iban,
+          accountHolder: texts.holder,
+          rejectionReason: texts.reason,
+        },
+        'değişiklik talebi',
+      )
+      app.log.info(
+        {
+          body: {
+            address: texts.address,
+            phone: texts.phone,
+            emergencyContacts: [{ name: texts.contact }],
+          },
+          data: { proposal: { ibanMasked: texts.masked } },
+        },
+        'talep gövdesi',
+      )
+      const text = logs.join('')
+      assert.ok(text.includes('"msg":"değişiklik talebi"'), 'log satırı yok')
+      for (const [field, value] of Object.entries(texts))
+        assert.equal(text.includes(value), false, `logda: ${field}`)
+      // Talep türü (kod) logda kalır.
+      assert.ok(text.includes('"kind":"bank"'))
+    } finally {
+      await app.close()
+    }
+  })
 })

@@ -363,6 +363,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Programdan ek ders önerisinin aktarımı; çift tıklama ikinci aktarım satırı yazmaz
   // (routes/finance-lesson-hour-suggestions.ts; DOM-FIN-165, ON-195).
   'POST /api/v1/finance/lesson-hour-suggestions/{month}/transfers',
+  // Personelin kendi izin talebi; yönetici talebi gibi çift gönderim ikinci talebi açmaz
+  // (routes/finance-staff-self-service.ts; DOM-FIN-166, ON-189).
+  'POST /api/v1/finance/my-leave-requests',
 ]
 // Onur: kayıt ve finans sonu
 

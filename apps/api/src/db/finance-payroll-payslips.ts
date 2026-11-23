@@ -1,10 +1,10 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 
 import type { PayrollCalcRow } from '@kampus/school-core/lib/finance-payroll-calc.ts'
 
 import type { Database } from './client.ts'
 import { institutions } from './schema/auth.ts'
-import { payrollRunLines } from './schema/finance-payroll-runs.ts'
+import { payrollRunLines, payrollRuns } from './schema/finance-payroll-runs.ts'
 
 /**
  * Ücret hesap pusulası deposu (DOM-FIN-119; ON-201). Kurum kapsamlıdır: ilk parametre
@@ -50,4 +50,39 @@ export async function findInstitutionName(db: Database, institutionId: string): 
     .where(eq(institutions.id, institutionId))
     .limit(1)
   return row?.name ?? ''
+}
+
+/**
+ * Personelin satırı bulunan etkin kayıtlı hesapların ayları (self-servis, DOM-FIN-166), yeniden
+ * eskiye. Dönem onayı süzgeci serviste.
+ */
+export async function listPayslipMonthsOf(
+  db: Database,
+  institutionId: string,
+  membershipId: string,
+): Promise<{ month: string; runId: string; revision: number; calculatedAt: string }[]> {
+  const rows = await db
+    .select({
+      month: payrollRuns.month,
+      runId: payrollRuns.id,
+      revision: payrollRuns.revision,
+      createdAt: payrollRuns.createdAt,
+    })
+    .from(payrollRunLines)
+    .innerJoin(
+      payrollRuns,
+      and(
+        eq(payrollRuns.institutionId, payrollRunLines.institutionId),
+        eq(payrollRuns.id, payrollRunLines.runId),
+      ),
+    )
+    .where(
+      and(
+        eq(payrollRunLines.institutionId, institutionId),
+        eq(payrollRunLines.membershipId, membershipId),
+        isNull(payrollRuns.archivedAt),
+      ),
+    )
+    .orderBy(desc(payrollRuns.month))
+  return rows.map(({ createdAt, ...row }) => ({ ...row, calculatedAt: createdAt.toISOString() }))
 }

@@ -615,5 +615,20 @@ describe('DOM-FIN-164: yemek aboneliği uçları', () => {
       'meal_subscription_student_not_found',
     )
     assert.equal((await subscriptionRows(a.id)).length, 0)
+
+    // Kesim ayarı kurumundur: B'nin ayarı A'ya görünmez, gövdedeki B kimliği A'yı değiştirmez.
+    ok(await patch(SETTINGS, b.admin, { cutoffDaysBefore: 0, cutoffTime: '10:00' }, 1))
+    assert.deepEqual(ok(await get(SETTINGS, a.admin)), {
+      cutoffDaysBefore: 1,
+      cutoffTime: '15:00',
+      version: 1,
+    })
+    const crossSettings = { cutoffDaysBefore: 2, cutoffTime: '11:00', institutionId: b.id }
+    assertError(await patch(SETTINGS, a.admin, crossSettings, 1), 400)
+    const [bSettings] = await db
+      .select()
+      .from(mealSubscriptionSettings)
+      .where(eq(mealSubscriptionSettings.institutionId, b.id))
+    assert.equal(bSettings?.cutoffTime, '10:00')
   })
 })

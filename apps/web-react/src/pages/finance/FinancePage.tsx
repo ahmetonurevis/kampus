@@ -257,6 +257,9 @@ const FinanceMealMenusSection = lazy(async () => ({
 const FinanceMealAllergySection = lazy(async () => ({
   default: (await import('./FinanceMealAllergySection.tsx')).FinanceMealAllergySection,
 }))
+const FinanceMealSubscriptionsSection = lazy(async () => ({
+  default: (await import('./FinanceMealSubscriptionsSection.tsx')).FinanceMealSubscriptionsSection,
+}))
 const FinanceInfirmarySection = lazy(async () => ({
   default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
 }))
@@ -368,6 +371,7 @@ const VIEWS = {
   clubs: { label: 'Kulüpler', param: 'kulupler' },
   mealMenus: { label: 'Yemek menüsü', param: 'yemek-menusu' },
   mealAllergy: { label: 'Yemekhane alerji uyarısı', param: 'yemekhane-alerji' },
+  mealSubscriptions: { label: 'Yemek aboneliği', param: 'yemek-aboneligi' },
   infirmary: { label: 'Revir', param: 'revir' },
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
   healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
@@ -465,6 +469,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * yönetici yazar, onay yöneticide (K-529).
  * Okul takvimi (DOM-FIN-163) ikisine açıktır; etkinliği ikisi de yazar, yayımlar ve iptal eder
  * (K-544).
+ * Yemek aboneliği (DOM-FIN-164) ikisine açıktır; kesim ayarı yöneticide, gün iptalini ikisi de
+ * yapar (K-547, K-548).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -738,6 +744,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
         {tab === 'mealMenus' ? <FinanceMealMenusSection /> : null}
         {tab === 'mealAllergy' ? <FinanceMealAllergySection /> : null}
+        {tab === 'mealSubscriptions' ? <FinanceMealSubscriptionsSection /> : null}
         {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
         {tab === 'emergencySummaries' ? (
           <FinanceEmergencySummariesSection isManager={isManager} />

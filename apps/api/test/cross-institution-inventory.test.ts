@@ -5081,6 +5081,35 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: saat ücretli öğretmen ders saati hakediş dökümü (ON-075; DOM-FIN-167).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/hourly-lesson-payouts/:month',
+          'ok(await call(LIST, a.admin))',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/hourly-lesson-payouts/:month/teachers/:membershipId',
+          '`${LIST}/teachers/${b.ece.membershipId}`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/my-hourly-lesson-payouts/:month',
+          'ok(await call(MINE, a.ece.cookie))',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-hourly-lesson-payouts.test.ts',
+        'DOM-FIN-167: başka kurumun öğretmeni 404; listede ve kendi dökümünde B yok',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**
